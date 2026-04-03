@@ -1,5 +1,18 @@
 # Changelog
 
+## [v1.0.1] - 2026-04-03
+
+### 修复
+- CI: release job 补充 `mkdir -p MacOS` 防止 GitHub Actions 环境缺失目录导致构建失败
+
+### 变更
+- GitHub Actions 工作流升级为统一 CI/CD（单 YAML），对齐 project 全局标准
+  - `push main` → auto-doc（README 日期自动更新，`[skip ci]` 截断无限循环）
+  - `push v* tag` → macOS 编译 + DMG 打包 + GitHub Release
+- Makefile 新增 `version-bump` 目标，一键更新版本号+打 tag
+
+---
+
 ## [v1.0.0] - 2026-04-03
 
 ### 新增
