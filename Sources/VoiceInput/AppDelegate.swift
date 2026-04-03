@@ -19,6 +19,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var enableMenuItem: NSMenuItem!
     private var llmMenuItem: NSMenuItem!
     private lazy var settingsWindow = SettingsWindow()
+    private lazy var dictionaryWindow = DictionaryWindow()
     private var languageItems: [NSMenuItem] = []
     private var selectedLocaleCode: String {
         get { UserDefaults.standard.string(forKey: "selectedLocaleCode") ?? "zh-CN" }
@@ -33,6 +34,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             speechEngine.locale = Locale(identifier: savedCode)
         }
 
+        DictionaryFilter.shared.loadUserDictionary()
         setupStatusBar()
         setupSpeechCallbacks()
 
@@ -135,10 +137,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
+        let filtered = DictionaryFilter.shared.apply(text)
         let refiner = LLMRefiner.shared
         if refiner.isEnabled && refiner.isConfigured {
             overlayPanel.showRefining()
-            refiner.refine(text) { [weak self] result in
+            refiner.refine(filtered) { [weak self] result in
                 guard let self else { return }
                 let finalText: String
                 switch result {
@@ -178,7 +181,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             overlayPanel.dismiss()
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-                self?.textInjector.inject(text)
+                self?.textInjector.inject(filtered)
                 NSSound(named: .init("Pop"))?.play()
             }
             lastPartialResult = ""
@@ -239,6 +242,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         llmItem.submenu = llmMenu
         menu.addItem(llmItem)
 
+        let dictItem = NSMenuItem(title: "Dictionary...", action: #selector(openDictionary), keyEquivalent: "")
+        dictItem.target = self
+        menu.addItem(dictItem)
+
         menu.addItem(.separator())
 
         let quitItem = NSMenuItem(title: "Quit VoiceInput", action: #selector(quit), keyEquivalent: "q")
@@ -294,6 +301,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func openLLMSettings() {
         settingsWindow.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    @objc private func openDictionary() {
+        dictionaryWindow.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
 

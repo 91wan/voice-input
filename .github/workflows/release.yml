@@ -1,0 +1,59 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.3.app/Contents/Developer || sudo xcode-select -s $(ls -d /Applications/Xcode*.app | tail -1)/Contents/Developer
+
+      - name: Build release binary
+        run: |
+          swift build -c release
+          cp .build/release/VoiceInput VoiceInput.app/Contents/MacOS/VoiceInput
+
+      - name: Package DMG
+        run: |
+          mkdir -p staging
+          cp -r VoiceInput.app staging/
+          hdiutil create \
+            -volname VoiceInput \
+            -srcfolder staging \
+            -ov -format UDZO \
+            VoiceInput.dmg
+
+      - name: Extract release notes from CHANGELOG.md
+        id: notes
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          # 提取当前 tag 对应的 changelog 段落
+          if [ -f CHANGELOG.md ]; then
+            NOTES=$(awk "/^## \[?${TAG}\]?/{found=1; next} found && /^## /{exit} found{print}" CHANGELOG.md)
+          fi
+          if [ -z "$NOTES" ]; then
+            NOTES="Release ${TAG}"
+          fi
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          echo "$NOTES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          body: ${{ steps.notes.outputs.notes }}
+          files: VoiceInput.dmg
+          draft: false
+          prerelease: false

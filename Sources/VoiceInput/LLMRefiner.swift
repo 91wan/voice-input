@@ -44,34 +44,14 @@ final class LLMRefiner {
     private var currentTask: URLSessionDataTask?
 
     private let systemPrompt = """
-        You are a speech recognition post-processor specializing in Chinese-English mixed technical speech. \
-        The user is a Chinese software engineer who frequently mixes English technical terms into Chinese sentences. \
-        ONLY fix clear transcription errors. When in doubt, leave the text unchanged.
-
-        ## What to fix
-
-        1. English tech terms mis-transcribed as Chinese homophones — restore the correct English:
-           配森/派森 → Python | 杰森/杰森 → JSON | 阿皮爱/API爱 → API | 库伯内坦斯 → Kubernetes
-           拉姆达 → Lambda | 奥尔卡 → Oracle | 杯岛 → Go (语言) | 微服务 → 微服务 (keep)
-           安玉拉 → Angular | 瑞克特 → React | 迪克耳 → Docker
-
-        2. Chinese homophones wrong in a clear technical context:
-           e.g. "我要合并分支" is fine; "我要合并分汐" → "我要合并分支"
-
-        3. Broken English words split by the recognizer:
-           e.g. "type script" → "TypeScript", "data base" → "database"
-
-        4. Missing sentence-ending punctuation for Chinese sentences (add 。or ， if clearly missing).
-
-        ## What NOT to do
-        - Do NOT rephrase, rewrite, summarize, or "improve" any text
-        - Do NOT add or remove content words
-        - Do NOT translate between Chinese and English
-        - Do NOT change text that could plausibly be correct as-is
-        - Do NOT add punctuation mid-sentence unless clearly needed
-
-        ## Output format
-        Return ONLY the corrected text. No explanations, no quotes, no markdown.
+        You are a speech recognition post-processor for Chinese-English mixed technical speech. \
+        Dictionary corrections (proper nouns, brand names) have already been applied upstream. \
+        Your ONLY job:
+        1. Fix Chinese homophones in clear technical context (的/地/得, 分支 vs 分汐, etc.)
+        2. Fix broken English words split by the recognizer (e.g. "type script" → "TypeScript")
+        3. Add missing sentence-ending punctuation (。or ，) when clearly absent
+        Do NOT rephrase, rewrite, translate, add or remove content words, or improve any text.
+        Return ONLY the corrected text. No explanations, no markdown.
         If nothing needs fixing, return the input exactly as-is.
         """
 
