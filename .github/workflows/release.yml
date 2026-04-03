@@ -50,6 +50,7 @@ jobs:
       - name: Build release binary
         run: |
           swift build -c release
+          mkdir -p VoiceInput.app/Contents/MacOS
           cp .build/release/VoiceInput VoiceInput.app/Contents/MacOS/VoiceInput
 
       - name: Package DMG
