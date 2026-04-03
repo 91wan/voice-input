@@ -1,7 +1,9 @@
-name: Release
+name: CI/CD
 
 on:
   push:
+    branches:
+      - main
     tags:
       - 'v*'
 
@@ -9,15 +11,41 @@ permissions:
   contents: write
 
 jobs:
-  build-and-release:
-    runs-on: macos-15
 
+  # ── Job 1：push main → 自动更新 README 日期 ──────────────────────────
+  auto-doc:
+    name: 📄 Auto-Doc
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update README date
+        run: |
+          TODAY=$(date +%Y-%m-%d)
+          sed -i "s/date-[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}/date-${TODAY}/g" README.md
+          if ! git diff --quiet README.md; then
+            git config --global user.name  "github-actions[bot]"
+            git config --global user.email "github-actions[bot]@users.noreply.github.com"
+            git add README.md
+            git commit -m "docs: auto-update README date [skip ci]"
+            git push
+          fi
+
+  # ── Job 2：push v* tag → macOS 编译 + DMG + GitHub Release ──────────
+  release:
+    name: 🚀 Release
+    runs-on: macos-15
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/checkout@v4
 
       - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode_16.3.app/Contents/Developer || sudo xcode-select -s $(ls -d /Applications/Xcode*.app | tail -1)/Contents/Developer
+        run: |
+          sudo xcode-select -s /Applications/Xcode_16.3.app/Contents/Developer 2>/dev/null || \
+          sudo xcode-select -s $(ls -d /Applications/Xcode*.app | tail -1)/Contents/Developer
 
       - name: Build release binary
         run: |
@@ -38,7 +66,6 @@ jobs:
         id: notes
         run: |
           TAG="${GITHUB_REF_NAME}"
-          # 提取当前 tag 对应的 changelog 段落
           if [ -f CHANGELOG.md ]; then
             NOTES=$(awk "/^## \[?${TAG}\]?/{found=1; next} found && /^## /{exit} found{print}" CHANGELOG.md)
           fi
@@ -46,8 +73,8 @@ jobs:
             NOTES="Release ${TAG}"
           fi
           echo "notes<<EOF" >> $GITHUB_OUTPUT
-          echo "$NOTES" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          echo "$NOTES"     >> $GITHUB_OUTPUT
+          echo "EOF"        >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -56,4 +83,4 @@ jobs:
           body: ${{ steps.notes.outputs.notes }}
           files: VoiceInput.dmg
           draft: false
-          prerelease: false
+          prerelease: ${{ contains(github.ref_name, '-beta') || contains(github.ref_name, '-alpha') }}

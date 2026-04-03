@@ -26,3 +26,20 @@ install: build
 	rm -rf /Applications/$(APP_BUNDLE)
 	cp -r $(APP_BUNDLE) /Applications/
 	@echo "✅ Installed to /Applications/$(APP_BUNDLE)"
+
+## version-bump VERSION=v1.x.x: 更新 README 版本号+日期，打 tag，一键触发 CI 发布
+version-bump:
+	@if [ -z "$(VERSION)" ]; then \
+		echo "❌ 缺少版本号，用法: make version-bump VERSION=v1.x.x"; \
+		exit 1; \
+	fi
+	@echo "🔖 Bumping to $(VERSION)..."
+	@sed -i '' -e 's/version-[0-9a-z._-]*/version-$(VERSION)/g' README.md
+	@sed -i '' -e 's/date-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/date-$(shell date +%Y-%m-%d)/g' README.md
+	@git add README.md
+	@git commit -m "chore: bump version to $(VERSION)"
+	@git tag $(VERSION)
+	@echo "✅ 完成。执行以下命令触发自动构建与发布:"
+	@echo "   git push origin main $(VERSION)"
+
+.PHONY: version-bump
