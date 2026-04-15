@@ -124,6 +124,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         speechEngine.onError = { [weak self] msg in
             guard let self else { return }
+            self.resetActiveTranscriptionState()
             self.overlayPanel.updateText("Error: \(msg)")
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                 self.overlayPanel.dismiss()
@@ -230,6 +231,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    private func resetActiveTranscriptionState() {
+        fnHoldTimer?.invalidate()
+        fnHoldTimer = nil
+        finalResultTimer?.invalidate()
+        finalResultTimer = nil
+        transcriptionSessions.invalidate()
+        activeTranscriptionSessionID = transcriptionSessions.currentID
+        LLMRefiner.shared.cancel()
+        speechEngine.cancel()
+        isRecording = false
+        lastPartialResult = ""
+        updateStatusIcon(recording: false)
+    }
+
     // MARK: - Status bar
 
     private func setupStatusBar() {
@@ -320,18 +335,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         } else {
             keyMonitor.stop()
-            transcriptionSessions.invalidate()
-            activeTranscriptionSessionID = transcriptionSessions.currentID
-            finalResultTimer?.invalidate()
-            finalResultTimer = nil
-            LLMRefiner.shared.cancel()
-            lastPartialResult = ""
+            resetActiveTranscriptionState()
             overlayPanel.dismiss()
-            if isRecording {
-                speechEngine.cancel()
-                isRecording = false
-                updateStatusIcon(recording: false)
-            }
         }
     }
 
