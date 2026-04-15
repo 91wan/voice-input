@@ -2,6 +2,7 @@ import Foundation
 import os.log
 
 private let logger = Logger(subsystem: "app.voiceinput.VoiceInput", category: "LLMRefiner")
+private let llmAPIKeyDefaultsKey = "llmAPIKey"
 
 private func logToFile(_ message: String) {
     let msg = "[\(ISO8601DateFormatter().string(from: Date()))] \(message)\n"
@@ -19,24 +20,28 @@ private func logToFile(_ message: String) {
 final class LLMRefiner {
     static let shared = LLMRefiner()
 
+    private let userDefaults: UserDefaults
+    private let apiKeyStore: KeychainStore
+    private let logHandler: (String) -> Void
+
     var isEnabled: Bool {
-        get { UserDefaults.standard.bool(forKey: "llmEnabled") }
-        set { UserDefaults.standard.set(newValue, forKey: "llmEnabled") }
+        get { userDefaults.bool(forKey: "llmEnabled") }
+        set { userDefaults.set(newValue, forKey: "llmEnabled") }
     }
 
     var apiBaseURL: String {
-        get { UserDefaults.standard.string(forKey: "llmAPIBaseURL") ?? "https://api.openai.com/v1" }
-        set { UserDefaults.standard.set(newValue, forKey: "llmAPIBaseURL") }
+        get { userDefaults.string(forKey: "llmAPIBaseURL") ?? "https://api.openai.com/v1" }
+        set { userDefaults.set(newValue, forKey: "llmAPIBaseURL") }
     }
 
     var apiKey: String {
-        get { UserDefaults.standard.string(forKey: "llmAPIKey") ?? "" }
-        set { UserDefaults.standard.set(newValue, forKey: "llmAPIKey") }
+        migrateLegacyAPIKeyIfNeeded()
+        return (try? apiKeyStore.read()) ?? ""
     }
 
     var model: String {
-        get { UserDefaults.standard.string(forKey: "llmModel") ?? "gpt-4o-mini" }
-        set { UserDefaults.standard.set(newValue, forKey: "llmModel") }
+        get { userDefaults.string(forKey: "llmModel") ?? "gpt-4o-mini" }
+        set { userDefaults.set(newValue, forKey: "llmModel") }
     }
 
     var isConfigured: Bool { !apiKey.isEmpty }
@@ -54,6 +59,19 @@ final class LLMRefiner {
         Return ONLY the corrected text. No explanations, no markdown.
         If nothing needs fixing, return the input exactly as-is.
         """
+
+    init(
+        userDefaults: UserDefaults = .standard,
+        apiKeyStore: KeychainStore = KeychainStore(
+            service: "app.voiceinput.VoiceInput",
+            account: "llm-api-key"
+        ),
+        logHandler: @escaping (String) -> Void = logToFile
+    ) {
+        self.userDefaults = userDefaults
+        self.apiKeyStore = apiKeyStore
+        self.logHandler = logHandler
+    }
 
     func refine(_ text: String, force: Bool = false, completion: @escaping (Result<String, Error>) -> Void) {
         guard force || (isEnabled && isConfigured) else {
@@ -82,34 +100,34 @@ final class LLMRefiner {
             "temperature": 0.3,
         ]
 
-        logToFile("Request: \(url.absoluteString) model=\(model)")
+        logHandler("Request: \(url.absoluteString) model=\(model)")
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
 
         currentTask = URLSession.shared.dataTask(with: request) { data, _, error in
             if let error {
-                logToFile("Network error: \(error.localizedDescription)")
+                self.logHandler("Network error: \(error.localizedDescription)")
                 DispatchQueue.main.async { completion(.failure(error)) }
                 return
             }
             guard let data else {
-                logToFile("No data in response")
+                self.logHandler("No data in response")
                 DispatchQueue.main.async { completion(.failure(RefinerError.invalidResponse)) }
                 return
             }
-            if let raw = String(data: data, encoding: .utf8) {
-                logToFile("Response: \(raw)")
-            }
+            self.logHandler("Response bytes: \(data.count)")
             guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let choices = json["choices"] as? [[String: Any]],
                   let message = choices.first?["message"] as? [String: Any],
                   let content = message["content"] as? String
             else {
-                logToFile("Failed to parse response")
+                self.logHandler("Failed to parse response")
                 DispatchQueue.main.async { completion(.failure(RefinerError.invalidResponse)) }
                 return
             }
             let refined = content.trimmingCharacters(in: .whitespacesAndNewlines)
-            logToFile("Refined: '\(text)' -> '\(refined)'")
+            self.logHandler(
+                "Refined changed=\(refined != text) input_chars=\(text.count) output_chars=\(refined.count)"
+            )
             DispatchQueue.main.async { completion(.success(refined)) }
         }
         currentTask?.resume()
@@ -118,6 +136,40 @@ final class LLMRefiner {
     func cancel() {
         currentTask?.cancel()
         currentTask = nil
+    }
+
+    func updateAPIKey(_ value: String) throws {
+        let normalized = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        userDefaults.removeObject(forKey: llmAPIKeyDefaultsKey)
+        if normalized.isEmpty {
+            try apiKeyStore.delete()
+        } else {
+            try apiKeyStore.write(normalized)
+        }
+    }
+
+    private func migrateLegacyAPIKeyIfNeeded() {
+        let existing = try? apiKeyStore.read()
+        if let existing, !existing.isEmpty {
+            userDefaults.removeObject(forKey: llmAPIKeyDefaultsKey)
+            return
+        }
+
+        guard let legacy = userDefaults.string(forKey: llmAPIKeyDefaultsKey)?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+            !legacy.isEmpty
+        else {
+            userDefaults.removeObject(forKey: llmAPIKeyDefaultsKey)
+            return
+        }
+
+        do {
+            try apiKeyStore.write(legacy)
+            userDefaults.removeObject(forKey: llmAPIKeyDefaultsKey)
+            logHandler("Migrated LLM API key from UserDefaults to Keychain")
+        } catch {
+            logger.error("Failed to migrate LLM API key to Keychain: \(error.localizedDescription, privacy: .public)")
+        }
     }
 
     enum RefinerError: LocalizedError {

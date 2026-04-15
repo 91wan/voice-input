@@ -2,7 +2,7 @@ import AppKit
 
 final class SettingsWindow: NSPanel {
     private let apiBaseURLField = NSTextField()
-    private let apiKeyField = NSTextField()
+    private let apiKeyField = NSSecureTextField()
     private let modelField = NSTextField()
     private let statusLabel = NSTextField(labelWithString: "")
 
@@ -47,6 +47,7 @@ final class SettingsWindow: NSPanel {
         statusLabel.font = .systemFont(ofSize: 12)
         statusLabel.textColor = .secondaryLabelColor
         statusLabel.lineBreakMode = .byTruncatingTail
+        statusLabel.stringValue = "API key is stored in your macOS Keychain."
 
         let testButton = NSButton(title: "Test", target: self, action: #selector(test))
         testButton.bezelStyle = .rounded
@@ -90,7 +91,12 @@ final class SettingsWindow: NSPanel {
     }
 
     @objc private func test() {
-        applyFields()
+        do {
+            try applyFields()
+        } catch {
+            showStatus(error.localizedDescription, success: false)
+            return
+        }
 
         let refiner = LLMRefiner.shared
         guard refiner.isConfigured else {
@@ -111,14 +117,20 @@ final class SettingsWindow: NSPanel {
     }
 
     @objc private func save() {
-        applyFields()
+        do {
+            try applyFields()
+            showStatus("Saved to Keychain", success: true)
+        } catch {
+            showStatus(error.localizedDescription, success: false)
+            return
+        }
         close()
     }
 
-    private func applyFields() {
+    private func applyFields() throws {
         let refiner = LLMRefiner.shared
         refiner.apiBaseURL = apiBaseURLField.stringValue
-        refiner.apiKey = apiKeyField.stringValue
+        try refiner.updateAPIKey(apiKeyField.stringValue)
         refiner.model = modelField.stringValue
     }
 
