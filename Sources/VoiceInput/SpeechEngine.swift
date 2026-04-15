@@ -12,6 +12,7 @@ final class SpeechEngine {
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
     private var speechRecognizer: SFSpeechRecognizer?
+    private var recognitionSessions = SessionCounter()
 
     var locale: Locale {
         didSet {
@@ -57,6 +58,7 @@ final class SpeechEngine {
     // MARK: - Recording
 
     func startRecording() {
+        let sessionID = recognitionSessions.begin()
         recognitionTask?.cancel()
         recognitionTask = nil
 
@@ -106,6 +108,7 @@ final class SpeechEngine {
 
         recognitionTask = recognizer.recognitionTask(with: request) { [weak self] result, error in
             guard let self else { return }
+            guard self.recognitionSessions.isCurrent(sessionID) else { return }
             if let result {
                 let text = result.bestTranscription.formattedString
                 if result.isFinal {
@@ -140,7 +143,8 @@ final class SpeechEngine {
             let dB = 20 * log10(max(rms, 1e-6))
             let normalized = max(Float(0), min(Float(1), (dB + 50) / 40))
             DispatchQueue.main.async {
-                self?.onAudioLevel?(normalized)
+                guard let self, self.recognitionSessions.isCurrent(sessionID) else { return }
+                self.onAudioLevel?(normalized)
             }
         }
 
@@ -160,6 +164,7 @@ final class SpeechEngine {
     }
 
     func cancel() {
+        recognitionSessions.invalidate()
         recognitionTask?.cancel()
         cleanup()
     }

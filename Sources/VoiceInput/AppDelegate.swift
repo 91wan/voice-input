@@ -13,6 +13,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var lastPartialResult = ""
     private var finalResultTimer: Timer?
     private var fnHoldTimer: Timer?
+    private var transcriptionSessions = SessionCounter()
+    private var activeTranscriptionSessionID = 0
     /// Minimum hold duration (seconds) before Fn activates recording.
     private let fnHoldThreshold: TimeInterval = 0.3
 
@@ -70,6 +72,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         fnHoldTimer = Timer.scheduledTimer(withTimeInterval: fnHoldThreshold, repeats: false) { [weak self] _ in
             guard let self, self.isEnabled, !self.isRecording else { return }
             LLMRefiner.shared.cancel()
+            let sessionID = self.transcriptionSessions.begin()
+            self.activeTranscriptionSessionID = sessionID
             self.isRecording = true
             self.lastPartialResult = ""
             self.updateStatusIcon(recording: true)
@@ -93,9 +97,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         updateStatusIcon(recording: false)
         speechEngine.stopRecording()
+        let sessionID = activeTranscriptionSessionID
 
         finalResultTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: false) { [weak self] _ in
-            self?.finishTranscription()
+            self?.finishTranscription(sessionID: sessionID)
         }
     }
 
@@ -110,10 +115,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         speechEngine.onFinalResult = { [weak self] text in
             guard let self else { return }
+            let sessionID = self.activeTranscriptionSessionID
             self.lastPartialResult = text
             self.finalResultTimer?.invalidate()
             self.finalResultTimer = nil
-            self.finishTranscription()
+            self.finishTranscription(sessionID: sessionID)
         }
 
         speechEngine.onError = { [weak self] msg in
@@ -133,7 +139,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    private func finishTranscription() {
+    private func finishTranscription(sessionID: Int) {
+        guard transcriptionSessions.isCurrent(sessionID) else { return }
         finalResultTimer?.invalidate()
         finalResultTimer = nil
 
@@ -153,6 +160,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             overlayPanel.showRefining()
             refiner.refine(filtered) { [weak self] result in
                 guard let self else { return }
+                guard self.transcriptionSessions.isCurrent(sessionID) else { return }
                 switch result {
                 case .success(let refined):
                     let output = TranscriptionResolution.resolve(
@@ -162,15 +170,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     if output.wasLLMRefined {
                         self.overlayPanel.updateText("✨ \(output.text)")
                         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                            guard self.transcriptionSessions.isCurrent(sessionID) else { return }
                             self.overlayPanel.dismiss()
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                self.performTextInjection(output.text)
+                                self.performTextInjection(output.text, sessionID: sessionID)
                             }
                         }
                     } else {
                         self.overlayPanel.dismiss()
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            self.performTextInjection(output.text)
+                            self.performTextInjection(output.text, sessionID: sessionID)
                         }
                     }
                 case .failure(let error):
@@ -181,9 +190,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     )
                     self.overlayPanel.updateText("Refine failed, using dictionary result")
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                        guard self.transcriptionSessions.isCurrent(sessionID) else { return }
                         self.overlayPanel.dismiss()
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            self.performTextInjection(output.text)
+                            self.performTextInjection(output.text, sessionID: sessionID)
                         }
                     }
                 }
@@ -192,13 +202,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             overlayPanel.dismiss()
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-                self?.performTextInjection(filtered)
+                self?.performTextInjection(filtered, sessionID: sessionID)
             }
             lastPartialResult = ""
         }
     }
 
-    private func performTextInjection(_ text: String) {
+    private func performTextInjection(_ text: String, sessionID: Int) {
+        guard transcriptionSessions.isCurrent(sessionID) else { return }
         switch textInjector.inject(text) {
         case .success:
             NSSound(named: .init("Pop"))?.play()
@@ -206,12 +217,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             NSLog("[TextInjector] Inject failed: %@", failure.localizedDescription)
             overlayPanel.show(text: failure.localizedDescription)
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
-                self?.overlayPanel.dismiss()
+                guard let self, self.transcriptionSessions.isCurrent(sessionID) else { return }
+                self.overlayPanel.dismiss()
             }
 
             if failure.shouldPromptForAccessibility {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
-                    self?.showAccessibilityAlert()
+                    guard let self, self.transcriptionSessions.isCurrent(sessionID) else { return }
+                    self.showAccessibilityAlert()
                 }
             }
         }
@@ -307,9 +320,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         } else {
             keyMonitor.stop()
+            transcriptionSessions.invalidate()
+            activeTranscriptionSessionID = transcriptionSessions.currentID
+            finalResultTimer?.invalidate()
+            finalResultTimer = nil
+            LLMRefiner.shared.cancel()
+            lastPartialResult = ""
+            overlayPanel.dismiss()
             if isRecording {
                 speechEngine.cancel()
-                overlayPanel.dismiss()
                 isRecording = false
                 updateStatusIcon(recording: false)
             }
