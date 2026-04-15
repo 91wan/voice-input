@@ -1,5 +1,35 @@
 import AppKit
+import ApplicationServices
 import Carbon
+
+enum TextInjectionFailure: LocalizedError, Equatable {
+    case emptyText
+    case accessibilityPermissionMissing
+    case pasteboardWriteFailed
+    case pasteCommandFailed
+
+    var errorDescription: String? {
+        switch self {
+        case .emptyText:
+            return "Nothing to paste."
+        case .accessibilityPermissionMissing:
+            return "Paste failed. Accessibility permission is required."
+        case .pasteboardWriteFailed:
+            return "Paste failed. VoiceInput couldn't write to the clipboard."
+        case .pasteCommandFailed:
+            return "Paste failed. VoiceInput couldn't send Command-V."
+        }
+    }
+
+    var shouldPromptForAccessibility: Bool {
+        self == .accessibilityPermissionMissing
+    }
+}
+
+enum TextInjectionResult: Equatable {
+    case success
+    case failure(TextInjectionFailure)
+}
 
 struct PasteboardItemSnapshot {
     let representations: [(type: NSPasteboard.PasteboardType, data: Data)]
@@ -41,20 +71,27 @@ final class TextInjector {
     private let pasteboard: NSPasteboard
     private let inputSourceRestoreDelay: TimeInterval
     private let pasteboardRestoreDelay: TimeInterval
+    private let isProcessTrusted: () -> Bool
+    private let postPasteCommandHandler: () -> Bool
 
     init(
         pasteboard: NSPasteboard = .general,
         inputSourceRestoreDelay: TimeInterval = 0.3,
-        pasteboardRestoreDelay: TimeInterval = 0.5
+        pasteboardRestoreDelay: TimeInterval = 0.5,
+        isProcessTrusted: @escaping () -> Bool = { AXIsProcessTrusted() },
+        postPasteCommandHandler: @escaping () -> Bool = TextInjector.defaultPostPasteCommand
     ) {
         self.pasteboard = pasteboard
         self.inputSourceRestoreDelay = inputSourceRestoreDelay
         self.pasteboardRestoreDelay = pasteboardRestoreDelay
+        self.isProcessTrusted = isProcessTrusted
+        self.postPasteCommandHandler = postPasteCommandHandler
     }
 
     @discardableResult
-    func inject(_ text: String) -> Bool {
-        guard !text.isEmpty else { return false }
+    func inject(_ text: String) -> TextInjectionResult {
+        guard !text.isEmpty else { return .failure(.emptyText) }
+        guard isProcessTrusted() else { return .failure(.accessibilityPermissionMissing) }
 
         let snapshot = PasteboardSnapshot.capture(from: pasteboard)
 
@@ -64,7 +101,7 @@ final class TextInjector {
         pasteboard.clearContents()
         guard pasteboard.writeObjects([injectedItem]) else {
             snapshot.restore(to: pasteboard)
-            return false
+            return .failure(.pasteboardWriteFailed)
         }
 
         let injectedChangeCount = pasteboard.changeCount
@@ -78,10 +115,10 @@ final class TextInjector {
             usleep(50_000) // 50ms for system to settle
         }
 
-        guard postPasteCommand() else {
+        guard postPasteCommandHandler() else {
             restoreInputSourceIfStillUsingTemporary(originalSource: originalSource, temporarySource: temporarySource)
             restorePasteboardIfStillOwned(snapshot: snapshot, injectedChangeCount: injectedChangeCount)
-            return false
+            return .failure(.pasteCommandFailed)
         }
 
         DispatchQueue.main.asyncAfter(deadline: .now() + inputSourceRestoreDelay) { [weak self] in
@@ -97,7 +134,7 @@ final class TextInjector {
             self.restorePasteboardIfStillOwned(snapshot: snapshot, injectedChangeCount: injectedChangeCount)
         }
 
-        return true
+        return .success
     }
 
     static func shouldRestorePasteboard(currentChangeCount: Int, injectedChangeCount: Int) -> Bool {
@@ -115,7 +152,7 @@ final class TextInjector {
         snapshot.restore(to: pasteboard)
     }
 
-    private func postPasteCommand() -> Bool {
+    private static func defaultPostPasteCommand() -> Bool {
         guard let source = CGEventSource(stateID: .combinedSessionState),
               let keyDown = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: true),
               let keyUp = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: false)

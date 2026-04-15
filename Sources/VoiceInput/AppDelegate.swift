@@ -164,15 +164,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                             self.overlayPanel.dismiss()
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                self.textInjector.inject(output.text)
-                                NSSound(named: .init("Pop"))?.play()
+                                self.performTextInjection(output.text)
                             }
                         }
                     } else {
                         self.overlayPanel.dismiss()
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            self.textInjector.inject(output.text)
-                            NSSound(named: .init("Pop"))?.play()
+                            self.performTextInjection(output.text)
                         }
                     }
                 case .failure(let error):
@@ -185,8 +183,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                         self.overlayPanel.dismiss()
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            self.textInjector.inject(output.text)
-                            NSSound(named: .init("Pop"))?.play()
+                            self.performTextInjection(output.text)
                         }
                     }
                 }
@@ -195,10 +192,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             overlayPanel.dismiss()
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-                self?.textInjector.inject(filtered)
-                NSSound(named: .init("Pop"))?.play()
+                self?.performTextInjection(filtered)
             }
             lastPartialResult = ""
+        }
+    }
+
+    private func performTextInjection(_ text: String) {
+        switch textInjector.inject(text) {
+        case .success:
+            NSSound(named: .init("Pop"))?.play()
+        case .failure(let failure):
+            NSLog("[TextInjector] Inject failed: %@", failure.localizedDescription)
+            overlayPanel.show(text: failure.localizedDescription)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+                self?.overlayPanel.dismiss()
+            }
+
+            if failure.shouldPromptForAccessibility {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+                    self?.showAccessibilityAlert()
+                }
+            }
         }
     }
 
