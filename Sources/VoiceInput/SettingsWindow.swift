@@ -90,6 +90,18 @@ final class SettingsWindow: NSPanel {
         modelField.stringValue = refiner.model
     }
 
+    func present(message: String? = nil, success: Bool? = nil, focusAPIKey: Bool = false) {
+        loadSettings()
+        if let message {
+            showStatus(message, success: success)
+        }
+        makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        if focusAPIKey {
+            makeFirstResponder(apiKeyField)
+        }
+    }
+
     @objc private func test() {
         do {
             try applyFields()

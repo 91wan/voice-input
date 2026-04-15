@@ -3,6 +3,8 @@ import os.log
 
 private let logger = Logger(subsystem: "app.voiceinput.VoiceInput", category: "LLMRefiner")
 private let llmAPIKeyDefaultsKey = "llmAPIKey"
+private let llmAPIBaseURLDefaultsKey = "llmAPIBaseURL"
+private let llmModelDefaultsKey = "llmModel"
 
 private func logToFile(_ message: String) {
     let msg = "[\(ISO8601DateFormatter().string(from: Date()))] \(message)\n"
@@ -19,6 +21,8 @@ private func logToFile(_ message: String) {
 
 final class LLMRefiner {
     static let shared = LLMRefiner()
+    static let defaultAPIBaseURL = "https://api.openai.com/v1"
+    static let defaultModel = "gpt-4o-mini"
 
     private let userDefaults: UserDefaults
     private let apiKeyStore: KeychainStore
@@ -30,8 +34,8 @@ final class LLMRefiner {
     }
 
     var apiBaseURL: String {
-        get { userDefaults.string(forKey: "llmAPIBaseURL") ?? "https://api.openai.com/v1" }
-        set { userDefaults.set(newValue, forKey: "llmAPIBaseURL") }
+        get { normalizedSetting(userDefaults.string(forKey: llmAPIBaseURLDefaultsKey), fallback: Self.defaultAPIBaseURL) }
+        set { persistSetting(newValue, key: llmAPIBaseURLDefaultsKey) }
     }
 
     var apiKey: String {
@@ -40,8 +44,8 @@ final class LLMRefiner {
     }
 
     var model: String {
-        get { userDefaults.string(forKey: "llmModel") ?? "gpt-4o-mini" }
-        set { userDefaults.set(newValue, forKey: "llmModel") }
+        get { normalizedSetting(userDefaults.string(forKey: llmModelDefaultsKey), fallback: Self.defaultModel) }
+        set { persistSetting(newValue, key: llmModelDefaultsKey) }
     }
 
     var isConfigured: Bool { !apiKey.isEmpty }
@@ -169,6 +173,22 @@ final class LLMRefiner {
             logHandler("Migrated LLM API key from UserDefaults to Keychain")
         } catch {
             logger.error("Failed to migrate LLM API key to Keychain: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    private func normalizedSetting(_ value: String?, fallback: String) -> String {
+        guard let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines), !trimmed.isEmpty else {
+            return fallback
+        }
+        return trimmed
+    }
+
+    private func persistSetting(_ value: String, key: String) {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            userDefaults.removeObject(forKey: key)
+        } else {
+            userDefaults.set(trimmed, forKey: key)
         }
     }
 

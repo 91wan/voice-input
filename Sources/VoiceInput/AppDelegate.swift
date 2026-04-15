@@ -38,6 +38,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         let dictionaryLoadResult = DictionaryFilter.shared.loadUserDictionary()
+        syncLLMEnabledState()
         setupStatusBar()
         setupSpeechCallbacks()
 
@@ -352,13 +353,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func toggleLLM() {
         let refiner = LLMRefiner.shared
-        refiner.isEnabled.toggle()
-        llmMenuItem.state = refiner.isEnabled ? .on : .off
+        if refiner.isEnabled {
+            refiner.isEnabled = false
+            llmMenuItem.state = .off
+            return
+        }
+
+        guard refiner.isConfigured else {
+            refiner.isEnabled = false
+            llmMenuItem.state = .off
+            settingsWindow.present(
+                message: "Add an API key before enabling LLM refinement.",
+                success: false,
+                focusAPIKey: true
+            )
+            return
+        }
+
+        refiner.isEnabled = true
+        llmMenuItem.state = .on
     }
 
     @objc private func openLLMSettings() {
-        settingsWindow.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        settingsWindow.present()
     }
 
     @objc private func openDictionary() {
@@ -408,5 +425,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func updateDictionaryStatusMenuItem() {
         dictionaryStatusMenuItem?.title = DictionaryFilter.shared.lastActivitySummary
+    }
+
+    private func syncLLMEnabledState() {
+        let refiner = LLMRefiner.shared
+        if refiner.isEnabled && !refiner.isConfigured {
+            refiner.isEnabled = false
+        }
     }
 }

@@ -55,4 +55,33 @@ final class LLMRefinerTests: XCTestCase {
         try refiner.updateAPIKey("   ")
         XCTAssertNil(try store.read())
     }
+
+    func testBlankBaseURLAndModelFallBackToDefaults() throws {
+        let suiteName = "LLMRefinerTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defaults.removePersistentDomain(forName: suiteName)
+
+        let store = KeychainStore(
+            service: "app.voiceinput.VoiceInput.tests.\(UUID().uuidString)",
+            account: "llm-api-key"
+        )
+        defer {
+            try? store.delete()
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        let refiner = LLMRefiner(
+            userDefaults: defaults,
+            apiKeyStore: store,
+            logHandler: { _ in }
+        )
+
+        refiner.apiBaseURL = "   "
+        refiner.model = "  "
+
+        XCTAssertEqual(refiner.apiBaseURL, LLMRefiner.defaultAPIBaseURL)
+        XCTAssertEqual(refiner.model, LLMRefiner.defaultModel)
+        XCTAssertNil(defaults.object(forKey: "llmAPIBaseURL"))
+        XCTAssertNil(defaults.object(forKey: "llmModel"))
+    }
 }
