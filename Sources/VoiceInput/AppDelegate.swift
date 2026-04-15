@@ -18,6 +18,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var enableMenuItem: NSMenuItem!
     private var llmMenuItem: NSMenuItem!
+    private var dictionaryStatusMenuItem: NSMenuItem!
     private lazy var settingsWindow = SettingsWindow()
     private lazy var dictionaryWindow = DictionaryWindow()
     private var languageItems: [NSMenuItem] = []
@@ -34,9 +35,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             speechEngine.locale = Locale(identifier: savedCode)
         }
 
-        DictionaryFilter.shared.loadUserDictionary()
+        let dictionaryLoadResult = DictionaryFilter.shared.loadUserDictionary()
         setupStatusBar()
         setupSpeechCallbacks()
+
+        if case .failure(let message) = dictionaryLoadResult {
+            showAlert(
+                title: "Dictionary Unavailable",
+                message: "\(message)\n\n可以在菜单栏 → Dictionary... 中修正后重新保存。"
+            )
+        }
 
         SpeechEngine.requestPermissions { [weak self] granted, errorMsg in
             if !granted, let msg = errorMsg {
@@ -137,41 +145,47 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
-        let filtered = DictionaryFilter.shared.apply(text)
+        let dictionaryResult = DictionaryFilter.shared.applying(text)
+        let filtered = dictionaryResult.text
+        updateDictionaryStatusMenuItem()
         let refiner = LLMRefiner.shared
         if refiner.isEnabled && refiner.isConfigured {
             overlayPanel.showRefining()
             refiner.refine(filtered) { [weak self] result in
                 guard let self else { return }
-                let finalText: String
                 switch result {
                 case .success(let refined):
-                    finalText = refined.isEmpty ? text : refined
-                    let wasRefined = finalText != text
-                    if wasRefined {
-                        self.overlayPanel.updateText("✨ \(finalText)")
+                    let output = TranscriptionResolution.resolve(
+                        filteredText: filtered,
+                        refinedText: refined
+                    )
+                    if output.wasLLMRefined {
+                        self.overlayPanel.updateText("✨ \(output.text)")
                         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                             self.overlayPanel.dismiss()
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                self.textInjector.inject(finalText)
+                                self.textInjector.inject(output.text)
                                 NSSound(named: .init("Pop"))?.play()
                             }
                         }
                     } else {
                         self.overlayPanel.dismiss()
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            self.textInjector.inject(finalText)
+                            self.textInjector.inject(output.text)
                             NSSound(named: .init("Pop"))?.play()
                         }
                     }
                 case .failure(let error):
                     NSLog("[LLMRefiner] Refine failed: %@", error.localizedDescription)
-                    finalText = text
-                    self.overlayPanel.updateText("Refine failed: \(error.localizedDescription)")
+                    let output = TranscriptionResolution.resolve(
+                        filteredText: filtered,
+                        refinedText: nil
+                    )
+                    self.overlayPanel.updateText("Refine failed, using dictionary result")
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                         self.overlayPanel.dismiss()
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            self.textInjector.inject(finalText)
+                            self.textInjector.inject(output.text)
                             NSSound(named: .init("Pop"))?.play()
                         }
                     }
@@ -246,6 +260,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         dictItem.target = self
         menu.addItem(dictItem)
 
+        dictionaryStatusMenuItem = NSMenuItem(title: DictionaryFilter.shared.lastActivitySummary, action: nil, keyEquivalent: "")
+        dictionaryStatusMenuItem.isEnabled = false
+        menu.addItem(dictionaryStatusMenuItem)
+
         menu.addItem(.separator())
 
         let quitItem = NSMenuItem(title: "Quit VoiceInput", action: #selector(quit), keyEquivalent: "q")
@@ -305,6 +323,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func openDictionary() {
+        updateDictionaryStatusMenuItem()
         dictionaryWindow.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
@@ -346,5 +365,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         alert.alertStyle = .warning
         alert.addButton(withTitle: "OK")
         alert.runModal()
+    }
+
+    private func updateDictionaryStatusMenuItem() {
+        dictionaryStatusMenuItem?.title = DictionaryFilter.shared.lastActivitySummary
     }
 }

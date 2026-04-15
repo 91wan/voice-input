@@ -2,7 +2,10 @@ import AppKit
 
 final class DictionaryWindow: NSPanel {
     private let textView = NSTextView()
+    private let activityLabel = NSTextField(labelWithString: "")
     private let statusLabel = NSTextField(labelWithString: "")
+    private var activityObserver: NSObjectProtocol?
+    private var statusResetWorkItem: DispatchWorkItem?
 
     init() {
         super.init(
@@ -15,7 +18,14 @@ final class DictionaryWindow: NSPanel {
         isReleasedWhenClosed = false
         setupUI()
         loadEntries()
+        startObservingActivity()
         center()
+    }
+
+    deinit {
+        if let activityObserver {
+            NotificationCenter.default.removeObserver(activityObserver)
+        }
     }
 
     private func setupUI() {
@@ -29,6 +39,12 @@ final class DictionaryWindow: NSPanel {
         helpLabel.lineBreakMode = .byWordWrapping
         helpLabel.maximumNumberOfLines = 2
         cv.addSubview(helpLabel)
+
+        activityLabel.translatesAutoresizingMaskIntoConstraints = false
+        activityLabel.font = .systemFont(ofSize: 12)
+        activityLabel.textColor = .secondaryLabelColor
+        activityLabel.lineBreakMode = .byTruncatingTail
+        cv.addSubview(activityLabel)
 
         let scrollView = NSScrollView()
         scrollView.translatesAutoresizingMaskIntoConstraints = false
@@ -47,7 +63,8 @@ final class DictionaryWindow: NSPanel {
         statusLabel.translatesAutoresizingMaskIntoConstraints = false
         statusLabel.font = .systemFont(ofSize: 12)
         statusLabel.textColor = .secondaryLabelColor
-        statusLabel.lineBreakMode = .byTruncatingTail
+        statusLabel.lineBreakMode = .byWordWrapping
+        statusLabel.maximumNumberOfLines = 3
         cv.addSubview(statusLabel)
 
         let saveButton = NSButton(title: "Save", target: self, action: #selector(save))
@@ -61,12 +78,17 @@ final class DictionaryWindow: NSPanel {
             helpLabel.leadingAnchor.constraint(equalTo: cv.leadingAnchor, constant: 16),
             helpLabel.trailingAnchor.constraint(equalTo: cv.trailingAnchor, constant: -16),
 
-            scrollView.topAnchor.constraint(equalTo: helpLabel.bottomAnchor, constant: 8),
+            activityLabel.topAnchor.constraint(equalTo: helpLabel.bottomAnchor, constant: 6),
+            activityLabel.leadingAnchor.constraint(equalTo: cv.leadingAnchor, constant: 16),
+            activityLabel.trailingAnchor.constraint(equalTo: cv.trailingAnchor, constant: -16),
+
+            scrollView.topAnchor.constraint(equalTo: activityLabel.bottomAnchor, constant: 8),
             scrollView.leadingAnchor.constraint(equalTo: cv.leadingAnchor, constant: 16),
             scrollView.trailingAnchor.constraint(equalTo: cv.trailingAnchor, constant: -16),
             scrollView.bottomAnchor.constraint(equalTo: saveButton.topAnchor, constant: -12),
 
             statusLabel.leadingAnchor.constraint(equalTo: cv.leadingAnchor, constant: 16),
+            statusLabel.topAnchor.constraint(greaterThanOrEqualTo: scrollView.bottomAnchor, constant: 12),
             statusLabel.centerYAnchor.constraint(equalTo: saveButton.centerYAnchor),
             statusLabel.trailingAnchor.constraint(lessThanOrEqualTo: saveButton.leadingAnchor, constant: -8),
 
@@ -82,27 +104,83 @@ final class DictionaryWindow: NSPanel {
         } else {
             textView.string = DictionaryFilter.serializeToText(dict)
         }
+
+        refreshActivityLabel()
+
+        if let loadIssue = DictionaryFilter.shared.lastLoadIssue {
+            showStatus("当前词典未成功加载：\(loadIssue)", style: .error, autoClear: false)
+        } else {
+            showStatus("", style: .neutral, autoClear: false)
+        }
     }
 
     @objc private func save() {
-        let dict = DictionaryFilter.parseText(textView.string)
+        let parseResult = DictionaryFilter.parse(textView.string)
+        guard parseResult.canSave else {
+            showStatus("未保存。\(parseResult.summary())", style: .error, autoClear: false)
+            return
+        }
+
         do {
-            try DictionaryFilter.shared.saveUserDictionary(dict)
-            showStatus("已保存 \(dict.count) 条规则 ✓", success: true)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
-                self?.showStatus("", success: nil)
+            try DictionaryFilter.shared.saveUserDictionary(parseResult.dictionary)
+
+            if parseResult.warnings.isEmpty {
+                showStatus("已保存 \(parseResult.dictionary.count) 条规则 ✓", style: .success, autoClear: true)
+            } else {
+                showStatus(
+                    "已保存 \(parseResult.dictionary.count) 条规则。注意：\(parseResult.summary())",
+                    style: .warning,
+                    autoClear: true
+                )
             }
         } catch {
-            showStatus("保存失败: \(error.localizedDescription)", success: false)
+            showStatus("保存失败：\(error.localizedDescription)", style: .error, autoClear: false)
         }
     }
 
-    private func showStatus(_ text: String, success: Bool?) {
-        statusLabel.stringValue = text
-        switch success {
-        case .some(true):  statusLabel.textColor = .systemGreen
-        case .some(false): statusLabel.textColor = .systemRed
-        case .none:        statusLabel.textColor = .secondaryLabelColor
+    private func refreshActivityLabel() {
+        activityLabel.stringValue = DictionaryFilter.shared.lastActivitySummary
+    }
+
+    private func startObservingActivity() {
+        refreshActivityLabel()
+        activityObserver = NotificationCenter.default.addObserver(
+            forName: .dictionaryFilterActivityDidChange,
+            object: DictionaryFilter.shared,
+            queue: .main
+        ) { [weak self] _ in
+            self?.refreshActivityLabel()
         }
+    }
+
+    private enum StatusStyle {
+        case neutral
+        case success
+        case warning
+        case error
+    }
+
+    private func showStatus(_ text: String, style: StatusStyle, autoClear: Bool) {
+        statusResetWorkItem?.cancel()
+        statusLabel.stringValue = text
+
+        switch style {
+        case .neutral:
+            statusLabel.textColor = .secondaryLabelColor
+        case .success:
+            statusLabel.textColor = .systemGreen
+        case .warning:
+            statusLabel.textColor = .systemOrange
+        case .error:
+            statusLabel.textColor = .systemRed
+        }
+
+        guard autoClear, !text.isEmpty else { return }
+
+        let workItem = DispatchWorkItem { [weak self] in
+            self?.showStatus("", style: .neutral, autoClear: false)
+        }
+        statusResetWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3, execute: workItem)
     }
 }
