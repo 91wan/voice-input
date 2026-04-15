@@ -49,9 +49,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             )
         }
 
-        SpeechEngine.requestPermissions { [weak self] granted, errorMsg in
-            if !granted, let msg = errorMsg {
-                self?.showAlert(title: "Permission Required", message: msg)
+        SpeechEngine.requestPermissions { [weak self] granted, issue in
+            if !granted, let issue {
+                self?.showPermissionAlert(issue)
             }
         }
 
@@ -412,6 +412,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             )
         }
         NSApp.terminate(nil)
+    }
+
+    private func showPermissionAlert(_ issue: SpeechPermissionIssue) {
+        let alert = NSAlert()
+        alert.messageText = "Permission Required"
+        alert.informativeText = issue.message
+        alert.alertStyle = .warning
+
+        if issue.settingsURL != nil {
+            alert.addButton(withTitle: "Open System Settings")
+            alert.addButton(withTitle: "OK")
+            let response = alert.runModal()
+            if response == .alertFirstButtonReturn, let url = issue.settingsURL {
+                NSWorkspace.shared.open(url)
+            }
+        } else {
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
+        }
     }
 
     private func showAlert(title: String, message: String) {

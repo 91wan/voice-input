@@ -1,6 +1,37 @@
 import AVFoundation
 import Speech
 
+enum SpeechPermissionIssue: Equatable {
+    case microphoneDenied
+    case speechRecognitionDenied
+    case speechRecognitionNotDetermined
+    case unknownAuthorizationStatus
+
+    var message: String {
+        switch self {
+        case .microphoneDenied:
+            return "Microphone access denied.\nGrant in System Settings → Privacy & Security → Microphone."
+        case .speechRecognitionDenied:
+            return "Speech recognition denied.\nGrant in System Settings → Privacy & Security → Speech Recognition."
+        case .speechRecognitionNotDetermined:
+            return "Speech recognition permission not determined."
+        case .unknownAuthorizationStatus:
+            return "Unknown speech recognition authorization status."
+        }
+    }
+
+    var settingsURL: URL? {
+        switch self {
+        case .microphoneDenied:
+            return URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone")
+        case .speechRecognitionDenied:
+            return URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_SpeechRecognition")
+        case .speechRecognitionNotDetermined, .unknownAuthorizationStatus:
+            return nil
+        }
+    }
+}
+
 final class SpeechEngine {
     var onPartialResult: ((String) -> Void)?
     var onFinalResult: ((String) -> Void)?
@@ -30,7 +61,7 @@ final class SpeechEngine {
 
     // MARK: - Permissions
 
-    static func requestPermissions(completion: @escaping (Bool, String?) -> Void) {
+    static func requestPermissions(completion: @escaping (Bool, SpeechPermissionIssue?) -> Void) {
         SFSpeechRecognizer.requestAuthorization { status in
             DispatchQueue.main.async {
                 switch status {
@@ -40,16 +71,16 @@ final class SpeechEngine {
                             if granted {
                                 completion(true, nil)
                             } else {
-                                completion(false, "Microphone access denied.\nGrant in System Settings → Privacy & Security → Microphone.")
+                                completion(false, .microphoneDenied)
                             }
                         }
                     }
                 case .denied, .restricted:
-                    completion(false, "Speech recognition denied.\nGrant in System Settings → Privacy & Security → Speech Recognition.")
+                    completion(false, .speechRecognitionDenied)
                 case .notDetermined:
-                    completion(false, "Speech recognition permission not determined.")
+                    completion(false, .speechRecognitionNotDetermined)
                 @unknown default:
-                    completion(false, "Unknown speech recognition authorization status.")
+                    completion(false, .unknownAuthorizationStatus)
                 }
             }
         }
