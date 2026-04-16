@@ -5,6 +5,7 @@ final class SettingsWindow: NSPanel {
     private let apiKeyField = NSSecureTextField()
     private let modelField = NSTextField()
     private let statusLabel = NSTextField(labelWithString: "")
+    var onSettingsSaved: (() -> Void)?
 
     init() {
         super.init(
@@ -131,6 +132,7 @@ final class SettingsWindow: NSPanel {
     @objc private func save() {
         do {
             try applyFields()
+            onSettingsSaved?()
             showStatus("Saved to Keychain", success: true)
         } catch {
             showStatus(error.localizedDescription, success: false)

@@ -61,6 +61,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         keyMonitor.onFnDown = { [weak self] in self?.fnDown() }
         keyMonitor.onFnUp = { [weak self] in self?.fnUp() }
+        settingsWindow.onSettingsSaved = { [weak self] in
+            self?.syncLLMEnabledState()
+            self?.updateLLMMenuItemState()
+        }
     }
 
     // MARK: - Key events
@@ -355,13 +359,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let refiner = LLMRefiner.shared
         if refiner.isEnabled {
             refiner.isEnabled = false
-            llmMenuItem.state = .off
+            updateLLMMenuItemState()
             return
         }
 
         guard refiner.isConfigured else {
             refiner.isEnabled = false
-            llmMenuItem.state = .off
+            updateLLMMenuItemState()
             settingsWindow.present(
                 message: "Add an API key before enabling LLM refinement.",
                 success: false,
@@ -371,7 +375,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         refiner.isEnabled = true
-        llmMenuItem.state = .on
+        updateLLMMenuItemState()
     }
 
     @objc private func openLLMSettings() {
@@ -451,5 +455,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if refiner.isEnabled && !refiner.isConfigured {
             refiner.isEnabled = false
         }
+    }
+
+    private func updateLLMMenuItemState() {
+        llmMenuItem?.state = LLMRefiner.shared.isEnabled ? .on : .off
     }
 }

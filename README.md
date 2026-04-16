@@ -1,6 +1,6 @@
 # VoiceInput
 
-> version-v1.0.1 | date-2026-04-15
+> version-v1.0.1 | date-2026-04-16
 
 macOS 菜单栏语音输入工具。按住 `Fn` 键说话，松开后自动将语音转为文字并注入当前光标位置。
 
@@ -59,6 +59,10 @@ open claw → OpenClaw
 ## LLM 润色（可选）
 
 菜单栏 → LLM Refinement → Settings，填入 OpenAI 兼容接口地址、API Key 和模型名。
+
+- API Key 会保存到 macOS Keychain，不再明文落在 `UserDefaults`
+- 如果没填 API Key 就尝试启用 LLM，应用会直接打开设置窗口并提示补全
+- 留空 API Base URL / Model 会自动回落到默认值（`https://api.openai.com/v1` / `gpt-4o-mini`）
 
 推荐搭配本地模型（如 LM Studio + Gemma）以获得最低延迟。字典层已处理专有名词，LLM 只需处理语法粘合，8B 模型完全够用。
 
