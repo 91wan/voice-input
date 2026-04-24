@@ -41,7 +41,11 @@ version-bump:
 		echo "❌ VERSION 必须以 v 开头，才能触发 v* release workflow"; \
 		exit 1; \
 		;; \
-		esac
+		esac; \
+	printf '%s\n' "$(VERSION)" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$$' || { \
+		echo "❌ VERSION 格式必须是 v1.2.3"; \
+		exit 1; \
+	}
 	@set -e; \
 	VERSION_NO_V=$${VERSION#v}; \
 	echo "🔖 Bumping to $(VERSION)..."; \

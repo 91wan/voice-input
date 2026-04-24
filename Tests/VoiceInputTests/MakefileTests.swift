@@ -41,4 +41,13 @@ final class MakefileTests: XCTestCase {
             "version-bump's v* guard must close the shell case statement with esac."
         )
     }
+
+    func testVersionBumpRequiresSemanticVersionShape() throws {
+        let makefile = try String(contentsOfFile: "Makefile", encoding: .utf8)
+
+        XCTAssertTrue(
+            makefile.contains("grep -Eq '^v[0-9]+\\.[0-9]+\\.[0-9]+$$'"),
+            "version-bump must reject malformed v* tags like v, because they produce empty or invalid bundle versions."
+        )
+    }
 }
