@@ -6,6 +6,7 @@ final class SettingsWindow: NSPanel {
     private let modelField = NSTextField()
     private let statusLabel = NSTextField(labelWithString: "")
     private let defaultStatusText = "API key is stored in your macOS Keychain."
+    private var statusGeneration = 0
     var onSettingsSaved: (() -> Void)?
 
     init() {
@@ -93,6 +94,7 @@ final class SettingsWindow: NSPanel {
     }
 
     func present(message: String? = nil, success: Bool? = nil, focusAPIKey: Bool = false) {
+        statusGeneration += 1
         loadSettings()
         if let message {
             showStatus(message, success: success)
@@ -122,18 +124,22 @@ final class SettingsWindow: NSPanel {
         }
 
         showStatus("Testing...", success: nil)
+        statusGeneration += 1
+        let generation = statusGeneration
 
         refiner.refine("Hello, this is a test.", force: true) { [weak self] result in
+            guard let self, self.statusGeneration == generation else { return }
             switch result {
             case .success(let text):
-                self?.showStatus("OK: \(text)", success: true)
+                self.showStatus("OK: \(text)", success: true)
             case .failure(let error):
-                self?.showStatus(error.localizedDescription, success: false)
+                self.showStatus(error.localizedDescription, success: false)
             }
         }
     }
 
     @objc private func save() {
+        statusGeneration += 1
         do {
             try applyFields()
             onSettingsSaved?()
