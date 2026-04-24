@@ -22,7 +22,10 @@ struct KeychainStore {
             guard let data = result as? Data else {
                 throw KeychainStoreError.unexpectedData
             }
-            return String(data: data, encoding: .utf8)
+            guard let value = String(data: data, encoding: .utf8) else {
+                throw KeychainStoreError.unexpectedData
+            }
+            return value
         case errSecItemNotFound:
             return nil
         default:
