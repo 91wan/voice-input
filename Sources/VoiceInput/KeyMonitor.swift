@@ -10,6 +10,8 @@ final class KeyMonitor {
 
     /// Start monitoring. Returns false if accessibility permission is missing.
     func start() -> Bool {
+        stop()
+
         let mask = CGEventMask(1 << CGEventType.flagsChanged.rawValue)
         let refcon = Unmanaged.passUnretained(self).toOpaque()
 
@@ -45,6 +47,7 @@ final class KeyMonitor {
         }
         runLoopSource = nil
         eventTap = nil
+        fnPressed = false
     }
 
     // MARK: - Private
