@@ -28,6 +28,26 @@ final class TextInjectorTests: XCTestCase {
         XCTAssertEqual(pasteboard.string(forType: .string), "original")
     }
 
+    func testInjectTreatsWhitespaceOnlyTextAsEmpty() {
+        let pasteboard = NSPasteboard.withUniqueName()
+        pasteboard.clearContents()
+        let initialChangeCount = pasteboard.changeCount
+
+        let injector = TextInjector(
+            pasteboard: pasteboard,
+            inputSourceRestoreDelay: 0,
+            pasteboardRestoreDelay: 0,
+            isProcessTrusted: { true },
+            postPasteCommandHandler: {
+                XCTFail("Paste command should not be attempted for whitespace-only text")
+                return false
+            }
+        )
+
+        XCTAssertEqual(injector.inject(" \n\t "), .failure(.emptyText))
+        XCTAssertEqual(pasteboard.changeCount, initialChangeCount)
+    }
+
     func testInjectRestoresClipboardWhenPasteCommandFails() {
         let pasteboard = NSPasteboard.withUniqueName()
         pasteboard.clearContents()

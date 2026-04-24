@@ -90,13 +90,16 @@ final class TextInjector {
 
     @discardableResult
     func inject(_ text: String) -> TextInjectionResult {
-        guard !text.isEmpty else { return .failure(.emptyText) }
+        let normalizedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalizedText.isEmpty else { return .failure(.emptyText) }
         guard isProcessTrusted() else { return .failure(.accessibilityPermissionMissing) }
 
         let snapshot = PasteboardSnapshot.capture(from: pasteboard)
 
         let injectedItem = NSPasteboardItem()
-        injectedItem.setString(text, forType: .string)
+        guard injectedItem.setString(normalizedText, forType: .string) else {
+            return .failure(.pasteboardWriteFailed)
+        }
 
         pasteboard.clearContents()
         guard pasteboard.writeObjects([injectedItem]) else {
