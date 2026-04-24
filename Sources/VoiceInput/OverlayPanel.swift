@@ -11,6 +11,7 @@ final class OverlayPanel: NSPanel {
     private let gap: CGFloat = 14
     private let minWidth: CGFloat = 160
     private let maxWidth: CGFloat = 560
+    private var presentationGeneration = 0
 
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
@@ -95,6 +96,7 @@ final class OverlayPanel: NSPanel {
     // MARK: - Public
 
     func show(text: String = "Listening...") {
+        presentationGeneration += 1
         label.stringValue = text
         waveformView.isAnimating = true
 
@@ -144,6 +146,8 @@ final class OverlayPanel: NSPanel {
     }
 
     func dismiss() {
+        presentationGeneration += 1
+        let generation = presentationGeneration
         waveformView.isAnimating = false
         NSAnimationContext.runAnimationGroup({ ctx in
             ctx.duration = 0.22
@@ -157,6 +161,7 @@ final class OverlayPanel: NSPanel {
                     height: capsuleHeight),
                 display: true)
         }, completionHandler: {
+            guard self.presentationGeneration == generation else { return }
             self.orderOut(nil)
         })
     }
