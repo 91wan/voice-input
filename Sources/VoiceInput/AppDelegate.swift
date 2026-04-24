@@ -33,9 +33,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let savedCode = selectedLocaleCode
-        if !savedCode.isEmpty {
-            speechEngine.locale = Locale(identifier: savedCode)
-        }
+        speechEngine.locale = Self.locale(forSelectedLocaleCode: savedCode)
 
         let dictionaryLoadResult = DictionaryFilter.shared.loadUserDictionary()
         syncLLMEnabledState()
@@ -353,7 +351,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func changeLanguage(_ sender: NSMenuItem) {
         guard let code = sender.representedObject as? String else { return }
         selectedLocaleCode = code
-        speechEngine.locale = code.isEmpty ? .current : Locale(identifier: code)
+        speechEngine.locale = Self.locale(forSelectedLocaleCode: code)
 
         for item in languageItems {
             item.state = (item.representedObject as? String) == code ? .on : .off
@@ -473,5 +471,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func updateLLMMenuItemState() {
         llmMenuItem?.state = LLMRefiner.shared.isEnabled ? .on : .off
+    }
+
+    static func locale(forSelectedLocaleCode code: String) -> Locale {
+        code.isEmpty ? .current : Locale(identifier: code)
     }
 }
