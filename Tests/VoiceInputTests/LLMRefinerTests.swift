@@ -117,6 +117,57 @@ final class LLMRefinerTests: XCTestCase {
         XCTAssertNil(defaults.object(forKey: "llmModel"))
     }
 
+    func testInvalidPersistedBaseURLFallsBackToDefaultAndIsCleared() throws {
+        let suiteName = "LLMRefinerTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defaults.removePersistentDomain(forName: suiteName)
+        defaults.set("http://api.example.com/v1", forKey: "llmAPIBaseURL")
+
+        let store = KeychainStore(
+            service: "app.voiceinput.VoiceInput.tests.\(UUID().uuidString)",
+            account: "llm-api-key"
+        )
+        defer {
+            try? store.delete()
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        let refiner = LLMRefiner(
+            userDefaults: defaults,
+            apiKeyStore: store,
+            logHandler: { _ in }
+        )
+
+        XCTAssertEqual(refiner.apiBaseURL, LLMRefiner.defaultAPIBaseURL)
+        XCTAssertNil(defaults.object(forKey: "llmAPIBaseURL"))
+    }
+
+    func testSettingInvalidBaseURLClearsStoredValue() throws {
+        let suiteName = "LLMRefinerTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defaults.removePersistentDomain(forName: suiteName)
+
+        let store = KeychainStore(
+            service: "app.voiceinput.VoiceInput.tests.\(UUID().uuidString)",
+            account: "llm-api-key"
+        )
+        defer {
+            try? store.delete()
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        let refiner = LLMRefiner(
+            userDefaults: defaults,
+            apiKeyStore: store,
+            logHandler: { _ in }
+        )
+
+        refiner.apiBaseURL = "http://api.example.com/v1"
+
+        XCTAssertEqual(refiner.apiBaseURL, LLMRefiner.defaultAPIBaseURL)
+        XCTAssertNil(defaults.object(forKey: "llmAPIBaseURL"))
+    }
+
     func testChatCompletionsURLRequiresHTTPURLWithHost() {
         XCTAssertEqual(
             LLMRefiner.chatCompletionsURL(from: " https://api.openai.com/v1/ ")?.absoluteString,

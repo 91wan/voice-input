@@ -35,8 +35,8 @@ final class LLMRefiner {
     }
 
     var apiBaseURL: String {
-        get { normalizedSetting(userDefaults.string(forKey: llmAPIBaseURLDefaultsKey), fallback: Self.defaultAPIBaseURL) }
-        set { persistSetting(newValue, key: llmAPIBaseURLDefaultsKey) }
+        get { normalizedAPIBaseURLSetting(userDefaults.string(forKey: llmAPIBaseURLDefaultsKey)) }
+        set { persistAPIBaseURLSetting(newValue) }
     }
 
     var apiKey: String {
@@ -210,6 +210,30 @@ final class LLMRefiner {
         } else {
             userDefaults.set(trimmed, forKey: key)
         }
+    }
+
+    private func normalizedAPIBaseURLSetting(_ value: String?) -> String {
+        guard let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines), !trimmed.isEmpty else {
+            userDefaults.removeObject(forKey: llmAPIBaseURLDefaultsKey)
+            return Self.defaultAPIBaseURL
+        }
+
+        guard Self.chatCompletionsURL(from: trimmed) != nil else {
+            userDefaults.removeObject(forKey: llmAPIBaseURLDefaultsKey)
+            return Self.defaultAPIBaseURL
+        }
+
+        return trimmed
+    }
+
+    private func persistAPIBaseURLSetting(_ value: String) {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, Self.chatCompletionsURL(from: trimmed) != nil else {
+            userDefaults.removeObject(forKey: llmAPIBaseURLDefaultsKey)
+            return
+        }
+
+        userDefaults.set(trimmed, forKey: llmAPIBaseURLDefaultsKey)
     }
 
     static func chatCompletionsURL(from baseURLString: String) -> URL? {
