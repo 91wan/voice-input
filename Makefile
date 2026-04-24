@@ -19,7 +19,8 @@ build:
 	@echo "\n✅ Built $(APP_BUNDLE)"
 
 run: build
-	open $(APP_BUNDLE)
+	-pkill -x $(APP_NAME) 2>/dev/null || true
+	open -n $(APP_BUNDLE)
 
 clean:
 	swift package clean
