@@ -228,7 +228,12 @@ final class LLMRefiner {
         while path.hasSuffix("/") {
             path.removeLast()
         }
-        components.percentEncodedPath = "\(path)/chat/completions"
+        let endpointPath = "/chat/completions"
+        if path.lowercased().hasSuffix(endpointPath) {
+            components.percentEncodedPath = path
+        } else {
+            components.percentEncodedPath = "\(path)\(endpointPath)"
+        }
         return components.url
     }
 
