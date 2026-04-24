@@ -223,6 +223,8 @@ final class LLMRefiner {
             let scheme = components.scheme?.lowercased(),
             scheme == "http" || scheme == "https",
             components.host?.isEmpty == false,
+            components.user == nil,
+            components.password == nil,
             components.query == nil,
             components.fragment == nil
         else {

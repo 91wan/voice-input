@@ -138,5 +138,6 @@ final class LLMRefinerTests: XCTestCase {
         XCTAssertNil(LLMRefiner.chatCompletionsURL(from: "file:///tmp/api"))
         XCTAssertNil(LLMRefiner.chatCompletionsURL(from: "not a url"))
         XCTAssertNil(LLMRefiner.chatCompletionsURL(from: "https://api.openai.com/v1?debug=true"))
+        XCTAssertNil(LLMRefiner.chatCompletionsURL(from: "https://user:pass@api.openai.com/v1"))
     }
 }
