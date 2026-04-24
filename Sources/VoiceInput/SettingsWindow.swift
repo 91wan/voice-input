@@ -109,6 +109,9 @@ final class SettingsWindow: NSPanel {
     }
 
     @objc private func test() {
+        statusGeneration += 1
+        let generation = statusGeneration
+
         do {
             try applyFields()
             onSettingsSaved?()
@@ -124,8 +127,6 @@ final class SettingsWindow: NSPanel {
         }
 
         showStatus("Testing...", success: nil)
-        statusGeneration += 1
-        let generation = statusGeneration
 
         refiner.refine("Hello, this is a test.", force: true) { [weak self] result in
             guard let self, self.statusGeneration == generation else { return }
