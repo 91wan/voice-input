@@ -72,7 +72,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Start a hold timer — only activate recording after fnHoldThreshold.
         // This prevents single taps from triggering any UI or audio.
         fnHoldTimer?.invalidate()
-        fnHoldTimer = Timer.scheduledTimer(withTimeInterval: fnHoldThreshold, repeats: false) { [weak self] _ in
+        fnHoldTimer = Self.scheduleOneShotTimer(interval: fnHoldThreshold) { [weak self] _ in
             guard let self, self.isEnabled, !self.isRecording else { return }
             LLMRefiner.shared.cancel()
             let sessionID = self.transcriptionSessions.begin()
@@ -102,7 +102,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         speechEngine.stopRecording()
         let sessionID = activeTranscriptionSessionID
 
-        finalResultTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: false) { [weak self] _ in
+        finalResultTimer = Self.scheduleOneShotTimer(interval: 2.0) { [weak self] _ in
             self?.finishTranscription(sessionID: sessionID)
         }
     }
@@ -475,5 +475,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     static func locale(forSelectedLocaleCode code: String) -> Locale {
         code.isEmpty ? .current : Locale(identifier: code)
+    }
+
+    static func scheduleOneShotTimer(interval: TimeInterval, handler: @escaping (Timer) -> Void) -> Timer {
+        let timer = Timer(timeInterval: interval, repeats: false, block: handler)
+        RunLoop.main.add(timer, forMode: .common)
+        return timer
     }
 }
