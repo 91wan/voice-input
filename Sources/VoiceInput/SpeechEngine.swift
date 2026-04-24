@@ -50,7 +50,10 @@ final class SpeechEngine {
         didSet {
             speechRecognizer = SFSpeechRecognizer(locale: locale)
             if speechRecognizer == nil {
-                onLocaleUnavailable?("Speech recognition is not supported for \(locale.identifier). Please check that the language is downloaded in System Settings → General → Keyboard → Dictation.")
+                let localeIdentifier = locale.identifier
+                deliverCallback {
+                    $0.onLocaleUnavailable?("Speech recognition is not supported for \(localeIdentifier). Please check that the language is downloaded in System Settings → General → Keyboard → Dictation.")
+                }
             }
         }
     }
@@ -61,6 +64,14 @@ final class SpeechEngine {
     }
 
     // MARK: - Permissions
+
+    static func deliverOnMain(_ work: @escaping () -> Void) {
+        if Thread.isMainThread {
+            work()
+        } else {
+            DispatchQueue.main.async(execute: work)
+        }
+    }
 
     static func requestPermissions(completion: @escaping (Bool, SpeechPermissionIssue?) -> Void) {
         SFSpeechRecognizer.requestAuthorization { status in
@@ -95,7 +106,9 @@ final class SpeechEngine {
         let sessionID = recognitionSessions.begin()
 
         guard let recognizer = speechRecognizer, recognizer.isAvailable else {
-            onError?("Speech recognizer not available for \(locale.identifier)")
+            deliverCallback(sessionID: sessionID) {
+                $0.onError?("Speech recognizer not available for \($0.locale.identifier)")
+            }
             return
         }
 
@@ -142,19 +155,24 @@ final class SpeechEngine {
         let format = inputNode.outputFormat(forBus: 0)
         guard Self.isValidInputFormat(format) else {
             cleanup()
-            onError?("Microphone input format is unavailable. Check microphone permission and input device.")
+            deliverCallback(sessionID: sessionID) {
+                $0.onError?("Microphone input format is unavailable. Check microphone permission and input device.")
+            }
             return
         }
 
         recognitionTask = recognizer.recognitionTask(with: request) { [weak self] result, error in
             guard let self else { return }
-            guard self.recognitionSessions.isCurrent(sessionID) else { return }
             if let result {
                 let text = result.bestTranscription.formattedString
                 if result.isFinal {
-                    self.onFinalResult?(text)
+                    self.deliverCallback(sessionID: sessionID) {
+                        $0.onFinalResult?(text)
+                    }
                 } else {
-                    self.onPartialResult?(text)
+                    self.deliverCallback(sessionID: sessionID) {
+                        $0.onPartialResult?(text)
+                    }
                 }
             }
             if let error {
@@ -163,7 +181,9 @@ final class SpeechEngine {
                 // 1110 = kSFSpeechRecognitionErrorNoSpeechDetected (single FN tap with no speech, silent)
                 let silentCodes: Set<Int> = [216, 1110]
                 if !silentCodes.contains(nsErr.code) {
-                    self.onError?(error.localizedDescription)
+                    self.deliverCallback(sessionID: sessionID) {
+                        $0.onError?(error.localizedDescription)
+                    }
                 }
             }
         }
@@ -191,7 +211,9 @@ final class SpeechEngine {
             try audioEngine.start()
         } catch {
             cleanup()
-            onError?("Audio engine failed: \(error.localizedDescription)")
+            deliverCallback(sessionID: sessionID) {
+                $0.onError?("Audio engine failed: \(error.localizedDescription)")
+            }
         }
     }
 
@@ -235,6 +257,16 @@ final class SpeechEngine {
 
     static func isValidInputFormat(sampleRate: Double, channelCount: AVAudioChannelCount) -> Bool {
         sampleRate > 0 && channelCount > 0
+    }
+
+    private func deliverCallback(sessionID: Int? = nil, _ work: @escaping (SpeechEngine) -> Void) {
+        Self.deliverOnMain { [weak self] in
+            guard let self else { return }
+            if let sessionID {
+                guard self.recognitionSessions.isCurrent(sessionID) else { return }
+            }
+            work(self)
+        }
     }
 
     private func removeInputTapIfNeeded() {

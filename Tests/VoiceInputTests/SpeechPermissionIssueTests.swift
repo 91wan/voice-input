@@ -38,4 +38,17 @@ final class SpeechPermissionIssueTests: XCTestCase {
         XCTAssertFalse(SpeechEngine.isValidInputFormat(sampleRate: 0, channelCount: 1))
         XCTAssertFalse(SpeechEngine.isValidInputFormat(sampleRate: 44_100, channelCount: 0))
     }
+
+    func testSpeechCallbacksCanBeDeliveredOnMainThread() {
+        let expectation = expectation(description: "callback delivered on main thread")
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            SpeechEngine.deliverOnMain {
+                XCTAssertTrue(Thread.isMainThread)
+                expectation.fulfill()
+            }
+        }
+
+        wait(for: [expectation], timeout: 1)
+    }
 }
