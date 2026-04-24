@@ -90,9 +90,8 @@ final class SpeechEngine {
     // MARK: - Recording
 
     func startRecording() {
+        cleanup()
         let sessionID = recognitionSessions.begin()
-        recognitionTask?.cancel()
-        recognitionTask = nil
 
         guard let recognizer = speechRecognizer, recognizer.isAvailable else {
             onError?("Speech recognizer not available for \(locale.identifier)")
@@ -204,6 +203,7 @@ final class SpeechEngine {
     }
 
     private func cleanup() {
+        recognitionTask?.cancel()
         if audioEngine.isRunning {
             audioEngine.stop()
         }
