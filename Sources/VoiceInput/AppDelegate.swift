@@ -55,15 +55,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
-        if !keyMonitor.start() {
-            disableForMissingAccessibilityPermission()
-        }
-
         keyMonitor.onFnDown = { [weak self] in self?.fnDown() }
         keyMonitor.onFnUp = { [weak self] in self?.fnUp() }
         settingsWindow.onSettingsSaved = { [weak self] in
             self?.syncLLMEnabledState()
             self?.updateLLMMenuItemState()
+        }
+
+        if !keyMonitor.start() {
+            disableForMissingAccessibilityPermission()
         }
     }
 
