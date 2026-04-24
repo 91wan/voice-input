@@ -1,7 +1,6 @@
 APP_NAME := VoiceInput
 APP_BUNDLE := $(APP_NAME).app
 APP_ICON := $(APP_BUNDLE)/Contents/Resources/AppIcon.icns
-BUILD_DIR := $(shell swift build -c release --show-bin-path 2>/dev/null || echo .build/release)
 
 .PHONY: build clean install run
 
