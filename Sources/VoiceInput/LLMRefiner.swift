@@ -222,7 +222,9 @@ final class LLMRefiner {
             var components = URLComponents(string: normalized),
             let scheme = components.scheme?.lowercased(),
             scheme == "http" || scheme == "https",
-            components.host?.isEmpty == false,
+            let host = components.host,
+            !host.isEmpty,
+            scheme == "https" || isLoopbackHost(host),
             components.user == nil,
             components.password == nil,
             components.query == nil,
@@ -242,6 +244,11 @@ final class LLMRefiner {
             components.percentEncodedPath = "\(path)\(endpointPath)"
         }
         return components.url
+    }
+
+    private static func isLoopbackHost(_ host: String) -> Bool {
+        let normalizedHost = host.trimmingCharacters(in: CharacterSet(charactersIn: "[]")).lowercased()
+        return normalizedHost == "localhost" || normalizedHost == "127.0.0.1" || normalizedHost == "::1"
     }
 
     enum RefinerError: LocalizedError {
