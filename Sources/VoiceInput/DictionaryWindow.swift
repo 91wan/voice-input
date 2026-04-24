@@ -100,7 +100,7 @@ final class DictionaryWindow: NSPanel {
     private func loadEntries() {
         let dict = DictionaryFilter.shared.userMap
         if dict.isEmpty {
-            textView.string = "# 示例（删除后写入你自己的规则）\n# 格式：错误识别词 → 正确词\nexample app → ExampleApp\nopen claw → OpenClaw"
+            textView.string = "# 示例（删除 # 后可启用规则，或直接写入你自己的规则）\n# 格式：错误识别词 → 正确词\n# example app → ExampleApp\n# open claw → OpenClaw"
         } else {
             textView.string = DictionaryFilter.serializeToText(dict)
         }
