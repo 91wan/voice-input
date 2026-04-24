@@ -28,4 +28,17 @@ final class MakefileTests: XCTestCase {
             "version-bump must stop on the first failed README or plist update so it never commits or tags a partial release bump."
         )
     }
+
+    func testVersionBumpRequiresTagThatTriggersReleaseWorkflow() throws {
+        let makefile = try String(contentsOfFile: "Makefile", encoding: .utf8)
+
+        XCTAssertTrue(
+            makefile.contains("case \"$(VERSION)\" in v*) ;; *)"),
+            "version-bump must reject versions that do not start with v, because only v* tags trigger the release workflow."
+        )
+        XCTAssertTrue(
+            makefile.contains("\t\tesac"),
+            "version-bump's v* guard must close the shell case statement with esac."
+        )
+    }
 }

@@ -36,7 +36,12 @@ version-bump:
 	@if [ -z "$(VERSION)" ]; then \
 		echo "❌ 缺少版本号，用法: make version-bump VERSION=v1.x.x"; \
 		exit 1; \
-	fi
+	fi; \
+	case "$(VERSION)" in v*) ;; *) \
+		echo "❌ VERSION 必须以 v 开头，才能触发 v* release workflow"; \
+		exit 1; \
+		;; \
+		esac
 	@set -e; \
 	VERSION_NO_V=$${VERSION#v}; \
 	echo "🔖 Bumping to $(VERSION)..."; \
