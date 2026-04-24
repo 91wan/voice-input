@@ -8,6 +8,10 @@ final class KeyMonitor {
     private var runLoopSource: CFRunLoopSource?
     private var fnPressed = false
 
+    deinit {
+        stop()
+    }
+
     /// Start monitoring. Returns false if accessibility permission is missing.
     func start() -> Bool {
         stop()
@@ -21,7 +25,7 @@ final class KeyMonitor {
             options: .defaultTap,
             eventsOfInterest: mask,
             callback: { _, type, event, refcon -> Unmanaged<CGEvent>? in
-                guard let refcon else { return Unmanaged.passRetained(event) }
+                guard let refcon else { return Unmanaged.passUnretained(event) }
                 let monitor = Unmanaged<KeyMonitor>.fromOpaque(refcon).takeUnretainedValue()
                 return monitor.handle(type: type, event: event)
             },
@@ -58,7 +62,7 @@ final class KeyMonitor {
             if let tap = eventTap {
                 CGEvent.tapEnable(tap: tap, enable: true)
             }
-            return Unmanaged.passRetained(event)
+            return Unmanaged.passUnretained(event)
         }
 
         let flags = event.flags
@@ -74,6 +78,6 @@ final class KeyMonitor {
             return nil // suppress Fn release
         }
 
-        return Unmanaged.passRetained(event)
+        return Unmanaged.passUnretained(event)
     }
 }
