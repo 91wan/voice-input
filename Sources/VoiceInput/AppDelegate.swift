@@ -2,6 +2,16 @@ import AppKit
 import Speech
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    static let defaultLocaleCode = "zh-CN"
+    static let supportedLanguages: [(name: String, code: String)] = [
+        ("System Default", ""),
+        ("English (US)", "en-US"),
+        ("中文 (简体)", "zh-CN"),
+        ("中文 (繁體)", "zh-TW"),
+        ("日本語", "ja-JP"),
+        ("한국어", "ko-KR"),
+    ]
+
     private var statusItem: NSStatusItem!
     private let keyMonitor = KeyMonitor()
     private let speechEngine = SpeechEngine()
@@ -25,14 +35,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var dictionaryWindow = DictionaryWindow()
     private var languageItems: [NSMenuItem] = []
     private var selectedLocaleCode: String {
-        get { UserDefaults.standard.string(forKey: "selectedLocaleCode") ?? "zh-CN" }
-        set { UserDefaults.standard.set(newValue, forKey: "selectedLocaleCode") }
+        get { Self.normalizedLocaleCode(UserDefaults.standard.string(forKey: "selectedLocaleCode") ?? Self.defaultLocaleCode) }
+        set { UserDefaults.standard.set(Self.normalizedLocaleCode(newValue), forKey: "selectedLocaleCode") }
     }
 
     // MARK: - Lifecycle
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let savedCode = selectedLocaleCode
+        selectedLocaleCode = savedCode
         speechEngine.locale = Self.locale(forSelectedLocaleCode: savedCode)
 
         let dictionaryLoadResult = DictionaryFilter.shared.loadUserDictionary()
@@ -270,15 +281,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let langItem = NSMenuItem(title: "Language", action: nil, keyEquivalent: "")
         let langMenu = NSMenu()
-        let languages: [(String, String)] = [
-            ("System Default", ""),
-            ("English (US)", "en-US"),
-            ("中文 (简体)", "zh-CN"),
-            ("中文 (繁體)", "zh-TW"),
-            ("日本語", "ja-JP"),
-            ("한국어", "ko-KR"),
-        ]
-        for (name, code) in languages {
+        for (name, code) in Self.supportedLanguages {
             let item = NSMenuItem(title: name, action: #selector(changeLanguage(_:)), keyEquivalent: "")
             item.target = self
             item.representedObject = code
@@ -474,7 +477,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     static func locale(forSelectedLocaleCode code: String) -> Locale {
-        code.isEmpty ? .current : Locale(identifier: code)
+        let normalizedCode = normalizedLocaleCode(code)
+        return normalizedCode.isEmpty ? .current : Locale(identifier: normalizedCode)
+    }
+
+    static func normalizedLocaleCode(_ code: String) -> String {
+        let trimmed = code.trimmingCharacters(in: .whitespacesAndNewlines)
+        let supportedCodes = Set(supportedLanguages.map(\.code))
+        return supportedCodes.contains(trimmed) ? trimmed : defaultLocaleCode
     }
 
     static func scheduleOneShotTimer(interval: TimeInterval, handler: @escaping (Timer) -> Void) -> Timer {

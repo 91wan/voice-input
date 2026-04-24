@@ -16,6 +16,25 @@ final class AppDelegateTests: XCTestCase {
         )
     }
 
+    func testLocaleCodeTrimsWhitespaceBeforeResolving() {
+        XCTAssertEqual(
+            AppDelegate.normalizedLocaleCode("  en-US  "),
+            "en-US"
+        )
+        XCTAssertEqual(
+            AppDelegate.locale(forSelectedLocaleCode: "  en-US  ").identifier,
+            Locale(identifier: "en-US").identifier
+        )
+    }
+
+    func testUnsupportedLocaleCodeFallsBackToDefault() {
+        XCTAssertEqual(AppDelegate.normalizedLocaleCode("fr-FR"), "zh-CN")
+        XCTAssertEqual(
+            AppDelegate.locale(forSelectedLocaleCode: "fr-FR").identifier,
+            Locale(identifier: "zh-CN").identifier
+        )
+    }
+
     func testScheduledOneShotTimerFiresOnce() {
         let expectation = expectation(description: "timer fired")
         var fireCount = 0
