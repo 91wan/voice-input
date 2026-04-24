@@ -1,12 +1,41 @@
 import Cocoa
 
+enum KeyMonitorAction: Equatable {
+    case fnDown
+    case fnUp
+}
+
+struct KeyMonitorState {
+    private var fnPressed = false
+
+    mutating func transition(fnDown: Bool) -> KeyMonitorAction? {
+        if fnDown && !fnPressed {
+            fnPressed = true
+            return .fnDown
+        }
+
+        if !fnDown && fnPressed {
+            fnPressed = false
+            return .fnUp
+        }
+
+        return nil
+    }
+
+    mutating func resetForTapDisable() -> KeyMonitorAction? {
+        guard fnPressed else { return nil }
+        fnPressed = false
+        return .fnUp
+    }
+}
+
 final class KeyMonitor {
     var onFnDown: (() -> Void)?
     var onFnUp: (() -> Void)?
 
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
-    private var fnPressed = false
+    private var state = KeyMonitorState()
 
     deinit {
         stop()
@@ -51,7 +80,7 @@ final class KeyMonitor {
         }
         runLoopSource = nil
         eventTap = nil
-        fnPressed = false
+        state = KeyMonitorState()
     }
 
     // MARK: - Private
@@ -59,6 +88,7 @@ final class KeyMonitor {
     private func handle(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
         // Re-enable tap if the system disabled it
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+            dispatch(state.resetForTapDisable())
             if let tap = eventTap {
                 CGEvent.tapEnable(tap: tap, enable: true)
             }
@@ -67,17 +97,21 @@ final class KeyMonitor {
 
         let flags = event.flags
         let fnDown = flags.contains(.maskSecondaryFn)
-
-        if fnDown && !fnPressed {
-            fnPressed = true
-            DispatchQueue.main.async { [weak self] in self?.onFnDown?() }
-            return nil // suppress Fn press (prevents emoji picker)
-        } else if !fnDown && fnPressed {
-            fnPressed = false
-            DispatchQueue.main.async { [weak self] in self?.onFnUp?() }
-            return nil // suppress Fn release
+        if let action = state.transition(fnDown: fnDown) {
+            dispatch(action)
+            return nil // suppress Fn press/release (prevents emoji picker)
         }
 
         return Unmanaged.passUnretained(event)
+    }
+
+    private func dispatch(_ action: KeyMonitorAction?) {
+        guard let action else { return }
+        switch action {
+        case .fnDown:
+            DispatchQueue.main.async { [weak self] in self?.onFnDown?() }
+        case .fnUp:
+            DispatchQueue.main.async { [weak self] in self?.onFnUp?() }
+        }
     }
 }
