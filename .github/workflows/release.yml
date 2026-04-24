@@ -84,7 +84,21 @@ jobs:
         run: |
           TAG="${GITHUB_REF_NAME}"
           if [ -f CHANGELOG.md ]; then
-            NOTES=$(awk "/^## \[?${TAG}\]?/{found=1; next} found && /^## /{exit} found{print}" CHANGELOG.md)
+            NOTES=$(awk -v tag="$TAG" '
+              /^## / {
+                if (found) { exit }
+                heading = $0
+                sub(/^##[[:space:]]+\[/, "", heading)
+                sub(/^##[[:space:]]+/, "", heading)
+                sub(/\].*$/, "", heading)
+                sub(/[[:space:]].*$/, "", heading)
+                if (heading == tag) {
+                  found = 1
+                  next
+                }
+              }
+              found { print }
+            ' CHANGELOG.md)
           fi
           if [ -z "$NOTES" ]; then
             NOTES="Release ${TAG}"
