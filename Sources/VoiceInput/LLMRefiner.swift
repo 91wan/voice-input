@@ -214,15 +214,22 @@ final class LLMRefiner {
         }
 
         guard
-            let components = URLComponents(string: normalized),
+            var components = URLComponents(string: normalized),
             let scheme = components.scheme?.lowercased(),
             scheme == "http" || scheme == "https",
-            components.host?.isEmpty == false
+            components.host?.isEmpty == false,
+            components.query == nil,
+            components.fragment == nil
         else {
             return nil
         }
 
-        return URL(string: "\(normalized)/chat/completions")
+        var path = components.percentEncodedPath
+        while path.hasSuffix("/") {
+            path.removeLast()
+        }
+        components.percentEncodedPath = "\(path)/chat/completions"
+        return components.url
     }
 
     enum RefinerError: LocalizedError {

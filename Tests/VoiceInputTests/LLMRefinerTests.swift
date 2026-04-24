@@ -94,8 +94,13 @@ final class LLMRefinerTests: XCTestCase {
             LLMRefiner.chatCompletionsURL(from: "http://localhost:1234/v1")?.absoluteString,
             "http://localhost:1234/v1/chat/completions"
         )
+        XCTAssertEqual(
+            LLMRefiner.chatCompletionsURL(from: "http://127.0.0.1:1234/v1//")?.absoluteString,
+            "http://127.0.0.1:1234/v1/chat/completions"
+        )
         XCTAssertNil(LLMRefiner.chatCompletionsURL(from: "localhost:1234/v1"))
         XCTAssertNil(LLMRefiner.chatCompletionsURL(from: "file:///tmp/api"))
         XCTAssertNil(LLMRefiner.chatCompletionsURL(from: "not a url"))
+        XCTAssertNil(LLMRefiner.chatCompletionsURL(from: "https://api.openai.com/v1?debug=true"))
     }
 }
