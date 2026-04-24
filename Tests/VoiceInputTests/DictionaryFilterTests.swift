@@ -145,4 +145,19 @@ final class DictionaryFilterTests: XCTestCase {
         XCTAssertTrue(filter.userMap.isEmpty)
         XCTAssertEqual(filter.lastLoadIssue, message)
     }
+
+    func testSaveUserDictionaryRejectsInvalidRulesBeforeWriting() throws {
+        let url = try makeTemporaryDictionaryURL()
+        let filter = DictionaryFilter(
+            builtinMap: [:],
+            notificationCenter: NotificationCenter(),
+            dictionaryURLProvider: { url }
+        )
+
+        XCTAssertThrowsError(try filter.saveUserDictionary(["": "OpenClaw"])) { error in
+            XCTAssertTrue(error.localizedDescription.contains("左侧错误词不能为空"))
+        }
+        XCTAssertFalse(FileManager.default.fileExists(atPath: url.path))
+        XCTAssertTrue(filter.userMap.isEmpty)
+    }
 }

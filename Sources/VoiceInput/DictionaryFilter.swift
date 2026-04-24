@@ -78,6 +78,17 @@ enum DictionaryLoadResult: Equatable {
     case failure(String)
 }
 
+enum DictionaryPersistenceError: LocalizedError, Equatable {
+    case invalidRules(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidRules(let summary):
+            return "字典规则无效：\(summary)"
+        }
+    }
+}
+
 final class DictionaryFilter {
     static let shared = DictionaryFilter()
 
@@ -192,14 +203,19 @@ final class DictionaryFilter {
 
     func saveUserDictionary(_ dict: [String: String]) throws {
         let url = dictionaryURL
+        let parseResult = Self.validateLoadedDictionary(dict)
+        guard parseResult.canSave else {
+            throw DictionaryPersistenceError.invalidRules(parseResult.summary())
+        }
+
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        let data = try encoder.encode(dict)
+        let data = try encoder.encode(parseResult.dictionary)
         try data.write(to: url, options: .atomic)
-        userMap = dict
+        userMap = parseResult.dictionary
         lastLoadIssue = nil
-        logger.info("Saved \(dict.count) user dictionary entries")
+        logger.info("Saved \(parseResult.dictionary.count) user dictionary entries")
     }
 
     static func parse(_ text: String) -> DictionaryParseResult {
