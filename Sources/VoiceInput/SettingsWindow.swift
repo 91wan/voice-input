@@ -5,6 +5,7 @@ final class SettingsWindow: NSPanel {
     private let apiKeyField = NSSecureTextField()
     private let modelField = NSTextField()
     private let statusLabel = NSTextField(labelWithString: "")
+    private let defaultStatusText = "API key is stored in your macOS Keychain."
     var onSettingsSaved: (() -> Void)?
 
     init() {
@@ -48,7 +49,7 @@ final class SettingsWindow: NSPanel {
         statusLabel.font = .systemFont(ofSize: 12)
         statusLabel.textColor = .secondaryLabelColor
         statusLabel.lineBreakMode = .byTruncatingTail
-        statusLabel.stringValue = "API key is stored in your macOS Keychain."
+        statusLabel.stringValue = defaultStatusText
 
         let testButton = NSButton(title: "Test", target: self, action: #selector(test))
         testButton.bezelStyle = .rounded
@@ -95,6 +96,8 @@ final class SettingsWindow: NSPanel {
         loadSettings()
         if let message {
             showStatus(message, success: success)
+        } else {
+            showStatus(defaultStatusText, success: nil)
         }
         makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
