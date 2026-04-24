@@ -72,6 +72,11 @@ struct DictionaryApplyResult: Equatable {
     }
 }
 
+private struct DictionaryReplacement {
+    let range: NSRange
+    let replacement: String
+}
+
 enum DictionaryLoadResult: Equatable {
     case missing
     case success(entryCount: Int)
@@ -148,13 +153,23 @@ final class DictionaryFilter {
     func applying(_ text: String) -> DictionaryApplyResult {
         var resultText = text
         var matches: [DictionaryMatch] = []
+        var replacements: [DictionaryReplacement] = []
 
         for (wrong, right) in orderedRules() {
-            let count = matchCount(of: wrong, in: resultText)
-            guard count > 0 else { continue }
+            var acceptedCount = 0
+            for range in matchRanges(of: wrong, in: text) {
+                guard !replacements.contains(where: { Self.rangesOverlap($0.range, range) }) else { continue }
+                replacements.append(DictionaryReplacement(range: range, replacement: right))
+                acceptedCount += 1
+            }
 
-            resultText = resultText.replacingOccurrences(of: wrong, with: right, options: [.caseInsensitive])
-            matches.append(DictionaryMatch(source: wrong, replacement: right, count: count))
+            guard acceptedCount > 0 else { continue }
+            matches.append(DictionaryMatch(source: wrong, replacement: right, count: acceptedCount))
+        }
+
+        for replacement in replacements.sorted(by: { $0.range.location > $1.range.location }) {
+            guard let range = Range(replacement.range, in: resultText) else { continue }
+            resultText.replaceSubrange(range, with: replacement.replacement)
         }
 
         let result = DictionaryApplyResult(text: resultText, matches: matches)
@@ -364,14 +379,18 @@ final class DictionaryFilter {
         }.map { (key: $0.key, value: $0.value) }
     }
 
-    private func matchCount(of search: String, in text: String) -> Int {
-        guard !search.isEmpty else { return 0 }
+    private func matchRanges(of search: String, in text: String) -> [NSRange] {
+        guard !search.isEmpty else { return [] }
         let pattern = NSRegularExpression.escapedPattern(for: search)
         guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else {
-            return 0
+            return []
         }
         let range = NSRange(text.startIndex..<text.endIndex, in: text)
-        return regex.numberOfMatches(in: text, options: [], range: range)
+        return regex.matches(in: text, options: [], range: range).map(\.range)
+    }
+
+    private static func rangesOverlap(_ lhs: NSRange, _ rhs: NSRange) -> Bool {
+        lhs.location < NSMaxRange(rhs) && rhs.location < NSMaxRange(lhs)
     }
 
     private func updateLastActivity(for result: DictionaryApplyResult, originalText: String) {

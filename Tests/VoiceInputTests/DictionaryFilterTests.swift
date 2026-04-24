@@ -63,6 +63,41 @@ final class DictionaryFilterTests: XCTestCase {
         ])
     }
 
+    func testApplyingDoesNotCascadeIntoReplacementText() {
+        let filter = DictionaryFilter(
+            builtinMap: [
+                "java script": "JavaScript",
+                "script": "ScriptLang",
+            ],
+            notificationCenter: NotificationCenter()
+        )
+
+        let result = filter.applying("java script")
+
+        XCTAssertEqual(result.text, "JavaScript")
+        XCTAssertEqual(result.matches, [
+            DictionaryMatch(source: "java script", replacement: "JavaScript", count: 1),
+        ])
+    }
+
+    func testApplyingStillHandlesSeparateNonOverlappingMatches() {
+        let filter = DictionaryFilter(
+            builtinMap: [
+                "java script": "JavaScript",
+                "script": "ScriptLang",
+            ],
+            notificationCenter: NotificationCenter()
+        )
+
+        let result = filter.applying("java script and script")
+
+        XCTAssertEqual(result.text, "JavaScript and ScriptLang")
+        XCTAssertEqual(result.matches, [
+            DictionaryMatch(source: "java script", replacement: "JavaScript", count: 1),
+            DictionaryMatch(source: "script", replacement: "ScriptLang", count: 1),
+        ])
+    }
+
     func testUserDictionaryOverridesBuiltinRulesCaseInsensitively() {
         let filter = DictionaryFilter(
             builtinMap: [
