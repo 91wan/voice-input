@@ -56,7 +56,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         if !keyMonitor.start() {
-            showAccessibilityAlert()
+            disableForMissingAccessibilityPermission()
         }
 
         keyMonitor.onFnDown = { [weak self] in self?.fnDown() }
@@ -341,7 +341,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if isEnabled {
             if !keyMonitor.start() {
-                showAccessibilityAlert()
+                disableForMissingAccessibilityPermission()
             }
         } else {
             keyMonitor.stop()
@@ -412,7 +412,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             """
         alert.alertStyle = .warning
         alert.addButton(withTitle: "Open System Settings")
-        alert.addButton(withTitle: "Quit")
+        alert.addButton(withTitle: "OK")
 
         let response = alert.runModal()
         if response == .alertFirstButtonReturn {
@@ -420,7 +420,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
             )
         }
-        NSApp.terminate(nil)
+    }
+
+    private func disableForMissingAccessibilityPermission() {
+        isEnabled = false
+        enableMenuItem?.state = .off
+        keyMonitor.stop()
+        showAccessibilityAlert()
     }
 
     private func showPermissionAlert(_ issue: SpeechPermissionIssue) {
