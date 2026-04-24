@@ -90,8 +90,7 @@ final class LLMRefiner {
         currentTask?.cancel()
         currentTask = nil
 
-        let baseURL = apiBaseURL.hasSuffix("/") ? String(apiBaseURL.dropLast()) : apiBaseURL
-        guard let url = URL(string: "\(baseURL)/chat/completions") else {
+        guard let url = Self.chatCompletionsURL(from: apiBaseURL) else {
             completion(.failure(RefinerError.invalidURL))
             return
         }
@@ -206,6 +205,24 @@ final class LLMRefiner {
         } else {
             userDefaults.set(trimmed, forKey: key)
         }
+    }
+
+    static func chatCompletionsURL(from baseURLString: String) -> URL? {
+        var normalized = baseURLString.trimmingCharacters(in: .whitespacesAndNewlines)
+        while normalized.hasSuffix("/") {
+            normalized.removeLast()
+        }
+
+        guard
+            let components = URLComponents(string: normalized),
+            let scheme = components.scheme?.lowercased(),
+            scheme == "http" || scheme == "https",
+            components.host?.isEmpty == false
+        else {
+            return nil
+        }
+
+        return URL(string: "\(normalized)/chat/completions")
     }
 
     enum RefinerError: LocalizedError {

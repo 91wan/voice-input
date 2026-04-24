@@ -84,4 +84,18 @@ final class LLMRefinerTests: XCTestCase {
         XCTAssertNil(defaults.object(forKey: "llmAPIBaseURL"))
         XCTAssertNil(defaults.object(forKey: "llmModel"))
     }
+
+    func testChatCompletionsURLRequiresHTTPURLWithHost() {
+        XCTAssertEqual(
+            LLMRefiner.chatCompletionsURL(from: " https://api.openai.com/v1/ ")?.absoluteString,
+            "https://api.openai.com/v1/chat/completions"
+        )
+        XCTAssertEqual(
+            LLMRefiner.chatCompletionsURL(from: "http://localhost:1234/v1")?.absoluteString,
+            "http://localhost:1234/v1/chat/completions"
+        )
+        XCTAssertNil(LLMRefiner.chatCompletionsURL(from: "localhost:1234/v1"))
+        XCTAssertNil(LLMRefiner.chatCompletionsURL(from: "file:///tmp/api"))
+        XCTAssertNil(LLMRefiner.chatCompletionsURL(from: "not a url"))
+    }
 }
