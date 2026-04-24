@@ -19,4 +19,13 @@ final class MakefileTests: XCTestCase {
             "make build must stop immediately if swift build fails, otherwise it can package a stale executable from a previous successful build."
         )
     }
+
+    func testVersionBumpFailsFastDuringVersionWrites() throws {
+        let makefile = try String(contentsOfFile: "Makefile", encoding: .utf8)
+
+        XCTAssertTrue(
+            makefile.contains("\t@set -e; \\\n\tVERSION_NO_V=$${VERSION#v}; \\"),
+            "version-bump must stop on the first failed README or plist update so it never commits or tags a partial release bump."
+        )
+    }
 }

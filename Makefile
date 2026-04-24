@@ -37,7 +37,8 @@ version-bump:
 		echo "❌ 缺少版本号，用法: make version-bump VERSION=v1.x.x"; \
 		exit 1; \
 	fi
-	@VERSION_NO_V=$${VERSION#v}; \
+	@set -e; \
+	VERSION_NO_V=$${VERSION#v}; \
 	echo "🔖 Bumping to $(VERSION)..."; \
 	sed -i '' -e 's/version-[0-9a-z._-]*/version-$(VERSION)/g' README.md; \
 	sed -i '' -e 's/date-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/date-$(shell date +%Y-%m-%d)/g' README.md; \
