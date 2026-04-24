@@ -90,6 +90,7 @@ final class SpeechEngine {
     // MARK: - Recording
 
     func startRecording() {
+        recognitionSessions.invalidate()
         cleanup()
         let sessionID = recognitionSessions.begin()
 
