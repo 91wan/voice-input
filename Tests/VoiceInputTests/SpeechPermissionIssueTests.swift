@@ -32,4 +32,10 @@ final class SpeechPermissionIssueTests: XCTestCase {
         )
         XCTAssertNil(SpeechPermissionIssue.speechRecognitionNotDetermined.settingsURL)
     }
+
+    func testInputFormatRequiresSampleRateAndChannelCount() {
+        XCTAssertTrue(SpeechEngine.isValidInputFormat(sampleRate: 44_100, channelCount: 1))
+        XCTAssertFalse(SpeechEngine.isValidInputFormat(sampleRate: 0, channelCount: 1))
+        XCTAssertFalse(SpeechEngine.isValidInputFormat(sampleRate: 44_100, channelCount: 0))
+    }
 }

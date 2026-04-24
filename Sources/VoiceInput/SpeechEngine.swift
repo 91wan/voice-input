@@ -138,6 +138,14 @@ final class SpeechEngine {
         ]
         recognitionRequest = request
 
+        let inputNode = audioEngine.inputNode
+        let format = inputNode.outputFormat(forBus: 0)
+        guard Self.isValidInputFormat(format) else {
+            cleanup()
+            onError?("Microphone input format is unavailable. Check microphone permission and input device.")
+            return
+        }
+
         recognitionTask = recognizer.recognitionTask(with: request) { [weak self] result, error in
             guard let self else { return }
             guard self.recognitionSessions.isCurrent(sessionID) else { return }
@@ -160,8 +168,6 @@ final class SpeechEngine {
             }
         }
 
-        let inputNode = audioEngine.inputNode
-        let format = inputNode.outputFormat(forBus: 0)
         installInputTap(on: inputNode, format: format) { [weak self] buffer, _ in
             request.append(buffer)
 
@@ -221,6 +227,14 @@ final class SpeechEngine {
         removeInputTapIfNeeded()
         inputNode.installTap(onBus: 0, bufferSize: 1024, format: format, block: handler)
         isInputTapInstalled = true
+    }
+
+    static func isValidInputFormat(_ format: AVAudioFormat) -> Bool {
+        isValidInputFormat(sampleRate: format.sampleRate, channelCount: format.channelCount)
+    }
+
+    static func isValidInputFormat(sampleRate: Double, channelCount: AVAudioChannelCount) -> Bool {
+        sampleRate > 0 && channelCount > 0
     }
 
     private func removeInputTapIfNeeded() {
