@@ -6,21 +6,14 @@ BUILD_DIR := $(shell swift build -c release --show-bin-path 2>/dev/null || echo 
 .PHONY: build clean install run
 
 build:
-	@ICON_TEMP=""; \
-	if [ -f "$(APP_ICON)" ]; then \
-		ICON_TEMP=$$(mktemp -t voiceinput-icon.XXXXXX.icns); \
-		cp "$(APP_ICON)" "$$ICON_TEMP"; \
-	fi; \
-	swift build -c release; \
+	@swift build -c release; \
 	BUILD_DIR=$$(swift build -c release --show-bin-path); \
-	rm -rf $(APP_BUNDLE); \
 	mkdir -p $(APP_BUNDLE)/Contents/MacOS; \
 	mkdir -p $(APP_BUNDLE)/Contents/Resources; \
 	cp "$$BUILD_DIR/$(APP_NAME)" $(APP_BUNDLE)/Contents/MacOS/; \
 	cp Info.plist $(APP_BUNDLE)/Contents/; \
-	if [ -n "$$ICON_TEMP" ]; then \
-		cp "$$ICON_TEMP" "$(APP_ICON)"; \
-		rm -f "$$ICON_TEMP"; \
+	if [ ! -f "$(APP_ICON)" ]; then \
+		echo "⚠️  Missing $(APP_ICON); app will build without a custom icon."; \
 	fi; \
 	codesign --force --sign - $(APP_BUNDLE)
 	@echo "\n✅ Built $(APP_BUNDLE)"
@@ -30,7 +23,7 @@ run: build
 
 clean:
 	swift package clean
-	rm -rf $(APP_BUNDLE)
+	rm -f $(APP_BUNDLE)/Contents/MacOS/$(APP_NAME)
 
 install: build
 	rm -rf /Applications/$(APP_BUNDLE)

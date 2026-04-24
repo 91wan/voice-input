@@ -106,6 +106,7 @@ final class SettingsWindow: NSPanel {
     @objc private func test() {
         do {
             try applyFields()
+            onSettingsSaved?()
         } catch {
             showStatus(error.localizedDescription, success: false)
             return

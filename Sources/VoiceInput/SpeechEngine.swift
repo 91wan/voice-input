@@ -44,6 +44,7 @@ final class SpeechEngine {
     private var recognitionTask: SFSpeechRecognitionTask?
     private var speechRecognizer: SFSpeechRecognizer?
     private var recognitionSessions = SessionCounter()
+    private var isInputTapInstalled = false
 
     var locale: Locale {
         didSet {
@@ -161,7 +162,7 @@ final class SpeechEngine {
 
         let inputNode = audioEngine.inputNode
         let format = inputNode.outputFormat(forBus: 0)
-        inputNode.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
+        installInputTap(on: inputNode, format: format) { [weak self] buffer, _ in
             request.append(buffer)
 
             guard let channelData = buffer.floatChannelData?[0] else { return }
@@ -183,14 +184,16 @@ final class SpeechEngine {
         do {
             try audioEngine.start()
         } catch {
-            onError?("Audio engine failed: \(error.localizedDescription)")
             cleanup()
+            onError?("Audio engine failed: \(error.localizedDescription)")
         }
     }
 
     func stopRecording() {
-        audioEngine.stop()
-        audioEngine.inputNode.removeTap(onBus: 0)
+        if audioEngine.isRunning {
+            audioEngine.stop()
+        }
+        removeInputTapIfNeeded()
         recognitionRequest?.endAudio()
     }
 
@@ -203,9 +206,25 @@ final class SpeechEngine {
     private func cleanup() {
         if audioEngine.isRunning {
             audioEngine.stop()
-            audioEngine.inputNode.removeTap(onBus: 0)
         }
+        removeInputTapIfNeeded()
         recognitionRequest = nil
         recognitionTask = nil
+    }
+
+    private func installInputTap(
+        on inputNode: AVAudioInputNode,
+        format: AVAudioFormat,
+        handler: @escaping AVAudioNodeTapBlock
+    ) {
+        removeInputTapIfNeeded()
+        inputNode.installTap(onBus: 0, bufferSize: 1024, format: format, block: handler)
+        isInputTapInstalled = true
+    }
+
+    private func removeInputTapIfNeeded() {
+        guard isInputTapInstalled else { return }
+        audioEngine.inputNode.removeTap(onBus: 0)
+        isInputTapInstalled = false
     }
 }
