@@ -157,7 +157,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func finishTranscription(sessionID: Int) {
-        guard transcriptionSessions.isCurrent(sessionID) else { return }
+        guard transcriptionSessions.claimCurrent(sessionID) else { return }
         finalResultTimer?.invalidate()
         finalResultTimer = nil
 
