@@ -47,4 +47,23 @@ final class DictionaryFilterTests: XCTestCase {
             DictionaryMatch(source: "open claw", replacement: "OpenClaw", count: 1),
         ])
     }
+
+    func testUserDictionaryOverridesBuiltinRulesCaseInsensitively() {
+        let filter = DictionaryFilter(
+            builtinMap: [
+                "open claw": "OpenClaw",
+            ],
+            userMap: [
+                "Open Claw": "OpenClaw Pro",
+            ],
+            notificationCenter: NotificationCenter()
+        )
+
+        let result = filter.applying("open claw")
+
+        XCTAssertEqual(result.text, "OpenClaw Pro")
+        XCTAssertEqual(result.matches, [
+            DictionaryMatch(source: "Open Claw", replacement: "OpenClaw Pro", count: 1),
+        ])
+    }
 }

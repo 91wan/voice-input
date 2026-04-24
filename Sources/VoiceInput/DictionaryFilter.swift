@@ -257,13 +257,24 @@ final class DictionaryFilter {
     }
 
     private func orderedRules() -> [(key: String, value: String)] {
-        let merged = builtinMap.merging(userMap) { _, user in user }
-        return merged.sorted { lhs, rhs in
+        var merged: [String: (key: String, value: String)] = [:]
+        for (key, value) in builtinMap {
+            merged[Self.normalizeKey(key)] = (key: key, value: value)
+        }
+        for (key, value) in userMap {
+            merged[Self.normalizeKey(key)] = (key: key, value: value)
+        }
+
+        return merged.values.sorted { lhs, rhs in
             if lhs.key.count != rhs.key.count {
                 return lhs.key.count > rhs.key.count
             }
-            return lhs.key.localizedCaseInsensitiveCompare(rhs.key) == .orderedAscending
-        }
+            let comparison = lhs.key.localizedCaseInsensitiveCompare(rhs.key)
+            if comparison != .orderedSame {
+                return comparison == .orderedAscending
+            }
+            return lhs.key < rhs.key
+        }.map { (key: $0.key, value: $0.value) }
     }
 
     private func matchCount(of search: String, in text: String) -> Int {
