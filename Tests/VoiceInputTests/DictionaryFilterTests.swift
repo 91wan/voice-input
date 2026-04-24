@@ -2,6 +2,21 @@ import XCTest
 @testable import VoiceInput
 
 final class DictionaryFilterTests: XCTestCase {
+    private func makeTemporaryDictionaryURL() throws -> URL {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("VoiceInputTests-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        addTeardownBlock {
+            try? FileManager.default.removeItem(at: directory)
+        }
+        return directory.appendingPathComponent("dictionary.json")
+    }
+
+    private func writeDictionary(_ dictionary: [String: String], to url: URL) throws {
+        let data = try JSONEncoder().encode(dictionary)
+        try data.write(to: url)
+    }
+
     func testParseReportsMalformedRulesWithoutSilentlySavingThem() {
         let parseResult = DictionaryFilter.parse(
             """
@@ -65,5 +80,69 @@ final class DictionaryFilterTests: XCTestCase {
         XCTAssertEqual(result.matches, [
             DictionaryMatch(source: "Open Claw", replacement: "OpenClaw Pro", count: 1),
         ])
+    }
+
+    func testLoadUserDictionaryAcceptsValidJSONRules() throws {
+        let url = try makeTemporaryDictionaryURL()
+        try writeDictionary(["open claw": "OpenClaw Pro"], to: url)
+
+        let filter = DictionaryFilter(
+            builtinMap: [:],
+            notificationCenter: NotificationCenter(),
+            dictionaryURLProvider: { url }
+        )
+
+        let result = filter.loadUserDictionary()
+
+        XCTAssertEqual(result, DictionaryLoadResult.success(entryCount: 1))
+        XCTAssertEqual(filter.userMap, ["open claw": "OpenClaw Pro"])
+        XCTAssertNil(filter.lastLoadIssue)
+    }
+
+    func testLoadUserDictionaryRejectsBlankRulesFromJSON() throws {
+        let url = try makeTemporaryDictionaryURL()
+        try writeDictionary(["   ": "OpenClaw", "valid": ""], to: url)
+
+        let filter = DictionaryFilter(
+            builtinMap: [:],
+            notificationCenter: NotificationCenter(),
+            dictionaryURLProvider: { url }
+        )
+
+        let result = filter.loadUserDictionary()
+
+        guard case .failure(let message) = result else {
+            return XCTFail("Expected invalid JSON rules to fail loading")
+        }
+        XCTAssertTrue(message.contains("左侧错误词不能为空"))
+        XCTAssertTrue(message.contains("右侧正确词不能为空"))
+        XCTAssertTrue(filter.userMap.isEmpty)
+        XCTAssertEqual(filter.lastLoadIssue, message)
+    }
+
+    func testLoadUserDictionaryRejectsNormalizedDuplicateRulesFromJSON() throws {
+        let url = try makeTemporaryDictionaryURL()
+        try writeDictionary(
+            [
+                "open claw": "OpenClaw",
+                "Open Claw": "OpenClaw Pro",
+            ],
+            to: url
+        )
+
+        let filter = DictionaryFilter(
+            builtinMap: [:],
+            notificationCenter: NotificationCenter(),
+            dictionaryURLProvider: { url }
+        )
+
+        let result = filter.loadUserDictionary()
+
+        guard case .failure(let message) = result else {
+            return XCTFail("Expected normalized duplicate JSON rules to fail loading")
+        }
+        XCTAssertTrue(message.contains("冲突"))
+        XCTAssertTrue(filter.userMap.isEmpty)
+        XCTAssertEqual(filter.lastLoadIssue, message)
     }
 }

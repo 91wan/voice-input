@@ -99,6 +99,7 @@ final class DictionaryFilter {
 
     private let builtinMap: [String: String]
     private let notificationCenter: NotificationCenter
+    private let dictionaryURLProvider: () -> URL
 
     private(set) var userMap: [String: String]
     private(set) var lastLoadIssue: String?
@@ -107,14 +108,20 @@ final class DictionaryFilter {
     init(
         builtinMap: [String: String] = DictionaryFilter.defaultBuiltinMap,
         userMap: [String: String] = [:],
-        notificationCenter: NotificationCenter = .default
+        notificationCenter: NotificationCenter = .default,
+        dictionaryURLProvider: @escaping () -> URL = DictionaryFilter.defaultDictionaryURL
     ) {
         self.builtinMap = builtinMap
         self.userMap = userMap
         self.notificationCenter = notificationCenter
+        self.dictionaryURLProvider = dictionaryURLProvider
     }
 
     private var dictionaryURL: URL {
+        dictionaryURLProvider()
+    }
+
+    private static func defaultDictionaryURL() -> URL {
         let applicationSupportURL = FileManager.default
             .urls(for: .applicationSupportDirectory, in: .userDomainMask)
             .first ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support")
@@ -161,10 +168,19 @@ final class DictionaryFilter {
         do {
             let data = try Data(contentsOf: url)
             let dict = try JSONDecoder().decode([String: String].self, from: data)
-            userMap = dict
+            let parseResult = Self.validateLoadedDictionary(dict)
+            guard parseResult.canSave else {
+                userMap = [:]
+                let message = "读取 dictionary.json 失败：\(parseResult.summary())"
+                lastLoadIssue = message
+                logger.error("Dictionary load failed: \(message, privacy: .public)")
+                return .failure(message)
+            }
+
+            userMap = parseResult.dictionary
             lastLoadIssue = nil
-            logger.info("Loaded \(dict.count) user dictionary entries")
-            return .success(entryCount: dict.count)
+            logger.info("Loaded \(parseResult.dictionary.count) user dictionary entries")
+            return .success(entryCount: parseResult.dictionary.count)
         } catch {
             userMap = [:]
             let message = "读取 dictionary.json 失败：\(error.localizedDescription)"
@@ -259,6 +275,58 @@ final class DictionaryFilter {
         dict.sorted { $0.key < $1.key }.map { "\($0.key) → \($0.value)" }.joined(separator: "\n")
     }
 
+    private static func validateLoadedDictionary(_ dict: [String: String]) -> DictionaryParseResult {
+        var sanitized: [String: String] = [:]
+        var issues: [DictionaryRuleIssue] = []
+        var previousEntries: [String: (originalKey: String, value: String, lineNumber: Int)] = [:]
+
+        for (index, entry) in sortedEntries(dict).enumerated() {
+            let lineNumber = index + 1
+            let key = entry.key.trimmingCharacters(in: .whitespacesAndNewlines)
+            let value = entry.value.trimmingCharacters(in: .whitespacesAndNewlines)
+
+            guard !key.isEmpty else {
+                issues.append(DictionaryRuleIssue(
+                    severity: .error,
+                    lineNumber: lineNumber,
+                    message: "左侧错误词不能为空"
+                ))
+                continue
+            }
+
+            guard !value.isEmpty else {
+                issues.append(DictionaryRuleIssue(
+                    severity: .error,
+                    lineNumber: lineNumber,
+                    message: "右侧正确词不能为空"
+                ))
+                continue
+            }
+
+            let normalizedKey = normalizeKey(key)
+            if let previous = previousEntries[normalizedKey] {
+                let message: String
+                if previous.value == value {
+                    message = "与第 \(previous.lineNumber) 行重复，请只保留一条"
+                } else {
+                    message = "与第 \(previous.lineNumber) 行冲突，请只保留 “\(previous.originalKey)” 或 “\(key)”"
+                }
+
+                issues.append(DictionaryRuleIssue(
+                    severity: .error,
+                    lineNumber: lineNumber,
+                    message: message
+                ))
+                continue
+            }
+
+            sanitized[key] = value
+            previousEntries[normalizedKey] = (originalKey: key, value: value, lineNumber: lineNumber)
+        }
+
+        return DictionaryParseResult(dictionary: sanitized, issues: issues)
+    }
+
     private func orderedRules() -> [(key: String, value: String)] {
         var merged: [String: (key: String, value: String)] = [:]
         for (key, value) in builtinMap {
@@ -306,6 +374,16 @@ final class DictionaryFilter {
 
     private static func normalizeKey(_ key: String) -> String {
         key.trimmingCharacters(in: .whitespacesAndNewlines).folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
+    }
+
+    private static func sortedEntries(_ dict: [String: String]) -> [(key: String, value: String)] {
+        dict.sorted { lhs, rhs in
+            let comparison = lhs.key.localizedCaseInsensitiveCompare(rhs.key)
+            if comparison != .orderedSame {
+                return comparison == .orderedAscending
+            }
+            return lhs.key < rhs.key
+        }
     }
 
     private static func firstSeparatorRange(in line: String) -> Range<String.Index>? {
