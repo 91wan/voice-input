@@ -51,6 +51,7 @@ final class LLMRefiner {
     var isConfigured: Bool { !apiKey.isEmpty }
 
     private var currentTask: URLSessionDataTask?
+    private var requestGeneration = 0
 
     private let systemPrompt = """
         You are a speech recognition post-processor for Chinese-English mixed technical speech. \
@@ -83,6 +84,11 @@ final class LLMRefiner {
             return
         }
 
+        requestGeneration += 1
+        let generation = requestGeneration
+        currentTask?.cancel()
+        currentTask = nil
+
         let baseURL = apiBaseURL.hasSuffix("/") ? String(apiBaseURL.dropLast()) : apiBaseURL
         guard let url = URL(string: "\(baseURL)/chat/completions") else {
             completion(.failure(RefinerError.invalidURL))
@@ -108,14 +114,22 @@ final class LLMRefiner {
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
 
         currentTask = URLSession.shared.dataTask(with: request) { data, _, error in
+            let deliver: (Result<String, Error>) -> Void = { result in
+                DispatchQueue.main.async {
+                    guard self.requestGeneration == generation else { return }
+                    self.currentTask = nil
+                    completion(result)
+                }
+            }
+
             if let error {
                 self.logHandler("Network error: \(error.localizedDescription)")
-                DispatchQueue.main.async { completion(.failure(error)) }
+                deliver(.failure(error))
                 return
             }
             guard let data else {
                 self.logHandler("No data in response")
-                DispatchQueue.main.async { completion(.failure(RefinerError.invalidResponse)) }
+                deliver(.failure(RefinerError.invalidResponse))
                 return
             }
             self.logHandler("Response bytes: \(data.count)")
@@ -125,19 +139,20 @@ final class LLMRefiner {
                   let content = message["content"] as? String
             else {
                 self.logHandler("Failed to parse response")
-                DispatchQueue.main.async { completion(.failure(RefinerError.invalidResponse)) }
+                deliver(.failure(RefinerError.invalidResponse))
                 return
             }
             let refined = content.trimmingCharacters(in: .whitespacesAndNewlines)
             self.logHandler(
                 "Refined changed=\(refined != text) input_chars=\(text.count) output_chars=\(refined.count)"
             )
-            DispatchQueue.main.async { completion(.success(refined)) }
+            deliver(.success(refined))
         }
         currentTask?.resume()
     }
 
     func cancel() {
+        requestGeneration += 1
         currentTask?.cancel()
         currentTask = nil
     }

@@ -364,6 +364,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let refiner = LLMRefiner.shared
         if refiner.isEnabled {
             refiner.isEnabled = false
+            refiner.cancel()
             updateLLMMenuItemState()
             return
         }
@@ -465,6 +466,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let refiner = LLMRefiner.shared
         if refiner.isEnabled && !refiner.isConfigured {
             refiner.isEnabled = false
+            refiner.cancel()
         }
     }
 
