@@ -1,6 +1,22 @@
 import AppKit
 
+enum SettingsValidationError: LocalizedError, Equatable {
+    case invalidAPIBaseURL
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidAPIBaseURL:
+            return "Invalid API base URL. Use a full http(s) base URL, for example https://api.openai.com/v1."
+        }
+    }
+}
+
 final class SettingsWindow: NSPanel {
+    struct ValidatedSettings: Equatable {
+        let apiBaseURL: String
+        let model: String
+    }
+
     private let apiBaseURLField = NSTextField()
     private let apiKeyField = NSSecureTextField()
     private let modelField = NSTextField()
@@ -153,10 +169,25 @@ final class SettingsWindow: NSPanel {
     }
 
     private func applyFields() throws {
+        let settings = try Self.validatedSettings(
+            apiBaseURL: apiBaseURLField.stringValue,
+            model: modelField.stringValue
+        )
         let refiner = LLMRefiner.shared
-        refiner.apiBaseURL = apiBaseURLField.stringValue
         try refiner.updateAPIKey(apiKeyField.stringValue)
-        refiner.model = modelField.stringValue
+        refiner.apiBaseURL = settings.apiBaseURL
+        refiner.model = settings.model
+    }
+
+    static func validatedSettings(apiBaseURL: String, model: String) throws -> ValidatedSettings {
+        let normalizedBaseURL = apiBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalizedModel = model.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if !normalizedBaseURL.isEmpty, LLMRefiner.chatCompletionsURL(from: normalizedBaseURL) == nil {
+            throw SettingsValidationError.invalidAPIBaseURL
+        }
+
+        return ValidatedSettings(apiBaseURL: normalizedBaseURL, model: normalizedModel)
     }
 
     private func showStatus(_ text: String, success: Bool?) {
