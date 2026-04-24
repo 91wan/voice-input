@@ -1,4 +1,5 @@
 import Foundation
+import Security
 import XCTest
 @testable import VoiceInput
 
@@ -54,6 +55,37 @@ final class LLMRefinerTests: XCTestCase {
 
         try refiner.updateAPIKey("   ")
         XCTAssertNil(try store.read())
+    }
+
+    func testApiKeyReadFailureIsLoggedInsteadOfSilentlyDisappearing() throws {
+        let suiteName = "LLMRefinerTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defaults.removePersistentDomain(forName: suiteName)
+
+        let service = "app.voiceinput.VoiceInput.tests.\(UUID().uuidString)"
+        let store = KeychainStore(service: service, account: "llm-api-key")
+        defer {
+            try? store.delete()
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: "llm-api-key",
+            kSecValueData as String: Data([0xff, 0xfe]),
+        ]
+        XCTAssertEqual(SecItemAdd(query as CFDictionary, nil), errSecSuccess)
+
+        var logs: [String] = []
+        let refiner = LLMRefiner(
+            userDefaults: defaults,
+            apiKeyStore: store,
+            logHandler: { logs.append($0) }
+        )
+
+        XCTAssertEqual(refiner.apiKey, "")
+        XCTAssertTrue(logs.contains { $0.contains("Failed to read LLM API key from Keychain") })
     }
 
     func testBlankBaseURLAndModelFallBackToDefaults() throws {

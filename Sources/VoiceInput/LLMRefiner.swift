@@ -41,7 +41,12 @@ final class LLMRefiner {
 
     var apiKey: String {
         migrateLegacyAPIKeyIfNeeded()
-        return (try? apiKeyStore.read()) ?? ""
+        do {
+            return try apiKeyStore.read() ?? ""
+        } catch {
+            logHandler("Failed to read LLM API key from Keychain: \(error.localizedDescription)")
+            return ""
+        }
     }
 
     var model: String {
