@@ -33,7 +33,7 @@ final class OverlayPanel: NSPanel {
         isMovableByWindowBackground = false
         hidesOnDeactivate = false
 
-        let cv = contentView!
+        guard let cv = contentView else { return }
         cv.wantsLayer = true
 
         // Shadow host
@@ -169,7 +169,7 @@ final class OverlayPanel: NSPanel {
     // MARK: - Sizing
 
     private func idealWidth(for text: String) -> CGFloat {
-        let attrs: [NSAttributedString.Key: Any] = [.font: label.font!]
+        let attrs: [NSAttributedString.Key: Any] = [.font: label.font ?? .systemFont(ofSize: 15, weight: .medium)]
         let textW = ceil((text as NSString).size(withAttributes: attrs).width)
         let total = hPad + waveSize + gap + textW + hPad
         return min(max(total, minWidth), maxWidth)

@@ -8,14 +8,15 @@ private let llmModelDefaultsKey = "llmModel"
 
 private func logToFile(_ message: String) {
     let msg = "[\(ISO8601DateFormatter().string(from: Date()))] \(message)\n"
+    guard let data = msg.data(using: .utf8) else { return }
     let logURL = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent("Library/Logs/VoiceInput.log")
     if let handle = try? FileHandle(forWritingTo: logURL) {
         handle.seekToEndOfFile()
-        handle.write(msg.data(using: .utf8)!)
+        handle.write(data)
         handle.closeFile()
     } else {
-        FileManager.default.createFile(atPath: logURL.path, contents: msg.data(using: .utf8))
+        FileManager.default.createFile(atPath: logURL.path, contents: data)
     }
 }
 
