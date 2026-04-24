@@ -39,6 +39,19 @@ final class SpeechPermissionIssueTests: XCTestCase {
         XCTAssertFalse(SpeechEngine.isValidInputFormat(sampleRate: 44_100, channelCount: 0))
     }
 
+    func testSilentRecognitionErrorsAreNotSurfaced() {
+        XCTAssertFalse(SpeechEngine.shouldSurfaceRecognitionError(code: 216, hasDeliveredFinalResult: false))
+        XCTAssertFalse(SpeechEngine.shouldSurfaceRecognitionError(code: 1110, hasDeliveredFinalResult: false))
+    }
+
+    func testNonSilentRecognitionErrorsSurfaceBeforeFinalResult() {
+        XCTAssertTrue(SpeechEngine.shouldSurfaceRecognitionError(code: 203, hasDeliveredFinalResult: false))
+    }
+
+    func testRecognitionErrorsAreNotSurfacedAfterFinalResult() {
+        XCTAssertFalse(SpeechEngine.shouldSurfaceRecognitionError(code: 203, hasDeliveredFinalResult: true))
+    }
+
     func testSpeechCallbacksCanBeDeliveredOnMainThread() {
         let expectation = expectation(description: "callback delivered on main thread")
 

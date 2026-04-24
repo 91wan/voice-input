@@ -45,6 +45,7 @@ final class SpeechEngine {
     private var speechRecognizer: SFSpeechRecognizer?
     private var recognitionSessions = SessionCounter()
     private var isInputTapInstalled = false
+    private var finalResultSessionID: Int?
 
     var locale: Locale {
         didSet {
@@ -104,6 +105,7 @@ final class SpeechEngine {
         recognitionSessions.invalidate()
         cleanup()
         let sessionID = recognitionSessions.begin()
+        finalResultSessionID = nil
 
         guard let recognizer = speechRecognizer, recognizer.isAvailable else {
             deliverCallback(sessionID: sessionID) {
@@ -167,6 +169,7 @@ final class SpeechEngine {
                 let text = result.bestTranscription.formattedString
                 if result.isFinal {
                     self.deliverCallback(sessionID: sessionID) {
+                        $0.finalResultSessionID = sessionID
                         $0.onFinalResult?(text)
                     }
                 } else {
@@ -177,13 +180,13 @@ final class SpeechEngine {
             }
             if let error {
                 let nsErr = error as NSError
-                // 216 = kSFSpeechRecognitionErrorCanceled (user cancelled, silent)
-                // 1110 = kSFSpeechRecognitionErrorNoSpeechDetected (single FN tap with no speech, silent)
-                let silentCodes: Set<Int> = [216, 1110]
-                if !silentCodes.contains(nsErr.code) {
-                    self.deliverCallback(sessionID: sessionID) {
-                        $0.onError?(error.localizedDescription)
-                    }
+                self.deliverCallback(sessionID: sessionID) {
+                    guard Self.shouldSurfaceRecognitionError(
+                        code: nsErr.code,
+                        hasDeliveredFinalResult: $0.finalResultSessionID == sessionID
+                    ) else { return }
+
+                    $0.onError?(error.localizedDescription)
                 }
             }
         }
@@ -227,6 +230,7 @@ final class SpeechEngine {
 
     func cancel() {
         recognitionSessions.invalidate()
+        finalResultSessionID = nil
         recognitionTask?.cancel()
         cleanup()
     }
@@ -257,6 +261,15 @@ final class SpeechEngine {
 
     static func isValidInputFormat(sampleRate: Double, channelCount: AVAudioChannelCount) -> Bool {
         sampleRate > 0 && channelCount > 0
+    }
+
+    static func shouldSurfaceRecognitionError(code: Int, hasDeliveredFinalResult: Bool) -> Bool {
+        guard !hasDeliveredFinalResult else { return false }
+
+        // 216 = kSFSpeechRecognitionErrorCanceled (user cancelled, silent)
+        // 1110 = kSFSpeechRecognitionErrorNoSpeechDetected (single FN tap with no speech, silent)
+        let silentCodes: Set<Int> = [216, 1110]
+        return !silentCodes.contains(code)
     }
 
     private func deliverCallback(sessionID: Int? = nil, _ work: @escaping (SpeechEngine) -> Void) {
