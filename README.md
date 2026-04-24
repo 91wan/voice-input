@@ -71,8 +71,7 @@ open claw → OpenClaw
 需要 Xcode Command Line Tools + macOS 14+：
 
 ```bash
-swift build -c release
-cp .build/release/VoiceInput VoiceInput.app/Contents/MacOS/VoiceInput
+make build
 ```
 
 ## 系统要求
