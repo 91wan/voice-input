@@ -106,8 +106,8 @@ final class TextInjector {
 
         let injectedChangeCount = pasteboard.changeCount
 
-        let originalSource = TISCopyCurrentKeyboardInputSource().takeRetainedValue()
-        let needSwitch = !isASCIICapable(originalSource)
+        let originalSource = currentKeyboardInputSource()
+        let needSwitch = originalSource.map { !isASCIICapable($0) } ?? false
         let temporarySource = needSwitch ? findASCIICapableSource() : nil
 
         if let temporarySource {
@@ -170,9 +170,10 @@ final class TextInjector {
     // MARK: - Input Source Helpers
 
     private func restoreInputSourceIfStillUsingTemporary(
-        originalSource: TISInputSource,
+        originalSource: TISInputSource?,
         temporarySource: TISInputSource?
     ) {
+        guard let originalSource else { return }
         guard let temporarySource else { return }
         guard currentInputSourceID() == inputSourceID(for: temporarySource) else { return }
         TISSelectInputSource(originalSource)
@@ -208,8 +209,12 @@ final class TextInjector {
     }
 
     private func currentInputSourceID() -> String? {
-        let currentSource = TISCopyCurrentKeyboardInputSource().takeRetainedValue()
+        guard let currentSource = currentKeyboardInputSource() else { return nil }
         return inputSourceID(for: currentSource)
+    }
+
+    private func currentKeyboardInputSource() -> TISInputSource? {
+        TISCopyCurrentKeyboardInputSource()?.takeRetainedValue()
     }
 
     private func inputSourceID(for source: TISInputSource) -> String? {
