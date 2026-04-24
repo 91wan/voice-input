@@ -155,6 +155,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let text = lastPartialResult.trimmingCharacters(in: .whitespacesAndNewlines)
 
         guard !text.isEmpty else {
+            transcriptionSessions.invalidate()
+            activeTranscriptionSessionID = transcriptionSessions.currentID
+            speechEngine.cancel()
             overlayPanel.dismiss()
             lastPartialResult = ""
             return
