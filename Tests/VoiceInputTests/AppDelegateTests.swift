@@ -35,6 +35,24 @@ final class AppDelegateTests: XCTestCase {
         )
     }
 
+    func testSpeechCallbacksAreRejectedAfterSessionCompletionClaimed() {
+        var sessions = SessionCounter()
+        let sessionID = sessions.begin()
+
+        XCTAssertTrue(AppDelegate.shouldAcceptSpeechCallback(activeSessionID: sessionID, sessions: sessions))
+
+        XCTAssertTrue(sessions.claimCurrent(sessionID))
+        XCTAssertFalse(AppDelegate.shouldAcceptSpeechCallback(activeSessionID: sessionID, sessions: sessions))
+    }
+
+    func testSpeechCallbacksAreRejectedForExpiredSession() {
+        var sessions = SessionCounter()
+        let expiredSessionID = sessions.begin()
+        sessions.invalidate()
+
+        XCTAssertFalse(AppDelegate.shouldAcceptSpeechCallback(activeSessionID: expiredSessionID, sessions: sessions))
+    }
+
     func testScheduledOneShotTimerFiresOnce() {
         let expectation = expectation(description: "timer fired")
         var fireCount = 0

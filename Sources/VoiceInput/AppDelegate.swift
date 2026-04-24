@@ -123,12 +123,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func setupSpeechCallbacks() {
         speechEngine.onPartialResult = { [weak self] text in
             guard let self else { return }
+            guard Self.shouldAcceptSpeechCallback(
+                activeSessionID: self.activeTranscriptionSessionID,
+                sessions: self.transcriptionSessions
+            ) else { return }
             self.lastPartialResult = text
             self.overlayPanel.updateText(text)
         }
 
         speechEngine.onFinalResult = { [weak self] text in
             guard let self else { return }
+            guard Self.shouldAcceptSpeechCallback(
+                activeSessionID: self.activeTranscriptionSessionID,
+                sessions: self.transcriptionSessions
+            ) else { return }
             let sessionID = self.activeTranscriptionSessionID
             self.lastPartialResult = text
             self.finalResultTimer?.invalidate()
@@ -138,7 +146,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         speechEngine.onError = { [weak self] msg in
             guard let self else { return }
-            guard !self.transcriptionSessions.isClaimed(self.activeTranscriptionSessionID) else { return }
+            guard Self.shouldAcceptSpeechCallback(
+                activeSessionID: self.activeTranscriptionSessionID,
+                sessions: self.transcriptionSessions
+            ) else { return }
             self.resetActiveTranscriptionState()
             let resetSessionID = self.transcriptionSessions.currentID
             self.overlayPanel.updateText("Error: \(msg)")
@@ -486,6 +497,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let trimmed = code.trimmingCharacters(in: .whitespacesAndNewlines)
         let supportedCodes = Set(supportedLanguages.map(\.code))
         return supportedCodes.contains(trimmed) ? trimmed : defaultLocaleCode
+    }
+
+    static func shouldAcceptSpeechCallback(activeSessionID: Int, sessions: SessionCounter) -> Bool {
+        sessions.isCurrent(activeSessionID) && !sessions.isClaimed(activeSessionID)
     }
 
     static func scheduleOneShotTimer(interval: TimeInterval, handler: @escaping (Timer) -> Void) -> Timer {
