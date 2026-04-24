@@ -5,7 +5,8 @@ APP_ICON := $(APP_BUNDLE)/Contents/Resources/AppIcon.icns
 .PHONY: build clean install run
 
 build:
-	@swift build -c release; \
+	@set -e; \
+	swift build -c release; \
 	BUILD_DIR=$$(swift build -c release --show-bin-path); \
 	mkdir -p $(APP_BUNDLE)/Contents/MacOS; \
 	mkdir -p $(APP_BUNDLE)/Contents/Resources; \
