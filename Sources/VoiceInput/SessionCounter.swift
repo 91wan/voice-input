@@ -22,4 +22,8 @@ struct SessionCounter {
         claimedID = id
         return true
     }
+
+    func isClaimed(_ id: Int) -> Bool {
+        isCurrent(id) && claimedID == id
+    }
 }

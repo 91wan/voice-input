@@ -49,4 +49,17 @@ final class SessionCounterTests: XCTestCase {
         let second = counter.begin()
         XCTAssertTrue(counter.claimCurrent(second))
     }
+
+    func testClaimedSessionCanOnlyBeQueriedWhileCurrent() {
+        var counter = SessionCounter()
+
+        let current = counter.begin()
+        XCTAssertFalse(counter.isClaimed(current))
+
+        XCTAssertTrue(counter.claimCurrent(current))
+        XCTAssertTrue(counter.isClaimed(current))
+
+        counter.invalidate()
+        XCTAssertFalse(counter.isClaimed(current))
+    }
 }

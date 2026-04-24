@@ -138,6 +138,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         speechEngine.onError = { [weak self] msg in
             guard let self else { return }
+            guard !self.transcriptionSessions.isClaimed(self.activeTranscriptionSessionID) else { return }
             self.resetActiveTranscriptionState()
             let resetSessionID = self.transcriptionSessions.currentID
             self.overlayPanel.updateText("Error: \(msg)")
