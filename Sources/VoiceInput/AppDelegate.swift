@@ -25,12 +25,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var fnHoldTimer: Timer?
     private var transcriptionSessions = SessionCounter()
     private var activeTranscriptionSessionID = 0
+    private var activeShortcutMode: DictationShortcutMode = .defaultMode
     /// Minimum hold duration (seconds) before Fn activates recording.
     private let fnHoldThreshold: TimeInterval = 0.3
 
     private var enableMenuItem: NSMenuItem!
     private var llmMenuItem: NSMenuItem!
     private var llmModeItems: [NSMenuItem] = []
+    private var defaultShortcutMenuItem: NSMenuItem!
     private var dictionaryStatusMenuItem: NSMenuItem!
     private var lastResultMenuItem: NSMenuItem!
     private lazy var settingsWindow = SettingsWindow()
@@ -73,7 +75,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
-        keyMonitor.onFnDown = { [weak self] in self?.fnDown() }
+        keyMonitor.onFnDown = { [weak self] mode in self?.fnDown(shortcutMode: mode) }
         keyMonitor.onFnUp = { [weak self] in self?.fnUp() }
         settingsWindow.onSettingsSaved = { [weak self] in
             self?.syncLLMEnabledState()
@@ -103,7 +105,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Key events
 
-    private func fnDown() {
+    private func fnDown(shortcutMode: DictationShortcutMode) {
         guard isEnabled, !isRecording else { return }
         // Start a hold timer — only activate recording after fnHoldThreshold.
         // This prevents single taps from triggering any UI or audio.
@@ -113,10 +115,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             LLMRefiner.shared.cancel()
             let sessionID = self.transcriptionSessions.begin()
             self.activeTranscriptionSessionID = sessionID
+            self.activeShortcutMode = shortcutMode
             self.isRecording = true
             self.lastPartialResult = ""
             self.updateStatusIcon(recording: true)
-            self.overlayPanel.show(text: "Listening...")
+            let prompt = shortcutMode == .promptBuilder ? "Listening... Prompt Builder" : "Listening..."
+            self.overlayPanel.show(text: prompt)
             NSSound(named: .init("Tink"))?.play()
             self.speechEngine.startRecording()
         }
@@ -206,6 +210,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             speechEngine.cancel()
             overlayPanel.dismiss()
             lastPartialResult = ""
+            activeShortcutMode = .defaultMode
             return
         }
 
@@ -213,9 +218,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let filtered = dictionaryResult.text
         updateDictionaryStatusMenuItem()
         let refiner = LLMRefiner.shared
+        let refinementMode = Self.refinementMode(
+            for: activeShortcutMode,
+            defaultMode: refiner.mode
+        )
         if refiner.isEnabled && refiner.isConfigured {
             overlayPanel.showRefining()
-            refiner.refine(filtered) { [weak self] result in
+            refiner.refine(filtered, mode: refinementMode) { [weak self] result in
                 guard let self else { return }
                 guard self.transcriptionSessions.isCurrent(sessionID) else { return }
                 switch result {
@@ -228,7 +237,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                         rawText: text,
                         dictionaryResult: dictionaryResult,
                         output: output,
-                        refinedText: refined
+                        refinedText: refined,
+                        refinementMode: refinementMode
                     )
                     if output.wasLLMRefined {
                         self.overlayPanel.updateText("✨ \(output.text)")
@@ -255,7 +265,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                         rawText: text,
                         dictionaryResult: dictionaryResult,
                         output: output,
-                        refinedText: nil
+                        refinedText: nil,
+                        refinementMode: refinementMode
                     )
                     self.overlayPanel.updateText("Refine failed, using dictionary result")
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
@@ -267,6 +278,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     }
                 }
                 self.lastPartialResult = ""
+                self.activeShortcutMode = .defaultMode
             }
         } else {
             let output = TranscriptionResolution.resolve(
@@ -277,13 +289,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 rawText: text,
                 dictionaryResult: dictionaryResult,
                 output: output,
-                refinedText: nil
+                refinedText: nil,
+                refinementMode: nil
             )
             overlayPanel.dismiss()
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
                 self?.performTextInjection(filtered, sessionID: sessionID)
             }
             lastPartialResult = ""
+            activeShortcutMode = .defaultMode
         }
     }
 
@@ -291,13 +305,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         rawText: String,
         dictionaryResult: DictionaryApplyResult,
         output: TranscriptionResolution.Output,
-        refinedText: String?
+        refinedText: String?,
+        refinementMode: LLMRefinementMode?
     ) {
         lastTranscriptionResult = LastTranscriptionResult.make(
             rawText: rawText,
             dictionaryResult: dictionaryResult,
             resolvedOutput: output,
             refinedText: refinedText,
+            refinementMode: refinementMode,
             injectionResult: nil
         )
     }
@@ -338,6 +354,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         finalResultTimer = nil
         transcriptionSessions.invalidate()
         activeTranscriptionSessionID = transcriptionSessions.currentID
+        activeShortcutMode = .defaultMode
         LLMRefiner.shared.cancel()
         speechEngine.cancel()
         isRecording = false
@@ -396,6 +413,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         modeItem.submenu = modeMenu
         llmMenu.addItem(modeItem)
+
+        defaultShortcutMenuItem = NSMenuItem(
+            title: Self.defaultShortcutMenuTitle(defaultMode: LLMRefiner.shared.mode),
+            action: nil,
+            keyEquivalent: ""
+        )
+        defaultShortcutMenuItem.isEnabled = false
+        llmMenu.addItem(defaultShortcutMenuItem)
+
+        let promptShortcutItem = NSMenuItem(title: "Option + Fn: Prompt Builder", action: nil, keyEquivalent: "")
+        promptShortcutItem.isEnabled = false
+        llmMenu.addItem(promptShortcutItem)
 
         llmMenu.addItem(.separator())
 
@@ -600,6 +629,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             guard let rawValue = item.representedObject as? String else { continue }
             item.state = rawValue == currentMode.rawValue ? .on : .off
         }
+        defaultShortcutMenuItem?.title = Self.defaultShortcutMenuTitle(defaultMode: currentMode)
     }
 
     static func locale(forSelectedLocaleCode code: String) -> Locale {
@@ -615,6 +645,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     static func shouldAcceptSpeechCallback(activeSessionID: Int, sessions: SessionCounter) -> Bool {
         sessions.isCurrent(activeSessionID) && !sessions.isClaimed(activeSessionID)
+    }
+
+    static func refinementMode(
+        for shortcutMode: DictationShortcutMode,
+        defaultMode: LLMRefinementMode
+    ) -> LLMRefinementMode {
+        switch shortcutMode {
+        case .defaultMode:
+            return defaultMode
+        case .promptBuilder:
+            return .promptBuilder
+        }
+    }
+
+    static func defaultShortcutMenuTitle(defaultMode: LLMRefinementMode) -> String {
+        "Fn: \(defaultMode.menuTitle)"
     }
 
     static func scheduleOneShotTimer(interval: TimeInterval, handler: @escaping (Timer) -> Void) -> Timer {

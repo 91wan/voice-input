@@ -53,6 +53,32 @@ final class AppDelegateTests: XCTestCase {
         XCTAssertFalse(AppDelegate.shouldAcceptSpeechCallback(activeSessionID: expiredSessionID, sessions: sessions))
     }
 
+    func testShortcutModeMapsToSingleUsePromptBuilderOverride() {
+        XCTAssertEqual(
+            AppDelegate.refinementMode(for: .defaultMode, defaultMode: .precise),
+            .precise
+        )
+        XCTAssertEqual(
+            AppDelegate.refinementMode(for: .defaultMode, defaultMode: .promptBuilder),
+            .promptBuilder
+        )
+        XCTAssertEqual(
+            AppDelegate.refinementMode(for: .promptBuilder, defaultMode: .precise),
+            .promptBuilder
+        )
+    }
+
+    func testShortcutMenuTitleReflectsDefaultMode() {
+        XCTAssertEqual(
+            AppDelegate.defaultShortcutMenuTitle(defaultMode: .precise),
+            "Fn: Precise Dictation"
+        )
+        XCTAssertEqual(
+            AppDelegate.defaultShortcutMenuTitle(defaultMode: .promptBuilder),
+            "Fn: Prompt Builder"
+        )
+    }
+
     func testScheduledOneShotTimerFiresOnce() {
         let expectation = expectation(description: "timer fired")
         var fireCount = 0

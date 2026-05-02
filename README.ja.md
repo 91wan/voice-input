@@ -18,6 +18,7 @@ Audio -> Apple Speech -> DictionaryFilter -> optional LLMRefiner -> TextInjector
 - **Apple Speech を利用**：必須の外部音声クラウドはありません。
 - **決定的な辞書補正**：よくある ASR の誤認識を LLM の前に高速に修正します。
 - **任意の LLM 補正**：OpenAI 互換 API に対応し、文章整理や Prompt Builder に利用できます。
+- **モードショートカット**：`Fn` は選択中の LLM モードを使い、`Option + Fn` は今回だけ Prompt Builder を使います。
 - **挿入失敗時の保護**：テキスト挿入に失敗しても、生成結果はクリップボードに残ります。
 - **直近結果の確認**：raw / 辞書補正後 / LLM 補正後 / 最終テキストを確認し、コピー、再挿入、辞書ルール保存ができます。
 - **メニューバー中心**：重いウィンドウを開かずに主要操作を完結できます。
@@ -64,6 +65,7 @@ my project -> MyProject
 - API キーなしで LLM を有効化すると、設定画面を開いて入力を促します。
 - **Precise Dictation** は発話に近い形を維持します。
 - **Prompt Builder** は音声メモを ChatGPT、Claude、Cursor などに渡しやすい構造化プロンプトへ整えます。
+- `Fn` は選択中の既定モードを使います。`Option + Fn` は既定設定を変えずに今回だけ Prompt Builder を使います。
 
 ## クイックスタート
 
@@ -74,7 +76,7 @@ my project -> MyProject
    - マイク
    - 音声認識
    - アクセシビリティ
-5. 任意の入力欄にカーソルを置き、`Fn` を押して話し、離します。
+5. 任意の入力欄にカーソルを置き、`Fn` を押して話し、離します。今回だけ Prompt Builder を使う場合は `Option + Fn` を使います。
 
 > 初回起動時に macOS がブロックする場合は、**システム設定 -> プライバシーとセキュリティ** で許可するか、アプリを右クリックして **開く** を選択してください。
 
@@ -83,7 +85,7 @@ my project -> MyProject
 - **Language**：認識言語を切り替えます。
 - **Dictionary...**：決定的な補正ルールを編集します。
 - **Last Result...**：直近の音声入力結果を確認し、素早く辞書補正を追加できます。
-- **LLM Refinement**：LLM 補正の有効化、設定、モード切替を行います。
+- **LLM Refinement**：LLM 補正の有効化、設定、既定モード切替、`Fn` / `Option + Fn` ショートカット確認を行います。
 - **Quit**：VoiceInput を終了します。
 
 ## 対応言語

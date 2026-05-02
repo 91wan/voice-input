@@ -20,6 +20,7 @@ Audio -> Apple Speech -> DictionaryFilter -> optional LLMRefiner -> TextInjector
 - **Native recognition**: uses Apple Speech on macOS, with no required cloud transcription provider.
 - **Deterministic dictionary layer**: fixes predictable ASR mistakes before the text reaches an LLM.
 - **Optional LLM refinement**: supports OpenAI-compatible APIs for grammar cleanup or prompt-building.
+- **Mode shortcut**: `Fn` uses the selected LLM mode; `Option + Fn` runs Prompt Builder for the current dictation only.
 - **Cursor insertion fallback**: if paste-style insertion fails, the generated text stays on the clipboard instead of being lost.
 - **Last Result review**: inspect the most recent raw, dictionary-filtered, LLM-refined, and final text; copy it, retry insertion, or save a quick dictionary rule.
 - **Menu bar first**: no heavy window workflow; the main app lives in the macOS menu bar.
@@ -66,6 +67,7 @@ Open **Menu Bar -> LLM Refinement -> Settings** to configure an OpenAI-compatibl
 - If LLM refinement is enabled without an API key, VoiceInput opens Settings and asks for one.
 - **Precise Dictation** keeps the text close to what you said.
 - **Prompt Builder** rewrites rough speech into a structured prompt for ChatGPT, Claude, Cursor, or similar tools.
+- Hold `Fn` for the selected default mode, or hold `Option + Fn` to use Prompt Builder once without changing the default.
 
 ## Quick Start
 
@@ -76,7 +78,7 @@ Open **Menu Bar -> LLM Refinement -> Settings** to configure an OpenAI-compatibl
    - Microphone
    - Speech Recognition
    - Accessibility
-5. Put the cursor in any text field, hold `Fn`, speak, and release.
+5. Put the cursor in any text field, hold `Fn`, speak, and release. Use `Option + Fn` when you want a one-off Prompt Builder dictation.
 
 > Current builds are distributed as lightweight macOS app bundles. If macOS blocks the first launch, open **System Settings -> Privacy & Security** and allow the app, or right-click the app and choose **Open**.
 
@@ -85,7 +87,7 @@ Open **Menu Bar -> LLM Refinement -> Settings** to configure an OpenAI-compatibl
 - **Language**: switch recognition locale.
 - **Dictionary...**: edit deterministic correction rules.
 - **Last Result...**: review the latest transcription and add a quick dictionary correction.
-- **LLM Refinement**: enable, disable, configure, and select refinement mode.
+- **LLM Refinement**: enable, disable, configure, select the default refinement mode, and see the `Fn` / `Option + Fn` shortcuts.
 - **Quit**: stop VoiceInput.
 
 ## Supported Languages

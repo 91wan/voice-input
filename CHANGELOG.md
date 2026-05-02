@@ -5,6 +5,7 @@
 ### 变更
 - GitHub Actions 升级到 Node 24 兼容版本：`actions/checkout@v6` 和 `softprops/action-gh-release@v3`，移除 Node.js 20 deprecation warning。
 - 菜单栏新增 `Last Result...`，可查看最近一次 raw / filtered / refined / final 结果，并支持复制、重试插入和快速保存字典规则。
+- 新增多模式快捷入口：`Fn` 使用当前默认 LLM 模式，`Option + Fn` 可对本次听写临时使用 Prompt Builder；Last Result 会显示本次 LLM 模式。
 
 ---
 

@@ -173,6 +173,40 @@ final class LLMRefinerTests: XCTestCase {
         XCTAssertTrue(systemPrompt.contains("Do NOT answer"))
     }
 
+    func testPromptBuilderOverrideDoesNotPersistMode() throws {
+        let suiteName = "LLMRefinerTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defaults.removePersistentDomain(forName: suiteName)
+
+        let store = KeychainStore(
+            service: "app.voiceinput.VoiceInput.tests.\(UUID().uuidString)",
+            account: "llm-api-key"
+        )
+        defer {
+            try? store.delete()
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        let refiner = LLMRefiner(
+            userDefaults: defaults,
+            apiKeyStore: store,
+            logHandler: { _ in }
+        )
+
+        refiner.mode = .precise
+        let body = refiner.chatRequestBody(
+            for: "make this into a concise coding prompt",
+            mode: .promptBuilder
+        )
+        let messages = try XCTUnwrap(body["messages"] as? [[String: String]])
+        let systemPrompt = try XCTUnwrap(messages.first?["content"])
+
+        XCTAssertTrue(systemPrompt.contains("AI prompt"))
+        XCTAssertEqual(body["temperature"] as? Double, LLMRefinementMode.promptBuilder.temperature)
+        XCTAssertEqual(refiner.mode, .precise)
+        XCTAssertNil(defaults.string(forKey: "llmMode"))
+    }
+
     func testInvalidPersistedBaseURLFallsBackToDefaultAndIsCleared() throws {
         let suiteName = "LLMRefinerTests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))

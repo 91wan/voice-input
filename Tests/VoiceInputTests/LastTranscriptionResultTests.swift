@@ -19,6 +19,7 @@ final class LastTranscriptionResultTests: XCTestCase {
             dictionaryResult: dictionaryResult,
             resolvedOutput: resolved,
             refinedText: "TypeScript prompt.",
+            refinementMode: .promptBuilder,
             injectionResult: nil
         )
 
@@ -27,6 +28,7 @@ final class LastTranscriptionResultTests: XCTestCase {
         XCTAssertEqual(result.refinedText, "TypeScript prompt.")
         XCTAssertEqual(result.finalText, "TypeScript prompt.")
         XCTAssertTrue(result.wasLLMRefined)
+        XCTAssertEqual(result.refinementSummary, "LLM: Prompt Builder")
         XCTAssertEqual(result.dictionarySummary, "type script → TypeScript")
         XCTAssertEqual(result.injectionSummary, "Insertion: pending")
     }
@@ -39,6 +41,7 @@ final class LastTranscriptionResultTests: XCTestCase {
             finalText: "TypeScript",
             dictionaryMatches: [],
             wasLLMRefined: false,
+            refinementMode: nil,
             injectionResult: .success
         )
         let unchanged = LastTranscriptionResult(
@@ -48,6 +51,7 @@ final class LastTranscriptionResultTests: XCTestCase {
             finalText: "OpenClaw",
             dictionaryMatches: [],
             wasLLMRefined: false,
+            refinementMode: nil,
             injectionResult: .success
         )
 
@@ -64,6 +68,7 @@ final class LastTranscriptionResultTests: XCTestCase {
             finalText: "hello",
             dictionaryMatches: [],
             wasLLMRefined: false,
+            refinementMode: nil,
             injectionResult: nil
         )
 
@@ -71,6 +76,7 @@ final class LastTranscriptionResultTests: XCTestCase {
 
         XCTAssertEqual(updated.rawText, "hello")
         XCTAssertEqual(updated.finalText, "hello")
+        XCTAssertNil(updated.refinementMode)
         XCTAssertEqual(updated.injectionResult, .failure(.pasteCommandFailed))
         XCTAssertEqual(updated.injectionSummary, "Insertion: failed - Paste failed. Text was copied to the clipboard.")
     }

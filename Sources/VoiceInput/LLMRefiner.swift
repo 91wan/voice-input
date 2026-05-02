@@ -126,7 +126,12 @@ final class LLMRefiner {
         self.logHandler = logHandler
     }
 
-    func refine(_ text: String, force: Bool = false, completion: @escaping (Result<String, Error>) -> Void) {
+    func refine(
+        _ text: String,
+        mode modeOverride: LLMRefinementMode? = nil,
+        force: Bool = false,
+        completion: @escaping (Result<String, Error>) -> Void
+    ) {
         guard force || (isEnabled && isConfigured) else {
             completion(.success(text))
             return
@@ -148,9 +153,10 @@ final class LLMRefiner {
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.timeoutInterval = 10
 
-        let body = chatRequestBody(for: text)
+        let requestMode = modeOverride ?? mode
+        let body = chatRequestBody(for: text, mode: requestMode)
 
-        logHandler("Request: \(url.absoluteString) model=\(model)")
+        logHandler("Request: \(url.absoluteString) model=\(model) mode=\(requestMode.rawValue)")
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
 
         currentTask = URLSession.shared.dataTask(with: request) { data, _, error in
@@ -191,8 +197,8 @@ final class LLMRefiner {
         currentTask?.resume()
     }
 
-    func chatRequestBody(for text: String) -> [String: Any] {
-        let currentMode = mode
+    func chatRequestBody(for text: String, mode modeOverride: LLMRefinementMode? = nil) -> [String: Any] {
+        let currentMode = modeOverride ?? mode
         return [
             "model": model,
             "messages": [

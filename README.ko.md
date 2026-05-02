@@ -18,6 +18,7 @@ Audio -> Apple Speech -> DictionaryFilter -> optional LLMRefiner -> TextInjector
 - **Apple Speech 기반**: 필수 외부 음성 클라우드 서비스가 필요하지 않습니다.
 - **결정적 사전 보정**: 자주 발생하는 ASR 오류를 LLM 전에 빠르고 예측 가능하게 수정합니다.
 - **선택적 LLM 보정**: OpenAI 호환 API로 문장 정리 또는 Prompt Builder 모드를 사용할 수 있습니다.
+- **모드 단축키**: `Fn`은 선택된 LLM 모드를 사용하고, `Option + Fn`은 이번 입력에만 Prompt Builder를 사용합니다.
 - **입력 실패 보호**: 커서 삽입이 실패해도 생성된 텍스트는 클립보드에 남습니다.
 - **최근 결과 확인**: raw / 사전 보정 / LLM 보정 / 최종 텍스트를 확인하고, 복사, 재삽입, 빠른 사전 규칙 저장을 할 수 있습니다.
 - **메뉴 막대 중심**: 무거운 창을 열지 않고 핵심 기능을 사용할 수 있습니다.
@@ -64,6 +65,7 @@ my project -> MyProject
 - API 키 없이 LLM을 활성화하면 설정 창을 열어 입력을 요청합니다.
 - **Precise Dictation** 은 말한 내용에 가까운 결과를 유지합니다.
 - **Prompt Builder** 는 음성 메모를 ChatGPT, Claude, Cursor 등에 넣기 좋은 구조화된 프롬프트로 정리합니다.
+- `Fn`은 선택된 기본 모드를 사용합니다. `Option + Fn`은 기본 설정을 바꾸지 않고 이번 입력에만 Prompt Builder를 사용합니다.
 
 ## 빠른 시작
 
@@ -74,7 +76,7 @@ my project -> MyProject
    - 마이크
    - 음성 인식
    - 손쉬운 사용
-5. 입력창에 커서를 둔 뒤 `Fn`을 누르고 말한 다음 키를 놓습니다.
+5. 입력창에 커서를 둔 뒤 `Fn`을 누르고 말한 다음 키를 놓습니다. 이번 입력만 Prompt Builder로 처리하려면 `Option + Fn`을 사용합니다.
 
 > 첫 실행 시 macOS가 앱을 차단하면 **시스템 설정 -> 개인정보 보호 및 보안** 에서 허용하거나, 앱을 우클릭한 뒤 **열기** 를 선택하세요.
 
@@ -83,7 +85,7 @@ my project -> MyProject
 - **Language**: 인식 언어를 전환합니다.
 - **Dictionary...**: 결정적 보정 규칙을 편집합니다.
 - **Last Result...**: 최근 음성 입력 결과를 확인하고 빠르게 사전 보정을 추가합니다.
-- **LLM Refinement**: LLM 보정 활성화, 설정, 모드 전환을 관리합니다.
+- **LLM Refinement**: LLM 보정 활성화, 설정, 기본 모드 전환, `Fn` / `Option + Fn` 단축키 확인을 관리합니다.
 - **Quit**: VoiceInput을 종료합니다.
 
 ## 지원 언어

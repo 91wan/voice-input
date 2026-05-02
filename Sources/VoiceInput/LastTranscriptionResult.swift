@@ -12,6 +12,7 @@ struct LastTranscriptionResult: Equatable {
     let finalText: String
     let dictionaryMatches: [DictionaryMatch]
     let wasLLMRefined: Bool
+    let refinementMode: LLMRefinementMode?
     let injectionResult: TextInjectionResult?
     let createdAt: Date
 
@@ -22,6 +23,7 @@ struct LastTranscriptionResult: Equatable {
         finalText: String,
         dictionaryMatches: [DictionaryMatch],
         wasLLMRefined: Bool,
+        refinementMode: LLMRefinementMode?,
         injectionResult: TextInjectionResult?,
         createdAt: Date = Date()
     ) {
@@ -31,6 +33,7 @@ struct LastTranscriptionResult: Equatable {
         self.finalText = finalText
         self.dictionaryMatches = dictionaryMatches
         self.wasLLMRefined = wasLLMRefined
+        self.refinementMode = refinementMode
         self.injectionResult = injectionResult
         self.createdAt = createdAt
     }
@@ -40,6 +43,7 @@ struct LastTranscriptionResult: Equatable {
         dictionaryResult: DictionaryApplyResult,
         resolvedOutput: TranscriptionResolution.Output,
         refinedText: String?,
+        refinementMode: LLMRefinementMode?,
         injectionResult: TextInjectionResult?
     ) -> LastTranscriptionResult {
         LastTranscriptionResult(
@@ -49,8 +53,14 @@ struct LastTranscriptionResult: Equatable {
             finalText: resolvedOutput.text,
             dictionaryMatches: dictionaryResult.matches,
             wasLLMRefined: resolvedOutput.wasLLMRefined,
+            refinementMode: refinementMode,
             injectionResult: injectionResult
         )
+    }
+
+    var refinementSummary: String {
+        guard let refinementMode else { return "LLM: not used" }
+        return "LLM: \(refinementMode.menuTitle)"
     }
 
     var dictionarySummary: String {
@@ -94,6 +104,7 @@ struct LastTranscriptionResult: Equatable {
             finalText: finalText,
             dictionaryMatches: dictionaryMatches,
             wasLLMRefined: wasLLMRefined,
+            refinementMode: refinementMode,
             injectionResult: injectionResult,
             createdAt: createdAt
         )

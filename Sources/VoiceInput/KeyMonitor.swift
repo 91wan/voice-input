@@ -1,17 +1,22 @@
 import Cocoa
 
+enum DictationShortcutMode: Equatable {
+    case defaultMode
+    case promptBuilder
+}
+
 enum KeyMonitorAction: Equatable {
-    case fnDown
+    case fnDown(mode: DictationShortcutMode)
     case fnUp
 }
 
 struct KeyMonitorState {
     private var fnPressed = false
 
-    mutating func transition(fnDown: Bool) -> KeyMonitorAction? {
+    mutating func transition(fnDown: Bool, optionDown: Bool = false) -> KeyMonitorAction? {
         if fnDown && !fnPressed {
             fnPressed = true
-            return .fnDown
+            return .fnDown(mode: optionDown ? .promptBuilder : .defaultMode)
         }
 
         if !fnDown && fnPressed {
@@ -30,7 +35,7 @@ struct KeyMonitorState {
 }
 
 final class KeyMonitor {
-    var onFnDown: (() -> Void)?
+    var onFnDown: ((DictationShortcutMode) -> Void)?
     var onFnUp: (() -> Void)?
 
     private var eventTap: CFMachPort?
@@ -97,7 +102,8 @@ final class KeyMonitor {
 
         let flags = event.flags
         let fnDown = flags.contains(.maskSecondaryFn)
-        if let action = state.transition(fnDown: fnDown) {
+        let optionDown = flags.contains(.maskAlternate)
+        if let action = state.transition(fnDown: fnDown, optionDown: optionDown) {
             dispatch(action)
             return nil // suppress Fn press/release (prevents emoji picker)
         }
@@ -108,8 +114,8 @@ final class KeyMonitor {
     private func dispatch(_ action: KeyMonitorAction?) {
         guard let action else { return }
         switch action {
-        case .fnDown:
-            DispatchQueue.main.async { [weak self] in self?.onFnDown?() }
+        case .fnDown(let mode):
+            DispatchQueue.main.async { [weak self] in self?.onFnDown?(mode) }
         case .fnUp:
             DispatchQueue.main.async { [weak self] in self?.onFnUp?() }
         }
