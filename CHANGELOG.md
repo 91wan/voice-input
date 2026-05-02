@@ -2,7 +2,8 @@
 
 ## [Unreleased]
 
-暂无。
+### 变更
+- GitHub Actions 升级到 Node 24 兼容版本：`actions/checkout@v6` 和 `softprops/action-gh-release@v3`，移除 Node.js 20 deprecation warning。
 
 ---
 
