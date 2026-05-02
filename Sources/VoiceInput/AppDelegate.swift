@@ -1,7 +1,7 @@
 import AppKit
 import Speech
 
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     static let defaultLocaleCode = "zh-CN"
     static let supportedLanguages: [(name: String, code: String)] = [
         ("System Default", ""),
@@ -30,6 +30,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let fnHoldThreshold: TimeInterval = 0.3
 
     private var enableMenuItem: NSMenuItem!
+    private var permissionStatusMenuItem: NSMenuItem!
     private var llmMenuItem: NSMenuItem!
     private var llmModeItems: [NSMenuItem] = []
     private var defaultShortcutMenuItem: NSMenuItem!
@@ -369,11 +370,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         updateStatusIcon(recording: false)
 
         let menu = NSMenu()
+        menu.delegate = self
 
         enableMenuItem = NSMenuItem(title: "Enabled", action: #selector(toggleEnabled), keyEquivalent: "")
         enableMenuItem.target = self
         enableMenuItem.state = .on
         menu.addItem(enableMenuItem)
+
+        permissionStatusMenuItem = NSMenuItem(
+            title: PermissionDiagnostics.capture().menuTitle,
+            action: nil,
+            keyEquivalent: ""
+        )
+        permissionStatusMenuItem.isEnabled = false
+        menu.addItem(permissionStatusMenuItem)
+
+        let permissionsItem = NSMenuItem(title: "Permissions...", action: #selector(openPermissionDiagnostics), keyEquivalent: "")
+        permissionsItem.target = self
+        menu.addItem(permissionsItem)
 
         menu.addItem(.separator())
 
@@ -457,6 +471,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem.menu = menu
     }
 
+    func menuWillOpen(_ menu: NSMenu) {
+        updatePermissionStatusMenuItem()
+        updateDictionaryStatusMenuItem()
+        updateLLMModeMenuItemStates()
+    }
+
     private func updateStatusIcon(recording: Bool) {
         guard let button = statusItem.button else { return }
         let name = recording ? "mic.fill" : "mic"
@@ -538,6 +558,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         lastResultWindow.present(result: lastTranscriptionResult)
     }
 
+    @objc private func openPermissionDiagnostics() {
+        let diagnostics = PermissionDiagnostics.capture()
+        let alert = NSAlert()
+        alert.messageText = diagnostics.isReady ? "Permissions Ready" : "Permissions Need Attention"
+        alert.informativeText = diagnostics.detailText
+        alert.alertStyle = diagnostics.isReady ? .informational : .warning
+
+        if let settingsURL = diagnostics.primarySettingsURL {
+            alert.addButton(withTitle: "Open System Settings")
+            alert.addButton(withTitle: "OK")
+            if alert.runModal() == .alertFirstButtonReturn {
+                NSWorkspace.shared.open(settingsURL)
+            }
+        } else {
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
+        }
+
+        updatePermissionStatusMenuItem()
+    }
+
     @objc private func quit() {
         keyMonitor.stop()
         NSApp.terminate(nil)
@@ -605,6 +646,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func updateDictionaryStatusMenuItem() {
         dictionaryStatusMenuItem?.title = DictionaryFilter.shared.lastActivitySummary
+    }
+
+    private func updatePermissionStatusMenuItem() {
+        permissionStatusMenuItem?.title = PermissionDiagnostics.capture().menuTitle
     }
 
     private func updateLastResultMenuItem() {
