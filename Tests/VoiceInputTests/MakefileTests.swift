@@ -63,4 +63,17 @@ final class MakefileTests: XCTestCase {
             "version-bump should fail with an actionable message when patch or minor release notes are missing."
         )
     }
+
+    func testVersionBumpDoesNotRewriteCommandNameInReadme() throws {
+        let makefile = try String(contentsOfFile: "Makefile", encoding: .utf8)
+
+        XCTAssertTrue(
+            makefile.contains("s/version-v[0-9][0-9a-z._-]*/version-$(VERSION)/g"),
+            "version-bump should update the README version badge without matching the literal command name `version-bump`."
+        )
+        XCTAssertFalse(
+            makefile.contains("s/version-[0-9a-z._-]*/version-$(VERSION)/g"),
+            "A broad version-* replacement corrupts README examples like `make version-bump VERSION=v1.0.2`."
+        )
+    }
 }

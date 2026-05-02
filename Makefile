@@ -63,7 +63,7 @@ version-bump:
 	@set -e; \
 	VERSION_NO_V=$${VERSION#v}; \
 	echo "🔖 Bumping to $(VERSION)..."; \
-	sed -i '' -e 's/version-[0-9a-z._-]*/version-$(VERSION)/g' README.md; \
+	sed -i '' -e 's/version-v[0-9][0-9a-z._-]*/version-$(VERSION)/g' README.md; \
 	sed -i '' -e 's/date-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/date-$(shell date +%Y-%m-%d)/g' README.md; \
 	/usr/libexec/PlistBuddy -c "Set :CFBundleVersion $$VERSION_NO_V" Info.plist; \
 	/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $$VERSION_NO_V" Info.plist; \
