@@ -5,6 +5,7 @@ private let logger = Logger(subsystem: "app.voiceinput.VoiceInput", category: "L
 private let llmAPIKeyDefaultsKey = "llmAPIKey"
 private let llmAPIBaseURLDefaultsKey = "llmAPIBaseURL"
 private let llmModelDefaultsKey = "llmModel"
+private let llmModeDefaultsKey = "llmMode"
 
 private func logToFile(_ message: String) {
     let msg = "[\(ISO8601DateFormatter().string(from: Date()))] \(message)\n"
@@ -17,6 +18,54 @@ private func logToFile(_ message: String) {
         handle.closeFile()
     } else {
         FileManager.default.createFile(atPath: logURL.path, contents: data)
+    }
+}
+
+enum LLMRefinementMode: String, CaseIterable, Equatable {
+    case precise
+    case promptBuilder
+
+    var menuTitle: String {
+        switch self {
+        case .precise:
+            return "Precise Dictation"
+        case .promptBuilder:
+            return "Prompt Builder"
+        }
+    }
+
+    var temperature: Double {
+        switch self {
+        case .precise:
+            return 0.3
+        case .promptBuilder:
+            return 0.2
+        }
+    }
+
+    var systemPrompt: String {
+        switch self {
+        case .precise:
+            return """
+                You are a speech recognition post-processor for Chinese-English mixed technical speech. \
+                Dictionary corrections (proper nouns, brand names) have already been applied upstream. \
+                Your ONLY job:
+                1. Fix Chinese homophones in clear technical context (的/地/得, 分支 vs 分汐, etc.)
+                2. Fix broken English words split by the recognizer (e.g. "type script" → "TypeScript")
+                3. Add missing sentence-ending punctuation (。or ，) when clearly absent
+                Do NOT rephrase, rewrite, translate, add or remove content words, or improve any text.
+                Return ONLY the corrected text. No explanations, no markdown.
+                If nothing needs fixing, return the input exactly as-is.
+                """
+        case .promptBuilder:
+            return """
+                You turn rough speech transcripts into a clear AI prompt for ChatGPT, Claude, Cursor, or similar tools. \
+                Treat the transcript as raw material only. \
+                Do NOT answer the user's request. Do NOT execute tasks. Do NOT add facts the user did not say. \
+                Rewrite only to remove filler words, clarify intent, preserve constraints, and structure the prompt. \
+                Return ONLY the prompt text. No explanations, no markdown fence.
+                """
+        }
     }
 }
 
@@ -54,22 +103,15 @@ final class LLMRefiner {
         set { persistSetting(newValue, key: llmModelDefaultsKey) }
     }
 
+    var mode: LLMRefinementMode {
+        get { normalizedMode(userDefaults.string(forKey: llmModeDefaultsKey)) }
+        set { persistMode(newValue) }
+    }
+
     var isConfigured: Bool { !apiKey.isEmpty }
 
     private var currentTask: URLSessionDataTask?
     private var requestGeneration = 0
-
-    private let systemPrompt = """
-        You are a speech recognition post-processor for Chinese-English mixed technical speech. \
-        Dictionary corrections (proper nouns, brand names) have already been applied upstream. \
-        Your ONLY job:
-        1. Fix Chinese homophones in clear technical context (的/地/得, 分支 vs 分汐, etc.)
-        2. Fix broken English words split by the recognizer (e.g. "type script" → "TypeScript")
-        3. Add missing sentence-ending punctuation (。or ，) when clearly absent
-        Do NOT rephrase, rewrite, translate, add or remove content words, or improve any text.
-        Return ONLY the corrected text. No explanations, no markdown.
-        If nothing needs fixing, return the input exactly as-is.
-        """
 
     init(
         userDefaults: UserDefaults = .standard,
@@ -106,14 +148,7 @@ final class LLMRefiner {
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.timeoutInterval = 10
 
-        let body: [String: Any] = [
-            "model": model,
-            "messages": [
-                ["role": "system", "content": systemPrompt],
-                ["role": "user", "content": text],
-            ],
-            "temperature": 0.3,
-        ]
+        let body = chatRequestBody(for: text)
 
         logHandler("Request: \(url.absoluteString) model=\(model)")
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
@@ -154,6 +189,18 @@ final class LLMRefiner {
             deliver(.success(refined))
         }
         currentTask?.resume()
+    }
+
+    func chatRequestBody(for text: String) -> [String: Any] {
+        let currentMode = mode
+        return [
+            "model": model,
+            "messages": [
+                ["role": "system", "content": currentMode.systemPrompt],
+                ["role": "user", "content": text],
+            ],
+            "temperature": currentMode.temperature,
+        ]
     }
 
     func cancel() {
@@ -209,6 +256,28 @@ final class LLMRefiner {
             userDefaults.removeObject(forKey: key)
         } else {
             userDefaults.set(trimmed, forKey: key)
+        }
+    }
+
+    private func normalizedMode(_ value: String?) -> LLMRefinementMode {
+        guard let rawValue = value?.trimmingCharacters(in: .whitespacesAndNewlines), !rawValue.isEmpty else {
+            userDefaults.removeObject(forKey: llmModeDefaultsKey)
+            return .precise
+        }
+
+        guard let mode = LLMRefinementMode(rawValue: rawValue) else {
+            userDefaults.removeObject(forKey: llmModeDefaultsKey)
+            return .precise
+        }
+
+        return mode
+    }
+
+    private func persistMode(_ mode: LLMRefinementMode) {
+        if mode == .precise {
+            userDefaults.removeObject(forKey: llmModeDefaultsKey)
+        } else {
+            userDefaults.set(mode.rawValue, forKey: llmModeDefaultsKey)
         }
     }
 

@@ -30,6 +30,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var enableMenuItem: NSMenuItem!
     private var llmMenuItem: NSMenuItem!
+    private var llmModeItems: [NSMenuItem] = []
     private var dictionaryStatusMenuItem: NSMenuItem!
     private lazy var settingsWindow = SettingsWindow()
     private lazy var dictionaryWindow = DictionaryWindow()
@@ -315,6 +316,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         llmMenu.addItem(.separator())
 
+        let modeItem = NSMenuItem(title: "Mode", action: nil, keyEquivalent: "")
+        let modeMenu = NSMenu()
+        for mode in LLMRefinementMode.allCases {
+            let item = NSMenuItem(title: mode.menuTitle, action: #selector(changeLLMMode(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = mode.rawValue
+            item.state = mode == LLMRefiner.shared.mode ? .on : .off
+            llmModeItems.append(item)
+            modeMenu.addItem(item)
+        }
+        modeItem.submenu = modeMenu
+        llmMenu.addItem(modeItem)
+
+        llmMenu.addItem(.separator())
+
         let settingsItem = NSMenuItem(title: "Settings...", action: #selector(openLLMSettings), keyEquivalent: "")
         settingsItem.target = self
         llmMenu.addItem(settingsItem)
@@ -395,6 +411,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         refiner.isEnabled = true
         updateLLMMenuItemState()
+    }
+
+    @objc private func changeLLMMode(_ sender: NSMenuItem) {
+        guard let rawValue = sender.representedObject as? String,
+              let mode = LLMRefinementMode(rawValue: rawValue)
+        else { return }
+
+        LLMRefiner.shared.mode = mode
+        updateLLMModeMenuItemStates()
     }
 
     @objc private func openLLMSettings() {
@@ -486,6 +511,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func updateLLMMenuItemState() {
         llmMenuItem?.state = LLMRefiner.shared.isEnabled ? .on : .off
+    }
+
+    private func updateLLMModeMenuItemStates() {
+        let currentMode = LLMRefiner.shared.mode
+        for item in llmModeItems {
+            guard let rawValue = item.representedObject as? String else { continue }
+            item.state = rawValue == currentMode.rawValue ? .on : .off
+        }
     }
 
     static func locale(forSelectedLocaleCode code: String) -> Locale {
