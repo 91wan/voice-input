@@ -46,6 +46,20 @@ version-bump:
 		echo "❌ VERSION 格式必须是 v1.2.3"; \
 		exit 1; \
 	}
+	@awk -v tag="$(VERSION)" '\
+		/^## / { \
+			heading = $$0; \
+			sub(/^##[[:space:]]+\[/, "", heading); \
+			sub(/^##[[:space:]]+/, "", heading); \
+			sub(/\].*$$/, "", heading); \
+			sub(/[[:space:]].*$$/, "", heading); \
+			if (heading == tag) { found = 1; exit } \
+		} \
+		END { exit found ? 0 : 1 } \
+	' CHANGELOG.md || { \
+		echo "❌ CHANGELOG.md 缺少 $(VERSION) 条目，请先添加 release notes"; \
+		exit 1; \
+	}
 	@set -e; \
 	VERSION_NO_V=$${VERSION#v}; \
 	echo "🔖 Bumping to $(VERSION)..."; \

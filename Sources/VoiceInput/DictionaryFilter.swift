@@ -99,9 +99,6 @@ final class DictionaryFilter {
 
     private static let defaultBuiltinMap: [String: String] = [
         "open claw": "OpenClaw",
-        "example app": "ExampleApp",
-        "example app": "ExampleApp",
-        "example app": "ExampleApp",
         "type script": "TypeScript",
         "java script": "JavaScript",
         "data base": "database",

@@ -50,4 +50,17 @@ final class MakefileTests: XCTestCase {
             "version-bump must reject malformed v* tags like v, because they produce empty or invalid bundle versions."
         )
     }
+
+    func testVersionBumpRequiresMatchingChangelogEntryBeforeTagging() throws {
+        let makefile = try String(contentsOfFile: "Makefile", encoding: .utf8)
+
+        XCTAssertTrue(
+            makefile.contains("awk -v tag=\"$(VERSION)\""),
+            "version-bump must verify CHANGELOG.md has notes for the exact version before creating a tag."
+        )
+        XCTAssertTrue(
+            makefile.contains("CHANGELOG.md 缺少 $(VERSION) 条目"),
+            "version-bump should fail with an actionable message when patch or minor release notes are missing."
+        )
+    }
 }

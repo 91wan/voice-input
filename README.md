@@ -10,7 +10,9 @@ macOS 菜单栏语音输入工具。按住 `Fn` 键说话，松开后自动将�
 - **原生 Apple Speech 识别**：离线/在线混合，支持中英文多语言
 - **字典层纠错**：内置专有名词词典（OpenClaw、Python、Docker 等），确定性替换，<1ms，零 GPU 消耗
 - **LLM 二次润色**：可选接入 OpenAI 兼容 API，处理字典层无法覆盖的上下文语法纠错（的/地/得、长句重组）
+- **Prompt Builder 模式**：可选把口语整理成适合 ChatGPT / Claude / Cursor 的结构化提示词，默认仍保持精准听写
 - **用户自定义词典**：菜单栏 → Dictionary...，每行一条规则（`错误词 → 正确词`），保存即生效
+- **插入失败兜底**：如果无法把文字插入当前光标，结果会保留在剪贴板，避免语音内容丢失
 - **零外部依赖**：App bundle 仅依赖系统框架，可直接拖入 `/Applications` 使用
 
 ## 纠错管道
@@ -37,8 +39,10 @@ macOS 菜单栏语音输入工具。按住 `Fn` 键说话，松开后自动将�
 
 | ASR 错误输出 | 正确结果 |
 |-------------|---------|
-| example app / example app / example app | ExampleApp |
 | open claw | OpenClaw |
+| type script | TypeScript |
+| java script | JavaScript |
+| data base | database |
 | 配森 / 派森 | Python |
 | 迪克耳 | Docker |
 | 库伯内坦斯 | Kubernetes |
@@ -49,9 +53,9 @@ macOS 菜单栏语音输入工具。按住 `Fn` 键说话，松开后自动将�
 
 ```
 # 注释行
-example app → ExampleApp
+type script → TypeScript
 open claw → OpenClaw
-达摩 → Damo
+my project → MyProject
 ```
 
 保存后立即生效，无需重启。词典文件存储于 `~/Library/Application Support/VoiceInput/dictionary.json`。
@@ -63,8 +67,15 @@ open claw → OpenClaw
 - API Key 会保存到 macOS Keychain，不再明文落在 `UserDefaults`
 - 如果没填 API Key 就尝试启用 LLM，应用会直接打开设置窗口并提示补全
 - 留空 API Base URL / Model 会自动回落到默认值（`https://api.openai.com/v1` / `gpt-4o-mini`）
+- 菜单栏 → LLM Refinement → Mode 可切换 `Precise Dictation` / `Prompt Builder`
 
 推荐搭配本地模型（如 LM Studio + Gemma）以获得最低延迟。字典层已处理专有名词，LLM 只需处理语法粘合，8B 模型完全够用。
+
+## Release policy
+
+- 每次发版前都必须在 `CHANGELOG.md` 添加对应版本条目，例如 `## [v1.0.2] - YYYY-MM-DD`
+- `make version-bump VERSION=v1.0.2` 会更新 README 版本/日期、Info.plist，并在打 tag 前检查 changelog 条目是否存在
+- GitHub Release 的正文由对应 `CHANGELOG.md` 条目生成，因此 patch/minor 版本也必须有 release notes
 
 ## 构建
 
