@@ -48,7 +48,7 @@ final class TextInjectorTests: XCTestCase {
         XCTAssertEqual(pasteboard.changeCount, initialChangeCount)
     }
 
-    func testInjectRestoresClipboardWhenPasteCommandFails() {
+    func testInjectLeavesTextOnClipboardWhenPasteCommandFails() {
         let pasteboard = NSPasteboard.withUniqueName()
         pasteboard.clearContents()
 
@@ -65,7 +65,10 @@ final class TextInjectorTests: XCTestCase {
         )
 
         XCTAssertEqual(injector.inject("hello"), .failure(.pasteCommandFailed))
-        XCTAssertEqual(pasteboard.string(forType: .string), "original")
+        XCTAssertEqual(pasteboard.string(forType: .string), "hello")
+        XCTAssertTrue(
+            TextInjectionFailure.pasteCommandFailed.localizedDescription.localizedCaseInsensitiveContains("clipboard")
+        )
     }
 
     func testPasteboardSnapshotRoundTripsStringAndCustomData() throws {

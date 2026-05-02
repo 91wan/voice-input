@@ -17,7 +17,7 @@ enum TextInjectionFailure: LocalizedError, Equatable {
         case .pasteboardWriteFailed:
             return "Paste failed. VoiceInput couldn't write to the clipboard."
         case .pasteCommandFailed:
-            return "Paste failed. VoiceInput couldn't send Command-V."
+            return "Paste failed. Text was copied to the clipboard."
         }
     }
 
@@ -120,7 +120,6 @@ final class TextInjector {
 
         guard postPasteCommandHandler() else {
             restoreInputSourceIfStillUsingTemporary(originalSource: originalSource, temporarySource: temporarySource)
-            restorePasteboardIfStillOwned(snapshot: snapshot, injectedChangeCount: injectedChangeCount)
             return .failure(.pasteCommandFailed)
         }
 
