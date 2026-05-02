@@ -19,6 +19,7 @@ Audio -> Apple Speech -> DictionaryFilter -> optional LLMRefiner -> TextInjector
 - **決定的な辞書補正**：よくある ASR の誤認識を LLM の前に高速に修正します。
 - **任意の LLM 補正**：OpenAI 互換 API に対応し、文章整理や Prompt Builder に利用できます。
 - **挿入失敗時の保護**：テキスト挿入に失敗しても、生成結果はクリップボードに残ります。
+- **直近結果の確認**：raw / 辞書補正後 / LLM 補正後 / 最終テキストを確認し、コピー、再挿入、辞書ルール保存ができます。
 - **メニューバー中心**：重いウィンドウを開かずに主要操作を完結できます。
 
 ## 機能
@@ -81,6 +82,7 @@ my project -> MyProject
 
 - **Language**：認識言語を切り替えます。
 - **Dictionary...**：決定的な補正ルールを編集します。
+- **Last Result...**：直近の音声入力結果を確認し、素早く辞書補正を追加できます。
 - **LLM Refinement**：LLM 補正の有効化、設定、モード切替を行います。
 - **Quit**：VoiceInput を終了します。
 

@@ -19,6 +19,7 @@ Audio -> Apple Speech -> DictionaryFilter -> optional LLMRefiner -> TextInjector
 - **결정적 사전 보정**: 자주 발생하는 ASR 오류를 LLM 전에 빠르고 예측 가능하게 수정합니다.
 - **선택적 LLM 보정**: OpenAI 호환 API로 문장 정리 또는 Prompt Builder 모드를 사용할 수 있습니다.
 - **입력 실패 보호**: 커서 삽입이 실패해도 생성된 텍스트는 클립보드에 남습니다.
+- **최근 결과 확인**: raw / 사전 보정 / LLM 보정 / 최종 텍스트를 확인하고, 복사, 재삽입, 빠른 사전 규칙 저장을 할 수 있습니다.
 - **메뉴 막대 중심**: 무거운 창을 열지 않고 핵심 기능을 사용할 수 있습니다.
 
 ## 기능
@@ -81,6 +82,7 @@ my project -> MyProject
 
 - **Language**: 인식 언어를 전환합니다.
 - **Dictionary...**: 결정적 보정 규칙을 편집합니다.
+- **Last Result...**: 최근 음성 입력 결과를 확인하고 빠르게 사전 보정을 추가합니다.
 - **LLM Refinement**: LLM 보정 활성화, 설정, 모드 전환을 관리합니다.
 - **Quit**: VoiceInput을 종료합니다.
 

@@ -32,8 +32,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var llmMenuItem: NSMenuItem!
     private var llmModeItems: [NSMenuItem] = []
     private var dictionaryStatusMenuItem: NSMenuItem!
+    private var lastResultMenuItem: NSMenuItem!
     private lazy var settingsWindow = SettingsWindow()
     private lazy var dictionaryWindow = DictionaryWindow()
+    private lazy var lastResultWindow = LastResultWindow()
+    private var lastTranscriptionResult: LastTranscriptionResult? {
+        didSet {
+            lastResultWindow.result = lastTranscriptionResult
+            updateLastResultMenuItem()
+        }
+    }
     private var languageItems: [NSMenuItem] = []
     private var selectedLocaleCode: String {
         get { Self.normalizedLocaleCode(UserDefaults.standard.string(forKey: "selectedLocaleCode") ?? Self.defaultLocaleCode) }
@@ -70,6 +78,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         settingsWindow.onSettingsSaved = { [weak self] in
             self?.syncLLMEnabledState()
             self?.updateLLMMenuItemState()
+        }
+        lastResultWindow.onRetryInsert = { [weak self] text, completion in
+            guard let self else {
+                completion(.failure(.pasteCommandFailed))
+                return
+            }
+            let result = self.textInjector.inject(text)
+            self.recordInjectionResult(result)
+            completion(result)
+        }
+        lastResultWindow.onSaveDictionaryRule = { [weak self] source, replacement in
+            var dict = DictionaryFilter.shared.userMap
+            dict[source] = replacement
+            try DictionaryFilter.shared.saveUserDictionary(dict)
+            self?.updateDictionaryStatusMenuItem()
+            return DictionaryFilter.shared.userMap.count
         }
 
         if !keyMonitor.start() {
@@ -200,6 +224,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                         filteredText: filtered,
                         refinedText: refined
                     )
+                    self.recordLastResult(
+                        rawText: text,
+                        dictionaryResult: dictionaryResult,
+                        output: output,
+                        refinedText: refined
+                    )
                     if output.wasLLMRefined {
                         self.overlayPanel.updateText("✨ \(output.text)")
                         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
@@ -221,6 +251,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                         filteredText: filtered,
                         refinedText: nil
                     )
+                    self.recordLastResult(
+                        rawText: text,
+                        dictionaryResult: dictionaryResult,
+                        output: output,
+                        refinedText: nil
+                    )
                     self.overlayPanel.updateText("Refine failed, using dictionary result")
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                         guard self.transcriptionSessions.isCurrent(sessionID) else { return }
@@ -233,6 +269,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self.lastPartialResult = ""
             }
         } else {
+            let output = TranscriptionResolution.resolve(
+                filteredText: filtered,
+                refinedText: nil
+            )
+            recordLastResult(
+                rawText: text,
+                dictionaryResult: dictionaryResult,
+                output: output,
+                refinedText: nil
+            )
             overlayPanel.dismiss()
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
                 self?.performTextInjection(filtered, sessionID: sessionID)
@@ -241,9 +287,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    private func recordLastResult(
+        rawText: String,
+        dictionaryResult: DictionaryApplyResult,
+        output: TranscriptionResolution.Output,
+        refinedText: String?
+    ) {
+        lastTranscriptionResult = LastTranscriptionResult.make(
+            rawText: rawText,
+            dictionaryResult: dictionaryResult,
+            resolvedOutput: output,
+            refinedText: refinedText,
+            injectionResult: nil
+        )
+    }
+
+    private func recordInjectionResult(_ result: TextInjectionResult) {
+        lastTranscriptionResult = lastTranscriptionResult?.withInjectionResult(result)
+    }
+
     private func performTextInjection(_ text: String, sessionID: Int) {
         guard transcriptionSessions.isCurrent(sessionID) else { return }
-        switch textInjector.inject(text) {
+        let injectionResult = textInjector.inject(text)
+        recordInjectionResult(injectionResult)
+
+        switch injectionResult {
         case .success:
             NSSound(named: .init("Pop"))?.play()
         case .failure(let failure):
@@ -346,6 +414,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         dictionaryStatusMenuItem.isEnabled = false
         menu.addItem(dictionaryStatusMenuItem)
 
+        lastResultMenuItem = NSMenuItem(title: "Last Result...", action: #selector(openLastResult), keyEquivalent: "")
+        lastResultMenuItem.target = self
+        lastResultMenuItem.isEnabled = false
+        menu.addItem(lastResultMenuItem)
+
         menu.addItem(.separator())
 
         let quitItem = NSMenuItem(title: "Quit VoiceInput", action: #selector(quit), keyEquivalent: "q")
@@ -432,6 +505,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.activate(ignoringOtherApps: true)
     }
 
+    @objc private func openLastResult() {
+        lastResultWindow.present(result: lastTranscriptionResult)
+    }
+
     @objc private func quit() {
         keyMonitor.stop()
         NSApp.terminate(nil)
@@ -499,6 +576,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func updateDictionaryStatusMenuItem() {
         dictionaryStatusMenuItem?.title = DictionaryFilter.shared.lastActivitySummary
+    }
+
+    private func updateLastResultMenuItem() {
+        lastResultMenuItem?.isEnabled = lastTranscriptionResult != nil
     }
 
     private func syncLLMEnabledState() {

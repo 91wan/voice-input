@@ -21,6 +21,7 @@ Audio -> Apple Speech -> DictionaryFilter -> optional LLMRefiner -> TextInjector
 - **Deterministic dictionary layer**: fixes predictable ASR mistakes before the text reaches an LLM.
 - **Optional LLM refinement**: supports OpenAI-compatible APIs for grammar cleanup or prompt-building.
 - **Cursor insertion fallback**: if paste-style insertion fails, the generated text stays on the clipboard instead of being lost.
+- **Last Result review**: inspect the most recent raw, dictionary-filtered, LLM-refined, and final text; copy it, retry insertion, or save a quick dictionary rule.
 - **Menu bar first**: no heavy window workflow; the main app lives in the macOS menu bar.
 
 ## Features
@@ -83,6 +84,7 @@ Open **Menu Bar -> LLM Refinement -> Settings** to configure an OpenAI-compatibl
 
 - **Language**: switch recognition locale.
 - **Dictionary...**: edit deterministic correction rules.
+- **Last Result...**: review the latest transcription and add a quick dictionary correction.
 - **LLM Refinement**: enable, disable, configure, and select refinement mode.
 - **Quit**: stop VoiceInput.
 
