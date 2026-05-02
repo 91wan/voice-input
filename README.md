@@ -1,6 +1,6 @@
 # VoiceInput
 
-> version-v1.0.1 | date-2026-04-24
+> version-v1.0.1 | date-2026-05-02
 
 macOS 菜单栏语音输入工具。按住 `Fn` 键说话，松开后自动将语音转为文字并注入当前光标位置。
 
