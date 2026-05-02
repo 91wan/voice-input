@@ -2,7 +2,7 @@
 
 ### Hold `Fn` to dictate. Release to insert text.
 
-> version-v1.0.1 | date-2026-05-02
+> version-v1.0.2 | date-2026-05-03
 
 [English](README.md) | [简体中文](README.zh-CN.md) | [日本語](README.ja.md) | [한국어](README.ko.md)
 
@@ -124,7 +124,7 @@ swift test --parallel
 ## Release Policy
 
 - Add a matching `CHANGELOG.md` entry before every release, for example `## [v1.0.2] - YYYY-MM-DD`.
-- Run `make version-bump VERSION=v1.0.2` to update version metadata and create the tag.
+- Run `make version-v1.0.2 VERSION=v1.0.2` to update version metadata and create the tag.
 - Pushing a `v*` tag builds the macOS app, packages `VoiceInput.dmg`, and publishes GitHub Release notes from `CHANGELOG.md`.
 - Major releases should update the README and product positioning.
 - Patch and minor releases should still have clear GitHub Release notes.
