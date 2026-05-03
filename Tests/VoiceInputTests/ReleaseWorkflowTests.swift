@@ -86,16 +86,24 @@ final class ReleaseWorkflowTests: XCTestCase {
         XCTAssertTrue(changelog.contains("右键 `VoiceInput.app`"))
     }
 
-    func testVersionMetadataIsBumpedForV112() throws {
+    func testVersionMetadataIsBumpedForV113() throws {
         let englishReadme = try String(contentsOfFile: "README.md", encoding: .utf8)
-        XCTAssertTrue(englishReadme.contains("version-v1.1.2"))
+        XCTAssertTrue(englishReadme.contains("version-v1.1.3"))
 
         let rootPlist = NSDictionary(contentsOf: URL(fileURLWithPath: "Info.plist"))
-        XCTAssertEqual(rootPlist?["CFBundleShortVersionString"] as? String, "1.1.2")
-        XCTAssertEqual(rootPlist?["CFBundleVersion"] as? String, "1.1.2")
+        XCTAssertEqual(rootPlist?["CFBundleShortVersionString"] as? String, "1.1.3")
+        XCTAssertEqual(rootPlist?["CFBundleVersion"] as? String, "1.1.3")
 
         let appPlist = NSDictionary(contentsOf: URL(fileURLWithPath: "VoiceInput.app/Contents/Info.plist"))
-        XCTAssertEqual(appPlist?["CFBundleShortVersionString"] as? String, "1.1.2")
-        XCTAssertEqual(appPlist?["CFBundleVersion"] as? String, "1.1.2")
+        XCTAssertEqual(appPlist?["CFBundleShortVersionString"] as? String, "1.1.3")
+        XCTAssertEqual(appPlist?["CFBundleVersion"] as? String, "1.1.3")
+    }
+
+    func testModifierChordFixReleaseNotesArePublishedForV113() throws {
+        let changelog = try String(contentsOfFile: "CHANGELOG.md", encoding: .utf8)
+
+        XCTAssertTrue(changelog.contains("## [v1.1.3] - 2026-05-03"))
+        XCTAssertTrue(changelog.contains("Fn + Control"))
+        XCTAssertTrue(changelog.contains("纯 `Fn` 和纯 `Option + Fn`"))
     }
 }
