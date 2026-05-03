@@ -8,6 +8,7 @@ enum ReadinessState: Equatable {
 
 enum ReadinessAction: Equatable {
     case openAccessibilitySettings
+    case openInputMonitoringSettings
     case openMicrophoneSettings
     case openSpeechSettings
     case openLLMSettings
@@ -63,6 +64,10 @@ struct ReadinessDiagnostics: Equatable {
             item(
                 from: permissionDiagnostics.accessibility,
                 action: .openAccessibilitySettings
+            ),
+            item(
+                from: permissionDiagnostics.inputMonitoring,
+                action: .openInputMonitoringSettings
             ),
             item(
                 from: permissionDiagnostics.microphone,

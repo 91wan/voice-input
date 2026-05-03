@@ -28,6 +28,14 @@ final class TextInjectorTests: XCTestCase {
         XCTAssertEqual(pasteboard.string(forType: .string), "original")
     }
 
+    func testAccessibilityFailureExplainsStalePermissionState() {
+        let message = TextInjectionFailure.accessibilityPermissionMissing.localizedDescription
+
+        XCTAssertTrue(message.localizedCaseInsensitiveContains("not active"))
+        XCTAssertTrue(message.localizedCaseInsensitiveContains("quit"))
+        XCTAssertTrue(message.contains("/Applications/VoiceInput.app"))
+    }
+
     func testInjectTreatsWhitespaceOnlyTextAsEmpty() {
         let pasteboard = NSPasteboard.withUniqueName()
         pasteboard.clearContents()

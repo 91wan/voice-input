@@ -587,16 +587,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func showAccessibilityAlert() {
         let alert = NSAlert()
-        alert.messageText = "Accessibility Permission Required"
+        alert.messageText = "Input Permission Required"
         alert.informativeText = """
-            VoiceInput needs Accessibility permission to monitor the Fn key.
+            VoiceInput needs Accessibility permission to paste text and Input Monitoring permission to detect Fn key combinations.
 
             1. Open System Settings → Privacy & Security → Accessibility
             2. Add and enable VoiceInput
-            3. Restart the app
+            3. Open Input Monitoring and enable VoiceInput if it appears there
+            4. Quit and reopen VoiceInput
+
+            If VoiceInput is already enabled but this alert still appears, remove the old VoiceInput entry and add /Applications/VoiceInput.app again.
             """
         alert.alertStyle = .warning
-        alert.addButton(withTitle: "Open System Settings")
+        alert.addButton(withTitle: "Open Accessibility")
+        alert.addButton(withTitle: "Open Input Monitoring")
         alert.addButton(withTitle: "OK")
 
         let response = alert.runModal()
@@ -605,6 +609,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             NSWorkspace.shared.open(
                 url
             )
+        } else if response == .alertSecondButtonReturn,
+                  let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent") {
+            NSWorkspace.shared.open(url)
         }
     }
 
@@ -717,6 +724,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         switch action {
         case .openAccessibilitySettings:
             openSystemSettings("x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
+        case .openInputMonitoringSettings:
+            openSystemSettings("x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent")
         case .openMicrophoneSettings:
             if let url = SpeechPermissionIssue.microphoneDenied.settingsURL {
                 NSWorkspace.shared.open(url)

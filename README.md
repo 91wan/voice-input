@@ -2,7 +2,7 @@
 
 ### Hold `Fn` to dictate. Release to insert text.
 
-> version-v1.1.5 | date-2026-05-03
+> version-v1.1.6 | date-2026-05-03
 
 [English](README.md) | [简体中文](README.zh-CN.md) | [日本語](README.ja.md) | [한국어](README.ko.md)
 
@@ -21,7 +21,7 @@ Audio -> Apple Speech -> DictionaryFilter -> optional LLMRefiner -> TextInjector
 - **Deterministic dictionary layer**: fixes predictable ASR mistakes before the text reaches an LLM.
 - **Optional LLM refinement**: supports OpenAI-compatible APIs for grammar cleanup or prompt-building.
 - **Mode shortcut**: `Fn` uses the selected LLM mode; `Option + Fn` runs Prompt Builder for the current dictation only.
-- **Readiness panel**: passively checks Accessibility, Microphone, Speech Recognition, LLM configuration, and dictionary loading.
+- **Readiness panel**: passively checks Accessibility, Input Monitoring, Microphone, Speech Recognition, LLM configuration, and dictionary loading.
 - **Cursor insertion fallback**: if paste-style insertion fails, the generated text stays on the clipboard instead of being lost.
 - **Recent Results review**: inspect the current session's latest 10 results; copy final text, retry insertion, or save a quick dictionary rule.
 - **Dictionary Workbench**: test a phrase against the current dictionary rules before saving changes.
@@ -83,7 +83,10 @@ Open **Menu Bar -> LLM Refinement -> Settings** to configure an OpenAI-compatibl
    - Microphone
    - Speech Recognition
    - Accessibility
+   - Input Monitoring
 5. Put the cursor in any text field, hold `Fn`, speak, and release. Use `Option + Fn` when you want a one-off Prompt Builder dictation.
+
+If Accessibility is already enabled but VoiceInput still reports a permission failure, quit and reopen VoiceInput. If it still fails after an update, remove the old VoiceInput entry from Accessibility / Input Monitoring, then add `/Applications/VoiceInput.app` again.
 
 > Current GitHub DMGs are **unsigned / not notarized** builds. This means macOS Gatekeeper may block the first launch even when the download is valid.
 
@@ -98,7 +101,7 @@ Alternative: open **System Settings -> Privacy & Security**, allow VoiceInput ne
 ## Menu Bar Controls
 
 - **Language**: switch recognition locale.
-- **Readiness...**: inspect Accessibility, Microphone, Speech Recognition, LLM, and Dictionary status without requesting new permissions.
+- **Readiness...**: inspect Accessibility, Input Monitoring, Microphone, Speech Recognition, LLM, and Dictionary status without requesting new permissions.
 - **Dictionary...**: edit deterministic correction rules.
 - **Recent Results...**: review the current session's latest 10 transcriptions and add a quick dictionary correction.
 - **LLM Refinement**: enable, disable, configure, select the default refinement mode, and see the `Fn` / `Option + Fn` shortcuts.

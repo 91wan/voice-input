@@ -4,6 +4,14 @@
 
 ---
 
+## [v1.1.6] - 2026-05-03
+
+### 修复
+- 修复 Accessibility 已开启但仍失败时提示过窄的问题：Readiness 现在会展示 `Input Monitoring` 状态，并提供对应系统设置入口。
+- 粘贴失败提示现在会说明 unsigned/ad-hoc 构建更新后可能需要退出重开，或移除旧权限项后重新添加 `/Applications/VoiceInput.app`。
+
+---
+
 ## [v1.1.5] - 2026-05-03
 
 ### 修复
