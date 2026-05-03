@@ -73,6 +73,11 @@ jobs:
         run: |
           ./scripts/package-dmg.sh VoiceInput.app VoiceInput.dmg VoiceInput
 
+      - name: Verify unsigned DMG artifact
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          ./scripts/verify-dmg.sh VoiceInput.dmg "$VERSION" VoiceInput
+
       - name: Extract release notes from CHANGELOG.md
         id: notes
         run: |

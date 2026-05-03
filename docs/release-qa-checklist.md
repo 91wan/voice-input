@@ -9,6 +9,21 @@ Use this checklist before a stable public release such as `v1.2.0`.
 - README and GitHub Release notes must document the update permission recovery path.
 - If any manual QA item fails, ship only a narrow fix or defer the release.
 
+## Automated Release Gate
+
+- `swift test --parallel`.
+- `swift build -Xswiftc -warnings-as-errors`.
+- `make build`.
+- `./scripts/package-dmg.sh VoiceInput.app /tmp/VoiceInput-test.dmg VoiceInput`.
+- `./scripts/verify-dmg.sh /tmp/VoiceInput-test.dmg <version> VoiceInput`.
+- `codesign --verify --deep --strict VoiceInput.app`.
+- `spctl -a -vvv -t execute VoiceInput.app` returns rejected for unsigned / not notarized builds.
+- Release workflow verifies the published DMG layout before creating the GitHub Release.
+
+## Manual Permission And Fn QA
+
+These checks require launching the app and interacting with macOS permissions, so they stay outside automated CI unless explicitly re-authorized.
+
 ## Installation And First Launch
 
 - Download the GitHub Release `VoiceInput.dmg`.

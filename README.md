@@ -2,7 +2,7 @@
 
 ### Hold `Fn` to dictate. Release to insert text.
 
-> version-v1.5.0 | date-2026-05-03
+> version-v1.6.0 | date-2026-05-03
 
 [English](README.md) | [简体中文](README.zh-CN.md) | [日本語](README.ja.md) | [한국어](README.ko.md)
 
@@ -92,6 +92,8 @@ If Accessibility is already enabled but VoiceInput still reports a permission fa
 For updates, replace the old app in `/Applications`, quit any running VoiceInput instance, and reopen it from `/Applications/VoiceInput.app`. If macOS keeps an old permission record after updating, remove the stale VoiceInput entry from Accessibility and Input Monitoring, then add the current `/Applications/VoiceInput.app` again.
 
 > Current GitHub DMGs are **unsigned / not notarized** builds. This means macOS Gatekeeper may block the first launch even when the download is valid.
+
+Automated release gates verify the unsigned DMG layout, app version, `.DS_Store`, `/Applications` shortcut, ad-hoc codesign validity, and expected `spctl rejected` Gatekeeper result before publishing.
 
 If macOS shows "Apple could not verify VoiceInput":
 

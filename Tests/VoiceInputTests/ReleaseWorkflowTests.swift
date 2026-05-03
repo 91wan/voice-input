@@ -111,17 +111,17 @@ final class ReleaseWorkflowTests: XCTestCase {
         XCTAssertTrue(changelog.contains("右键 `VoiceInput.app`"))
     }
 
-    func testVersionMetadataIsBumpedForV150() throws {
+    func testVersionMetadataIsBumpedForV160() throws {
         let englishReadme = try String(contentsOfFile: "README.md", encoding: .utf8)
-        XCTAssertTrue(englishReadme.contains("version-v1.5.0"))
+        XCTAssertTrue(englishReadme.contains("version-v1.6.0"))
 
         let rootPlist = NSDictionary(contentsOf: URL(fileURLWithPath: "Info.plist"))
-        XCTAssertEqual(rootPlist?["CFBundleShortVersionString"] as? String, "1.5.0")
-        XCTAssertEqual(rootPlist?["CFBundleVersion"] as? String, "1.5.0")
+        XCTAssertEqual(rootPlist?["CFBundleShortVersionString"] as? String, "1.6.0")
+        XCTAssertEqual(rootPlist?["CFBundleVersion"] as? String, "1.6.0")
 
         let appPlist = NSDictionary(contentsOf: URL(fileURLWithPath: "VoiceInput.app/Contents/Info.plist"))
-        XCTAssertEqual(appPlist?["CFBundleShortVersionString"] as? String, "1.5.0")
-        XCTAssertEqual(appPlist?["CFBundleVersion"] as? String, "1.5.0")
+        XCTAssertEqual(appPlist?["CFBundleShortVersionString"] as? String, "1.6.0")
+        XCTAssertEqual(appPlist?["CFBundleVersion"] as? String, "1.6.0")
     }
 
     func testModifierChordFixReleaseNotesArePublishedForV113() throws {
@@ -222,6 +222,35 @@ final class ReleaseWorkflowTests: XCTestCase {
         XCTAssertTrue(changelog.contains("ordinary Fn still uses Apple Speech + DictionaryFilter"))
         XCTAssertTrue(readme.contains("Option + Fn uses Prompt Builder once"))
         XCTAssertTrue(readme.contains("ordinary Fn still uses Apple Speech + DictionaryFilter"))
+    }
+
+    func testReleaseWorkflowValidatesUnsignedDMGArtifactBeforePublishing() throws {
+        let workflow = try String(contentsOfFile: ".github/workflows/release.yml", encoding: .utf8)
+        let verifier = try String(contentsOfFile: "scripts/verify-dmg.sh", encoding: .utf8)
+
+        XCTAssertTrue(workflow.contains("./scripts/verify-dmg.sh VoiceInput.dmg \"$VERSION\" VoiceInput"))
+        XCTAssertTrue(workflow.contains("VERSION=\"${GITHUB_REF_NAME#v}\""))
+        XCTAssertTrue(verifier.contains("test -d \"$MOUNT_DIR/VoiceInput.app\""))
+        XCTAssertTrue(verifier.contains("readlink \"$MOUNT_DIR/Applications\""))
+        XCTAssertTrue(verifier.contains("test -f \"$MOUNT_DIR/.DS_Store\""))
+        XCTAssertTrue(verifier.contains("CFBundleShortVersionString"))
+        XCTAssertTrue(verifier.contains("codesign --verify --deep --strict"))
+        XCTAssertTrue(verifier.contains("spctl -a -vvv -t execute"))
+        XCTAssertTrue(verifier.contains("grep -qi \"rejected\""))
+    }
+
+    func testUnsignedDistributionHardeningReleaseNotesArePublishedForV160() throws {
+        let changelog = try String(contentsOfFile: "CHANGELOG.md", encoding: .utf8)
+        let readme = try String(contentsOfFile: "README.md", encoding: .utf8)
+        let checklist = try String(contentsOfFile: "docs/release-qa-checklist.md", encoding: .utf8)
+
+        XCTAssertTrue(changelog.contains("## [v1.6.0] - 2026-05-03"))
+        XCTAssertTrue(changelog.contains("Unsigned Distribution Hardening"))
+        XCTAssertTrue(changelog.contains("not notarized"))
+        XCTAssertTrue(changelog.contains("spctl rejected"))
+        XCTAssertTrue(readme.contains("Automated release gates verify the unsigned DMG layout"))
+        XCTAssertTrue(checklist.contains("## Automated Release Gate"))
+        XCTAssertTrue(checklist.contains("## Manual Permission And Fn QA"))
     }
 
     func testReleaseQAChecklistDocumentsV12ManualCoverage() throws {
