@@ -53,6 +53,14 @@ struct KeyMonitorState {
         fnPressed = false
         return .fnUp
     }
+
+    mutating func cancelForNonModifierKeyDown(fnDown: Bool) -> KeyMonitorAction? {
+        guard fnDown else { return nil }
+        fnBlockedUntilRelease = true
+        guard fnPressed else { return nil }
+        fnPressed = false
+        return .fnUp
+    }
 }
 
 final class KeyMonitor {
@@ -63,6 +71,11 @@ final class KeyMonitor {
     private var runLoopSource: CFRunLoopSource?
     private var state = KeyMonitorState()
 
+    static let monitoredEventMask = CGEventMask(
+        (1 << CGEventType.flagsChanged.rawValue)
+            | (1 << CGEventType.keyDown.rawValue)
+    )
+
     deinit {
         stop()
     }
@@ -71,14 +84,13 @@ final class KeyMonitor {
     func start() -> Bool {
         stop()
 
-        let mask = CGEventMask(1 << CGEventType.flagsChanged.rawValue)
         let refcon = Unmanaged.passUnretained(self).toOpaque()
 
         guard let tap = CGEvent.tapCreate(
             tap: .cgSessionEventTap,
             place: .headInsertEventTap,
             options: .defaultTap,
-            eventsOfInterest: mask,
+            eventsOfInterest: Self.monitoredEventMask,
             callback: { _, type, event, refcon -> Unmanaged<CGEvent>? in
                 guard let refcon else { return Unmanaged.passUnretained(event) }
                 let monitor = Unmanaged<KeyMonitor>.fromOpaque(refcon).takeUnretainedValue()
@@ -122,6 +134,11 @@ final class KeyMonitor {
         }
 
         let flags = event.flags
+        if type == .keyDown {
+            dispatch(state.cancelForNonModifierKeyDown(fnDown: flags.contains(.maskSecondaryFn)))
+            return Unmanaged.passUnretained(event)
+        }
+
         let fnDown = flags.contains(.maskSecondaryFn)
         let optionDown = flags.contains(.maskAlternate)
         let disallowedModifierDown = flags.contains(.maskControl)
