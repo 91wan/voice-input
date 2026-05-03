@@ -39,4 +39,22 @@ final class ReleaseWorkflowTests: XCTestCase {
             "softprops/action-gh-release@v2 runs on Node 20 and will reintroduce deprecation warnings."
         )
     }
+
+    func testReleaseDMGIncludesApplicationsShortcut() throws {
+        let workflow = try String(contentsOfFile: ".github/workflows/release.yml", encoding: .utf8)
+        let packageScript = try String(contentsOfFile: "scripts/package-dmg.sh", encoding: .utf8)
+
+        XCTAssertTrue(
+            workflow.contains("./scripts/package-dmg.sh"),
+            "Release workflow should use the shared packaging script so local and CI DMGs have the same install layout."
+        )
+        XCTAssertTrue(
+            packageScript.contains("ln -s /Applications \"$STAGING_DIR/Applications\""),
+            "The DMG staging folder must include an /Applications shortcut for drag-to-install."
+        )
+        XCTAssertTrue(
+            packageScript.contains("-srcfolder \"$STAGING_DIR\""),
+            "The compressed DMG must be created from the staging folder that contains the app and Applications shortcut."
+        )
+    }
 }

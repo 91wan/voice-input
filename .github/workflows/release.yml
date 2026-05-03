@@ -71,13 +71,7 @@ jobs:
 
       - name: Package DMG
         run: |
-          mkdir -p staging
-          cp -r VoiceInput.app staging/
-          hdiutil create \
-            -volname VoiceInput \
-            -srcfolder staging \
-            -ov -format UDZO \
-            VoiceInput.dmg
+          ./scripts/package-dmg.sh VoiceInput.app VoiceInput.dmg VoiceInput
 
       - name: Extract release notes from CHANGELOG.md
         id: notes
