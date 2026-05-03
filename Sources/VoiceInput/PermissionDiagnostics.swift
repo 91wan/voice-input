@@ -67,6 +67,82 @@ struct PermissionDiagnostic: Equatable {
     }
 }
 
+struct PermissionRecoveryGuidance: Equatable {
+    let title: String
+    let detail: String
+    let primarySettingsURL: URL?
+    let requiresReopenOnly: Bool
+
+    static func make(
+        diagnostics: PermissionDiagnostics,
+        eventMonitorStartFailed: Bool
+    ) -> PermissionRecoveryGuidance {
+        if !diagnostics.accessibility.isReady {
+            return PermissionRecoveryGuidance(
+                title: "Fix Accessibility Permission",
+                detail: """
+                Open System Settings -> Privacy & Security -> Accessibility, enable VoiceInput, then quit and reopen VoiceInput.
+
+                If the entry is already enabled but still fails, remove the old VoiceInput entry and add /Applications/VoiceInput.app again.
+                """,
+                primarySettingsURL: diagnostics.accessibility.settingsURL,
+                requiresReopenOnly: false
+            )
+        }
+
+        if !diagnostics.inputMonitoring.isReady {
+            return PermissionRecoveryGuidance(
+                title: "Fix Input Monitoring Permission",
+                detail: """
+                Open System Settings -> Privacy & Security -> Input Monitoring, enable VoiceInput, then quit and reopen VoiceInput.
+
+                If the entry is already enabled but still fails, remove the old VoiceInput entry and add /Applications/VoiceInput.app again.
+                """,
+                primarySettingsURL: diagnostics.inputMonitoring.settingsURL,
+                requiresReopenOnly: false
+            )
+        }
+
+        if !diagnostics.microphone.isReady {
+            return PermissionRecoveryGuidance(
+                title: "Fix Microphone Permission",
+                detail: "Open System Settings -> Privacy & Security -> Microphone and enable VoiceInput.",
+                primarySettingsURL: diagnostics.microphone.settingsURL,
+                requiresReopenOnly: false
+            )
+        }
+
+        if !diagnostics.speechRecognition.isReady {
+            return PermissionRecoveryGuidance(
+                title: "Fix Speech Recognition Permission",
+                detail: "Open System Settings -> Privacy & Security -> Speech Recognition and enable VoiceInput.",
+                primarySettingsURL: diagnostics.speechRecognition.settingsURL,
+                requiresReopenOnly: false
+            )
+        }
+
+        if eventMonitorStartFailed {
+            return PermissionRecoveryGuidance(
+                title: "Reopen VoiceInput Required",
+                detail: """
+                System permissions appear enabled, but VoiceInput's input monitor is not active yet. Quit and reopen VoiceInput.
+
+                If it still fails, remove VoiceInput from Accessibility and Input Monitoring, then add /Applications/VoiceInput.app again.
+                """,
+                primarySettingsURL: nil,
+                requiresReopenOnly: true
+            )
+        }
+
+        return PermissionRecoveryGuidance(
+            title: "Permissions Ready",
+            detail: "All required permissions are active.",
+            primarySettingsURL: nil,
+            requiresReopenOnly: false
+        )
+    }
+}
+
 struct PermissionDiagnostics: Equatable {
     let accessibility: PermissionDiagnostic
     let inputMonitoring: PermissionDiagnostic

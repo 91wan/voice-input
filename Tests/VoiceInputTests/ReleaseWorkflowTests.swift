@@ -111,17 +111,17 @@ final class ReleaseWorkflowTests: XCTestCase {
         XCTAssertTrue(changelog.contains("右键 `VoiceInput.app`"))
     }
 
-    func testVersionMetadataIsBumpedForV116() throws {
+    func testVersionMetadataIsBumpedForV117() throws {
         let englishReadme = try String(contentsOfFile: "README.md", encoding: .utf8)
-        XCTAssertTrue(englishReadme.contains("version-v1.1.6"))
+        XCTAssertTrue(englishReadme.contains("version-v1.1.7"))
 
         let rootPlist = NSDictionary(contentsOf: URL(fileURLWithPath: "Info.plist"))
-        XCTAssertEqual(rootPlist?["CFBundleShortVersionString"] as? String, "1.1.6")
-        XCTAssertEqual(rootPlist?["CFBundleVersion"] as? String, "1.1.6")
+        XCTAssertEqual(rootPlist?["CFBundleShortVersionString"] as? String, "1.1.7")
+        XCTAssertEqual(rootPlist?["CFBundleVersion"] as? String, "1.1.7")
 
         let appPlist = NSDictionary(contentsOf: URL(fileURLWithPath: "VoiceInput.app/Contents/Info.plist"))
-        XCTAssertEqual(appPlist?["CFBundleShortVersionString"] as? String, "1.1.6")
-        XCTAssertEqual(appPlist?["CFBundleVersion"] as? String, "1.1.6")
+        XCTAssertEqual(appPlist?["CFBundleShortVersionString"] as? String, "1.1.7")
+        XCTAssertEqual(appPlist?["CFBundleVersion"] as? String, "1.1.7")
     }
 
     func testModifierChordFixReleaseNotesArePublishedForV113() throws {
@@ -155,5 +155,23 @@ final class ReleaseWorkflowTests: XCTestCase {
         XCTAssertTrue(changelog.contains("## [v1.1.6] - 2026-05-03"))
         XCTAssertTrue(changelog.contains("Input Monitoring"))
         XCTAssertTrue(changelog.contains("Accessibility 已开启但仍失败"))
+    }
+
+    func testPermissionRecoveryReleaseNotesArePublishedForV117() throws {
+        let changelog = try String(contentsOfFile: "CHANGELOG.md", encoding: .utf8)
+
+        XCTAssertTrue(changelog.contains("## [v1.1.7] - 2026-05-03"))
+        XCTAssertTrue(changelog.contains("Reopen App"))
+        XCTAssertTrue(changelog.contains("Fix Permission"))
+    }
+
+    func testReleaseQAChecklistDocumentsV12ManualCoverage() throws {
+        let checklist = try String(contentsOfFile: "docs/release-qa-checklist.md", encoding: .utf8)
+
+        XCTAssertTrue(checklist.contains("Fn + normal key"))
+        XCTAssertTrue(checklist.contains("Option + Fn"))
+        XCTAssertTrue(checklist.contains("Accessibility enabled but Input Monitoring missing"))
+        XCTAssertTrue(checklist.contains("LLM disabled"))
+        XCTAssertTrue(checklist.contains("Developer ID signing and notarization are out of scope"))
     }
 }

@@ -4,6 +4,17 @@
 
 ---
 
+## [v1.1.7] - 2026-05-03
+
+### 修复
+- Readiness 增加更明确的 `Fix Permission` 恢复入口，并在权限已开启但监听器仍未激活时显示 `Reopen App` 状态。
+- 权限错误提示统一复用恢复指引，明确说明当前失败点、下一步动作，以及是否需要退出重开 VoiceInput。
+
+### 文档
+- 新增 `docs/release-qa-checklist.md`，固化 v1.2.0 前的安装、权限、Fn 快捷键、Recent Results、Dictionary 和 LLM 手动 QA 覆盖范围。
+
+---
+
 ## [v1.1.6] - 2026-05-03
 
 ### 修复

@@ -19,7 +19,7 @@ Audio -> Apple Speech -> DictionaryFilter -> optional LLMRefiner -> TextInjector
 - **決定的な辞書補正**：よくある ASR の誤認識を LLM の前に高速に修正します。
 - **任意の LLM 補正**：OpenAI 互換 API に対応し、文章整理や Prompt Builder に利用できます。
 - **モードショートカット**：`Fn` は選択中の LLM モードを使い、`Option + Fn` は今回だけ Prompt Builder を使います。
-- **Readiness パネル**：アクセシビリティ、マイク、音声認識、LLM 設定、辞書読み込み状態を受動的に確認できます。
+- **Readiness パネル**：アクセシビリティ、入力監視、マイク、音声認識、LLM 設定、辞書読み込み状態を受動的に確認できます。
 - **挿入失敗時の保護**：テキスト挿入に失敗しても、生成結果はクリップボードに残ります。
 - **Recent Results**：現在のセッション内の最新 10 件について、raw / 辞書補正後 / LLM 補正後 / 最終テキストを確認し、コピー、再挿入、辞書ルール保存ができます。
 - **Dictionary Workbench**：保存前にテスト文を入力し、補正結果と一致した辞書ルールを確認できます。
@@ -84,7 +84,7 @@ Dictionary ウィンドウには **Test Phrase** 入力があります。サン�
    - 入力監視
 5. 任意の入力欄にカーソルを置き、`Fn` を押して話し、離します。今回だけ Prompt Builder を使う場合は `Option + Fn` を使います。
 
-アクセシビリティを有効にしても VoiceInput が権限エラーを表示する場合は、VoiceInput を終了して開き直してください。更新後も失敗する場合は、アクセシビリティ / 入力監視から古い VoiceInput を削除し、`/Applications/VoiceInput.app` を追加し直してください。
+アクセシビリティを有効にしても VoiceInput が権限エラーを表示する場合は、**Readiness... -> Fix Permission** を使い、その後 VoiceInput を終了して開き直してください。更新後も失敗する場合は、アクセシビリティ / 入力監視から古い VoiceInput を削除し、`/Applications/VoiceInput.app` を追加し直してください。
 
 > 現在の GitHub DMG は **署名なし / notarized されていない** ビルドです。そのため、ダウンロードが正常でも macOS Gatekeeper が初回起動をブロックすることがあります。
 
@@ -99,7 +99,7 @@ macOS に "Apple could not verify VoiceInput" と表示された場合:
 ## メニューバー操作
 
 - **Language**：認識言語を切り替えます。
-- **Readiness...**：新しい権限要求を行わずに、アクセシビリティ、マイク、音声認識、LLM、辞書の状態を確認します。
+- **Readiness...**：新しい権限要求を行わずに、アクセシビリティ、入力監視、マイク、音声認識、LLM、辞書の状態を確認します。
 - **Dictionary...**：決定的な補正ルールを編集します。
 - **Recent Results...**：現在のセッション内の最新 10 件を確認し、素早く辞書補正を追加できます。
 - **LLM Refinement**：LLM 補正の有効化、設定、既定モード切替、`Fn` / `Option + Fn` ショートカット確認を行います。

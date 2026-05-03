@@ -32,6 +32,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private var enableMenuItem: NSMenuItem!
     private var permissionStatusMenuItem: NSMenuItem!
+    private var eventMonitorStartFailed = false
     private var llmMenuItem: NSMenuItem!
     private var llmModeItems: [NSMenuItem] = []
     private var defaultShortcutMenuItem: NSMenuItem!
@@ -104,9 +105,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             return DictionaryFilter.shared.userMap.count
         }
 
-        if !keyMonitor.start() {
-            disableForMissingAccessibilityPermission()
-        }
+        startKeyMonitorOrDisable()
     }
 
     // MARK: - Key events
@@ -506,9 +505,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         enableMenuItem.state = isEnabled ? .on : .off
 
         if isEnabled {
-            if !keyMonitor.start() {
-                disableForMissingAccessibilityPermission()
-            }
+            startKeyMonitorOrDisable()
         } else {
             keyMonitor.stop()
             resetActiveTranscriptionState()
@@ -574,7 +571,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func openPermissionDiagnostics() {
-        readinessWindow.present(ReadinessDiagnostics.capture())
+        readinessWindow.present(ReadinessDiagnostics.capture(eventMonitorStartFailed: eventMonitorStartFailed))
         updatePermissionStatusMenuItem()
     }
 
@@ -586,39 +583,41 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // MARK: - Alerts
 
     private func showAccessibilityAlert() {
+        let guidance = PermissionRecoveryGuidance.make(
+            diagnostics: PermissionDiagnostics.capture(),
+            eventMonitorStartFailed: eventMonitorStartFailed
+        )
         let alert = NSAlert()
-        alert.messageText = "Input Permission Required"
-        alert.informativeText = """
-            VoiceInput needs Accessibility permission to paste text and Input Monitoring permission to detect Fn key combinations.
-
-            1. Open System Settings → Privacy & Security → Accessibility
-            2. Add and enable VoiceInput
-            3. Open Input Monitoring and enable VoiceInput if it appears there
-            4. Quit and reopen VoiceInput
-
-            If VoiceInput is already enabled but this alert still appears, remove the old VoiceInput entry and add /Applications/VoiceInput.app again.
-            """
+        alert.messageText = guidance.title
+        alert.informativeText = guidance.detail
         alert.alertStyle = .warning
-        alert.addButton(withTitle: "Open Accessibility")
-        alert.addButton(withTitle: "Open Input Monitoring")
+        if guidance.primarySettingsURL != nil {
+            alert.addButton(withTitle: "Fix Permission")
+        }
         alert.addButton(withTitle: "OK")
 
         let response = alert.runModal()
         if response == .alertFirstButtonReturn,
-           let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
-            NSWorkspace.shared.open(
-                url
-            )
-        } else if response == .alertSecondButtonReturn,
-                  let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent") {
+           let url = guidance.primarySettingsURL {
             NSWorkspace.shared.open(url)
         }
     }
 
-    private func disableForMissingAccessibilityPermission() {
+    private func startKeyMonitorOrDisable() {
+        if keyMonitor.start() {
+            eventMonitorStartFailed = false
+            updatePermissionStatusMenuItem()
+        } else {
+            disableForInputPermissionIssue()
+        }
+    }
+
+    private func disableForInputPermissionIssue() {
+        eventMonitorStartFailed = true
         isEnabled = false
         enableMenuItem?.state = .off
         keyMonitor.stop()
+        updatePermissionStatusMenuItem()
         showAccessibilityAlert()
     }
 
@@ -655,7 +654,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func updatePermissionStatusMenuItem() {
-        permissionStatusMenuItem?.title = ReadinessDiagnostics.capture().menuTitle
+        permissionStatusMenuItem?.title = ReadinessDiagnostics.capture(
+            eventMonitorStartFailed: eventMonitorStartFailed
+        ).menuTitle
     }
 
     private func updateLastResultMenuItem() {

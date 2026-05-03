@@ -1,0 +1,37 @@
+# VoiceInput Release QA Checklist
+
+Use this checklist before a stable public release such as `v1.2.0`.
+
+## Installation And First Launch
+
+- Download the GitHub Release `VoiceInput.dmg`.
+- Mount the DMG and confirm `VoiceInput.app` is on the left and `Applications` is on the right.
+- Drag `VoiceInput.app` into `/Applications`.
+- First launch from `/Applications/VoiceInput.app`.
+- For unsigned builds, confirm the release notes explain that Developer ID signing and notarization are out of scope.
+
+## Permission Recovery
+
+- Fresh launch with no permissions granted.
+- Accessibility enabled but Input Monitoring missing.
+- Microphone missing.
+- Speech Recognition missing.
+- Permissions enabled after launch, then quit and reopen VoiceInput.
+- Remove stale VoiceInput entries from Accessibility / Input Monitoring and add `/Applications/VoiceInput.app` again.
+
+## Dictation Shortcuts
+
+- Pure `Fn` starts dictation.
+- `Option + Fn` starts Prompt Builder for the current dictation only.
+- `Fn + normal key` does not start dictation.
+- `Fn + Control` does not start dictation.
+
+## Core Product Paths
+
+- Insert into TextEdit.
+- Insert into a browser text field.
+- Insert into ChatGPT or Claude input.
+- Recent Results opens, copies final text, and retries insertion.
+- Dictionary test phrase works before save.
+- LLM disabled still runs Apple Speech + DictionaryFilter.
+- LLM enabled with a configured API key shows Ready state.

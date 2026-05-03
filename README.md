@@ -2,7 +2,7 @@
 
 ### Hold `Fn` to dictate. Release to insert text.
 
-> version-v1.1.6 | date-2026-05-03
+> version-v1.1.7 | date-2026-05-03
 
 [English](README.md) | [简体中文](README.zh-CN.md) | [日本語](README.ja.md) | [한국어](README.ko.md)
 
@@ -86,7 +86,7 @@ Open **Menu Bar -> LLM Refinement -> Settings** to configure an OpenAI-compatibl
    - Input Monitoring
 5. Put the cursor in any text field, hold `Fn`, speak, and release. Use `Option + Fn` when you want a one-off Prompt Builder dictation.
 
-If Accessibility is already enabled but VoiceInput still reports a permission failure, quit and reopen VoiceInput. If it still fails after an update, remove the old VoiceInput entry from Accessibility / Input Monitoring, then add `/Applications/VoiceInput.app` again.
+If Accessibility is already enabled but VoiceInput still reports a permission failure, use **Readiness... -> Fix Permission**, then quit and reopen VoiceInput. If it still fails after an update, remove the old VoiceInput entry from Accessibility / Input Monitoring, then add `/Applications/VoiceInput.app` again.
 
 > Current GitHub DMGs are **unsigned / not notarized** builds. This means macOS Gatekeeper may block the first launch even when the download is valid.
 
@@ -147,6 +147,7 @@ swift test --parallel
 - Add a matching `CHANGELOG.md` entry before every release, for example `## [v1.1.0] - YYYY-MM-DD`.
 - Run `make version-bump VERSION=v1.1.0` to update version metadata and create the tag.
 - Pushing a `v*` tag builds the macOS app, packages `VoiceInput.dmg`, and publishes GitHub Release notes from `CHANGELOG.md`.
+- Before a stable public release, run the manual coverage in `docs/release-qa-checklist.md`.
 - Major releases should update the README and product positioning.
 - Patch and minor releases should still have clear GitHub Release notes.
 
