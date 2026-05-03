@@ -54,7 +54,32 @@ final class ReleaseWorkflowTests: XCTestCase {
         )
         XCTAssertTrue(
             packageScript.contains("-srcfolder \"$STAGING_DIR\""),
-            "The compressed DMG must be created from the staging folder that contains the app and Applications shortcut."
+            "The layout source DMG must be created from the staging folder that contains the app and Applications shortcut."
+        )
+    }
+
+    func testReleaseDMGWritesFinderLayout() throws {
+        let packageScript = try String(contentsOfFile: "scripts/package-dmg.sh", encoding: .utf8)
+
+        XCTAssertTrue(
+            packageScript.contains(".DS_Store"),
+            "The DMG should persist Finder layout metadata instead of relying on default icon view."
+        )
+        XCTAssertTrue(
+            packageScript.contains("set icon size of icon view options of container window of dmgFolder to 128"),
+            "The DMG Finder view should use larger 128 point icons."
+        )
+        XCTAssertTrue(
+            packageScript.contains("set arrangement of icon view options of container window of dmgFolder to not arranged"),
+            "Finder should not auto-sort the DMG icons after explicit positioning."
+        )
+        XCTAssertTrue(
+            packageScript.contains("set position of item \"VoiceInput.app\" of dmgFolder to {200, 180}"),
+            "VoiceInput.app should be on the left side of the install window."
+        )
+        XCTAssertTrue(
+            packageScript.contains("set position of item \"Applications\" of dmgFolder to {520, 180}"),
+            "Applications should be on the right side of the install window."
         )
     }
 
@@ -86,17 +111,17 @@ final class ReleaseWorkflowTests: XCTestCase {
         XCTAssertTrue(changelog.contains("右键 `VoiceInput.app`"))
     }
 
-    func testVersionMetadataIsBumpedForV113() throws {
+    func testVersionMetadataIsBumpedForV114() throws {
         let englishReadme = try String(contentsOfFile: "README.md", encoding: .utf8)
-        XCTAssertTrue(englishReadme.contains("version-v1.1.3"))
+        XCTAssertTrue(englishReadme.contains("version-v1.1.4"))
 
         let rootPlist = NSDictionary(contentsOf: URL(fileURLWithPath: "Info.plist"))
-        XCTAssertEqual(rootPlist?["CFBundleShortVersionString"] as? String, "1.1.3")
-        XCTAssertEqual(rootPlist?["CFBundleVersion"] as? String, "1.1.3")
+        XCTAssertEqual(rootPlist?["CFBundleShortVersionString"] as? String, "1.1.4")
+        XCTAssertEqual(rootPlist?["CFBundleVersion"] as? String, "1.1.4")
 
         let appPlist = NSDictionary(contentsOf: URL(fileURLWithPath: "VoiceInput.app/Contents/Info.plist"))
-        XCTAssertEqual(appPlist?["CFBundleShortVersionString"] as? String, "1.1.3")
-        XCTAssertEqual(appPlist?["CFBundleVersion"] as? String, "1.1.3")
+        XCTAssertEqual(appPlist?["CFBundleShortVersionString"] as? String, "1.1.4")
+        XCTAssertEqual(appPlist?["CFBundleVersion"] as? String, "1.1.4")
     }
 
     func testModifierChordFixReleaseNotesArePublishedForV113() throws {
@@ -105,5 +130,14 @@ final class ReleaseWorkflowTests: XCTestCase {
         XCTAssertTrue(changelog.contains("## [v1.1.3] - 2026-05-03"))
         XCTAssertTrue(changelog.contains("Fn + Control"))
         XCTAssertTrue(changelog.contains("纯 `Fn` 和纯 `Option + Fn`"))
+    }
+
+    func testDMGLayoutReleaseNotesArePublishedForV114() throws {
+        let changelog = try String(contentsOfFile: "CHANGELOG.md", encoding: .utf8)
+
+        XCTAssertTrue(changelog.contains("## [v1.1.4] - 2026-05-03"))
+        XCTAssertTrue(changelog.contains("图标大小"))
+        XCTAssertTrue(changelog.contains("左侧"))
+        XCTAssertTrue(changelog.contains("右侧"))
     }
 }
