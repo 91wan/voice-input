@@ -3,13 +3,28 @@ import XCTest
 @testable import VoiceInput
 
 final class TextInjectorTests: XCTestCase {
+    private func assertWrite(
+        _ item: NSPasteboardItem,
+        to pasteboard: NSPasteboard,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        for _ in 0..<3 {
+            if pasteboard.writeObjects([item]) {
+                return
+            }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.01))
+        }
+        XCTFail("Failed to write test item to pasteboard", file: file, line: line)
+    }
+
     func testInjectFailsFastWithoutAccessibilityPermission() throws {
         let pasteboard = NSPasteboard.withUniqueName()
         pasteboard.clearContents()
 
         let initialItem = NSPasteboardItem()
         initialItem.setString("original", forType: .string)
-        XCTAssertTrue(pasteboard.writeObjects([initialItem]))
+        assertWrite(initialItem, to: pasteboard)
         let initialChangeCount = pasteboard.changeCount
 
         let injector = TextInjector(
@@ -31,8 +46,9 @@ final class TextInjectorTests: XCTestCase {
     func testAccessibilityFailureExplainsStalePermissionState() {
         let message = TextInjectionFailure.accessibilityPermissionMissing.localizedDescription
 
-        XCTAssertTrue(message.localizedCaseInsensitiveContains("not active"))
-        XCTAssertTrue(message.localizedCaseInsensitiveContains("quit"))
+        XCTAssertTrue(message.contains("Failed: Accessibility permission is missing or stale."))
+        XCTAssertTrue(message.contains("Next:"))
+        XCTAssertTrue(message.contains("Reopen:"))
         XCTAssertTrue(message.contains("/Applications/VoiceInput.app"))
     }
 
@@ -62,7 +78,7 @@ final class TextInjectorTests: XCTestCase {
 
         let initialItem = NSPasteboardItem()
         initialItem.setString("original", forType: .string)
-        XCTAssertTrue(pasteboard.writeObjects([initialItem]))
+        assertWrite(initialItem, to: pasteboard)
 
         let injector = TextInjector(
             pasteboard: pasteboard,
@@ -89,14 +105,14 @@ final class TextInjectorTests: XCTestCase {
         item.setData(customData, forType: customType)
 
         pasteboard.clearContents()
-        XCTAssertTrue(pasteboard.writeObjects([item]))
+        assertWrite(item, to: pasteboard)
 
         let snapshot = PasteboardSnapshot.capture(from: pasteboard)
 
         pasteboard.clearContents()
         let temporaryItem = NSPasteboardItem()
         temporaryItem.setString("temporary", forType: .string)
-        XCTAssertTrue(pasteboard.writeObjects([temporaryItem]))
+        assertWrite(temporaryItem, to: pasteboard)
 
         snapshot.restore(to: pasteboard)
 

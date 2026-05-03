@@ -2,7 +2,7 @@
 
 ### Hold `Fn` to dictate. Release to insert text.
 
-> version-v1.3.0 | date-2026-05-03
+> version-v1.4.0 | date-2026-05-03
 
 [English](README.md) | [简体中文](README.zh-CN.md) | [日本語](README.ja.md) | [한국어](README.ko.md)
 
@@ -86,7 +86,7 @@ Open **Menu Bar -> LLM Refinement -> Settings** to configure an OpenAI-compatibl
    - Input Monitoring
 5. Put the cursor in any text field, hold `Fn`, speak, and release. Use `Option + Fn` when you want a one-off Prompt Builder dictation.
 
-If Accessibility is already enabled but VoiceInput still reports a permission failure, use **Readiness... -> Fix Permission**, then quit and reopen VoiceInput. If it still fails after an update, remove the old VoiceInput entry from Accessibility / Input Monitoring, then add `/Applications/VoiceInput.app` again.
+If Accessibility is already enabled but VoiceInput still reports a permission failure, use **Readiness... -> Fix Permission**. Permission messages now use a **Failed / Next / Reopen** format so you can see the failed permission, the next recovery action, and whether VoiceInput must be reopened. If it still fails after an update, remove the old VoiceInput entry from Accessibility / Input Monitoring, then add `/Applications/VoiceInput.app` again.
 
 For updates, replace the old app in `/Applications`, quit any running VoiceInput instance, and reopen it from `/Applications/VoiceInput.app`. If macOS keeps an old permission record after updating, remove the stale VoiceInput entry from Accessibility and Input Monitoring, then add the current `/Applications/VoiceInput.app` again.
 

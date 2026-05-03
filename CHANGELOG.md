@@ -4,6 +4,15 @@
 
 ---
 
+## [v1.4.0] - 2026-05-03
+
+### 变更
+- First-Run / Permission Repair：权限恢复文案统一为 `Failed / Next / Reopen` 结构，覆盖 Readiness、权限 alert 和插入失败提示。
+- Readiness 中缺失权限不再只显示 `Missing`，而是直接展示失败点、下一步动作和是否需要重开 VoiceInput。
+- 麦克风、语音识别、Accessibility / Input Monitoring stale permission 场景都补充自动化覆盖。
+
+---
+
 ## [v1.3.0] - 2026-05-03
 
 ### 新增

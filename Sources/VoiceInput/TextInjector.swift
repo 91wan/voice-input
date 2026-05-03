@@ -13,7 +13,15 @@ enum TextInjectionFailure: LocalizedError, Equatable {
         case .emptyText:
             return "Nothing to paste."
         case .accessibilityPermissionMissing:
-            return "Paste failed. Accessibility is not active for this app copy. Quit and reopen VoiceInput, or remove and re-add /Applications/VoiceInput.app in System Settings."
+            return PermissionRecoveryGuidance.make(
+                diagnostics: .make(
+                    accessibilityTrusted: false,
+                    inputMonitoringAccess: .granted,
+                    microphoneAuthorization: .authorized,
+                    speechAuthorization: .authorized
+                ),
+                eventMonitorStartFailed: false
+            ).detail
         case .pasteboardWriteFailed:
             return "Paste failed. VoiceInput couldn't write to the clipboard."
         case .pasteCommandFailed:

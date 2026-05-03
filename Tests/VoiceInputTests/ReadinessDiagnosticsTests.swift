@@ -68,6 +68,14 @@ final class ReadinessDiagnosticsTests: XCTestCase {
         XCTAssertEqual(readiness.title, "VoiceInput needs attention")
         XCTAssertEqual(readiness.menuTitle, "Readiness: Needs Attention")
         XCTAssertEqual(readiness.primaryAction, .openAccessibilitySettings)
+        XCTAssertTrue(
+            readiness.items.first(where: { $0.title == "Accessibility" })?.detail
+                .contains("Failed: Accessibility permission is missing or stale.") == true
+        )
+        XCTAssertTrue(
+            readiness.items.first(where: { $0.title == "Input Monitoring" })?.detail
+                .contains("Next: Open System Settings -> Privacy & Security -> Input Monitoring") == true
+        )
         XCTAssertEqual(readiness.items.first(where: { $0.title == "Dictionary" })?.state, .attention)
         XCTAssertEqual(readiness.items.first(where: { $0.title == "Dictionary" })?.action, .openDictionary)
     }
@@ -92,6 +100,7 @@ final class ReadinessDiagnosticsTests: XCTestCase {
         XCTAssertNil(readiness.primaryAction)
         XCTAssertEqual(readiness.items.first?.title, "Reopen VoiceInput")
         XCTAssertTrue(readiness.items.first?.detail.localizedCaseInsensitiveContains("quit and reopen") == true)
+        XCTAssertTrue(readiness.items.first?.detail.contains("Reopen: Required.") == true)
         XCTAssertTrue(readiness.items.first?.detail.contains("/Applications/VoiceInput.app") == true)
     }
 }
