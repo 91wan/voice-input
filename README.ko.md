@@ -58,7 +58,7 @@ my project -> MyProject
 ~/Library/Application Support/VoiceInput/dictionary.json
 ```
 
-Dictionary 창에는 **Test Phrase** 입력이 포함됩니다. 예시 문장을 입력하면 사전 적용 후 출력과 매칭된 규칙을 바로 확인할 수 있으며, 잘못된 규칙 형식은 저장 전에 표시됩니다.
+Dictionary 창에는 **Test Phrase** 입력이 포함됩니다. 예시 문장을 입력하면 사전 적용 후 출력과 매칭된 규칙을 바로 확인할 수 있습니다. **Import...** 로 텍스트 파일의 규칙을 편집 가능한 형태로 불러오고, **Export...** 로 현재 규칙을 휴대 가능한 텍스트 파일로 저장할 수 있습니다. 가져온 규칙은 **Save** 를 누르기 전까지 저장된 사전을 자동으로 덮어쓰지 않습니다. 잘못된 규칙 형식은 저장/내보내기 전에 표시됩니다.
 
 ### LLM 보정
 
@@ -156,6 +156,7 @@ Sources/VoiceInput/
   KeyMonitor.swift           Fn 키 감지
   SpeechEngine.swift         Apple Speech 녹음과 인식
   DictionaryFilter.swift     결정적 사전 보정 레이어
+  DictionaryDocument.swift   사전 가져오기/내보내기 정규화
   DictionaryWorkbench.swift  사전 테스트 문장 평가
   LLMRefiner.swift           선택적 OpenAI 호환 보정
   TextInjector.swift         커서 삽입과 클립보드 보호

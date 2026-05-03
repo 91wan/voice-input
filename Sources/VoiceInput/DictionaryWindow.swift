@@ -1,4 +1,5 @@
 import AppKit
+import UniformTypeIdentifiers
 
 final class DictionaryWindow: NSPanel, NSTextViewDelegate, NSTextFieldDelegate {
     private let textView = NSTextView()
@@ -100,6 +101,16 @@ final class DictionaryWindow: NSPanel, NSTextViewDelegate, NSTextFieldDelegate {
         statusLabel.maximumNumberOfLines = 3
         cv.addSubview(statusLabel)
 
+        let importButton = NSButton(title: "Import...", target: self, action: #selector(importDictionary))
+        importButton.translatesAutoresizingMaskIntoConstraints = false
+        importButton.bezelStyle = .rounded
+        cv.addSubview(importButton)
+
+        let exportButton = NSButton(title: "Export...", target: self, action: #selector(exportDictionary))
+        exportButton.translatesAutoresizingMaskIntoConstraints = false
+        exportButton.bezelStyle = .rounded
+        cv.addSubview(exportButton)
+
         let saveButton = NSButton(title: "Save", target: self, action: #selector(save))
         saveButton.translatesAutoresizingMaskIntoConstraints = false
         saveButton.keyEquivalent = "\r"
@@ -128,10 +139,16 @@ final class DictionaryWindow: NSPanel, NSTextViewDelegate, NSTextFieldDelegate {
             workbenchStack.trailingAnchor.constraint(equalTo: workbenchContentView.trailingAnchor, constant: -8),
             workbenchStack.bottomAnchor.constraint(equalTo: workbenchContentView.bottomAnchor, constant: -8),
 
-            statusLabel.leadingAnchor.constraint(equalTo: cv.leadingAnchor, constant: 16),
+            statusLabel.leadingAnchor.constraint(equalTo: exportButton.trailingAnchor, constant: 12),
             statusLabel.topAnchor.constraint(greaterThanOrEqualTo: scrollView.bottomAnchor, constant: 12),
             statusLabel.centerYAnchor.constraint(equalTo: saveButton.centerYAnchor),
             statusLabel.trailingAnchor.constraint(lessThanOrEqualTo: saveButton.leadingAnchor, constant: -8),
+
+            importButton.leadingAnchor.constraint(equalTo: cv.leadingAnchor, constant: 16),
+            importButton.bottomAnchor.constraint(equalTo: cv.bottomAnchor, constant: -16),
+
+            exportButton.leadingAnchor.constraint(equalTo: importButton.trailingAnchor, constant: 8),
+            exportButton.centerYAnchor.constraint(equalTo: importButton.centerYAnchor),
 
             saveButton.trailingAnchor.constraint(equalTo: cv.trailingAnchor, constant: -16),
             saveButton.bottomAnchor.constraint(equalTo: cv.bottomAnchor, constant: -16),
@@ -181,6 +198,40 @@ final class DictionaryWindow: NSPanel, NSTextViewDelegate, NSTextFieldDelegate {
         }
     }
 
+    @objc private func importDictionary() {
+        let panel = NSOpenPanel()
+        panel.title = "Import Dictionary"
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [.plainText, .text]
+
+        panel.beginSheetModal(for: self) { [weak self] response in
+            guard response == .OK, let url = panel.url else { return }
+            self?.loadImportedDictionary(from: url)
+        }
+    }
+
+    @objc private func exportDictionary() {
+        let exportResult: DictionaryDocumentExportResult
+        do {
+            exportResult = try DictionaryDocument.export(textView.string)
+        } catch {
+            showStatus("导出失败：\(error.localizedDescription)", style: .error, autoClear: false)
+            return
+        }
+
+        let panel = NSSavePanel()
+        panel.title = "Export Dictionary"
+        panel.nameFieldStringValue = "voiceinput-dictionary.txt"
+        panel.allowedContentTypes = [.plainText]
+        panel.canCreateDirectories = true
+
+        panel.beginSheetModal(for: self) { [weak self] response in
+            guard response == .OK, let url = panel.url else { return }
+            self?.writeExportedDictionary(exportResult, to: url)
+        }
+    }
+
     func textDidChange(_ notification: Notification) {
         refreshWorkbench()
     }
@@ -213,6 +264,53 @@ final class DictionaryWindow: NSPanel, NSTextViewDelegate, NSTextFieldDelegate {
             queue: .main
         ) { [weak self] _ in
             self?.refreshActivityLabel()
+        }
+    }
+
+    private func loadImportedDictionary(from url: URL) {
+        do {
+            let text = try String(contentsOf: url, encoding: .utf8)
+            let importResult = try DictionaryDocument.importText(text)
+            textView.string = importResult.rulesText
+            refreshWorkbench()
+
+            if importResult.warnings.isEmpty {
+                showStatus(
+                    "已导入 \(importResult.dictionary.count) 条规则。请检查后点击 Save。",
+                    style: .success,
+                    autoClear: false
+                )
+            } else {
+                let summary = DictionaryParseResult(
+                    dictionary: importResult.dictionary,
+                    issues: importResult.warnings
+                ).summary()
+                showStatus(
+                    "已导入 \(importResult.dictionary.count) 条规则。注意：\(summary)。请检查后点击 Save。",
+                    style: .warning,
+                    autoClear: false
+                )
+            }
+        } catch {
+            showStatus("导入失败：\(error.localizedDescription)", style: .error, autoClear: false)
+        }
+    }
+
+    private func writeExportedDictionary(_ exportResult: DictionaryDocumentExportResult, to url: URL) {
+        do {
+            try exportResult.rulesText.write(to: url, atomically: true, encoding: .utf8)
+            if exportResult.warnings.isEmpty {
+                showStatus("已导出词典到 \(url.lastPathComponent)", style: .success, autoClear: true)
+            } else {
+                let summary = DictionaryParseResult(dictionary: [:], issues: exportResult.warnings).summary()
+                showStatus(
+                    "已导出词典到 \(url.lastPathComponent)。注意：\(summary)",
+                    style: .warning,
+                    autoClear: false
+                )
+            }
+        } catch {
+            showStatus("导出失败：\(error.localizedDescription)", style: .error, autoClear: false)
         }
     }
 
