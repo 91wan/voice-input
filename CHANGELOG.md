@@ -4,6 +4,15 @@
 
 ---
 
+## [v1.2.0] - 2026-05-03
+
+### 文档
+- 补齐首次安装完整路径：下载 DMG、左侧拖拽 `VoiceInput.app` 到右侧 `Applications`、再从 `/Applications/VoiceInput.app` 启动。
+- 补齐更新后权限失效恢复路径：覆盖安装后退出重开，必要时移除旧 Accessibility / Input Monitoring 条目并重新添加当前 `/Applications/VoiceInput.app`。
+- 将 `docs/release-qa-checklist.md` 明确为 stable Release QA checklist，覆盖安装、首次启动、权限、`Fn` / `Option + Fn`、Recent Results、Dictionary 和 LLM disabled/enabled 路径。
+
+---
+
 ## [v1.1.7] - 2026-05-03
 
 ### 修复
