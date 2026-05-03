@@ -84,7 +84,7 @@ Dictionary ウィンドウには **Test Phrase** 入力があります。サン�
    - 入力監視
 5. 任意の入力欄にカーソルを置き、`Fn` を押して話し、離します。今回だけ Prompt Builder を使う場合は `Option + Fn` を使います。
 
-アクセシビリティを有効にしても VoiceInput が権限エラーを表示する場合は、**Readiness... -> Fix Permission** を使い、その後 VoiceInput を終了して開き直してください。更新後も失敗する場合は、アクセシビリティ / 入力監視から古い VoiceInput を削除し、`/Applications/VoiceInput.app` を追加し直してください。
+アクセシビリティを有効にしても VoiceInput が権限エラーを表示する場合は、**Readiness... -> Fix Permission** を使ってください。権限メッセージは **Failed / Next / Reopen** 形式で、失敗した権限、次の復旧手順、VoiceInput の再起動が必要かを示します。更新後も失敗する場合は、アクセシビリティ / 入力監視から古い VoiceInput を削除し、`/Applications/VoiceInput.app` を追加し直してください。
 
 > 現在の GitHub DMG は **署名なし / notarized されていない** ビルドです。そのため、ダウンロードが正常でも macOS Gatekeeper が初回起動をブロックすることがあります。
 

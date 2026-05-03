@@ -69,6 +69,9 @@ struct PermissionDiagnostic: Equatable {
 
 struct PermissionRecoveryGuidance: Equatable {
     let title: String
+    let failurePoint: String
+    let nextStep: String
+    let reopenInstruction: String
     let detail: String
     let primarySettingsURL: URL?
     let requiresReopenOnly: Bool
@@ -78,67 +81,150 @@ struct PermissionRecoveryGuidance: Equatable {
         eventMonitorStartFailed: Bool
     ) -> PermissionRecoveryGuidance {
         if !diagnostics.accessibility.isReady {
-            return PermissionRecoveryGuidance(
-                title: "Fix Accessibility Permission",
-                detail: """
-                Open System Settings -> Privacy & Security -> Accessibility, enable VoiceInput, then quit and reopen VoiceInput.
-
-                If the entry is already enabled but still fails, remove the old VoiceInput entry and add /Applications/VoiceInput.app again.
-                """,
-                primarySettingsURL: diagnostics.accessibility.settingsURL,
-                requiresReopenOnly: false
-            )
+            return accessibilityGuidance(settingsURL: diagnostics.accessibility.settingsURL)
         }
 
         if !diagnostics.inputMonitoring.isReady {
-            return PermissionRecoveryGuidance(
-                title: "Fix Input Monitoring Permission",
-                detail: """
-                Open System Settings -> Privacy & Security -> Input Monitoring, enable VoiceInput, then quit and reopen VoiceInput.
-
-                If the entry is already enabled but still fails, remove the old VoiceInput entry and add /Applications/VoiceInput.app again.
-                """,
-                primarySettingsURL: diagnostics.inputMonitoring.settingsURL,
-                requiresReopenOnly: false
-            )
+            return inputMonitoringGuidance(settingsURL: diagnostics.inputMonitoring.settingsURL)
         }
 
         if !diagnostics.microphone.isReady {
-            return PermissionRecoveryGuidance(
-                title: "Fix Microphone Permission",
-                detail: "Open System Settings -> Privacy & Security -> Microphone and enable VoiceInput.",
-                primarySettingsURL: diagnostics.microphone.settingsURL,
-                requiresReopenOnly: false
-            )
+            return microphoneGuidance(settingsURL: diagnostics.microphone.settingsURL)
         }
 
         if !diagnostics.speechRecognition.isReady {
-            return PermissionRecoveryGuidance(
-                title: "Fix Speech Recognition Permission",
-                detail: "Open System Settings -> Privacy & Security -> Speech Recognition and enable VoiceInput.",
-                primarySettingsURL: diagnostics.speechRecognition.settingsURL,
-                requiresReopenOnly: false
-            )
+            return speechRecognitionGuidance(settingsURL: diagnostics.speechRecognition.settingsURL)
         }
 
         if eventMonitorStartFailed {
-            return PermissionRecoveryGuidance(
+            return make(
                 title: "Reopen VoiceInput Required",
-                detail: """
-                System permissions appear enabled, but VoiceInput's input monitor is not active yet. Quit and reopen VoiceInput.
-
-                If it still fails, remove VoiceInput from Accessibility and Input Monitoring, then add /Applications/VoiceInput.app again.
-                """,
+                failurePoint: "Input monitor is not active even though permissions appear enabled.",
+                nextStep: "Quit and reopen VoiceInput. If it still fails, remove VoiceInput from Accessibility and Input Monitoring, then add /Applications/VoiceInput.app again.",
+                reopenInstruction: "Required.",
                 primarySettingsURL: nil,
                 requiresReopenOnly: true
             )
         }
 
-        return PermissionRecoveryGuidance(
+        return make(
             title: "Permissions Ready",
-            detail: "All required permissions are active.",
+            failurePoint: "No permission failure detected.",
+            nextStep: "No action required.",
+            reopenInstruction: "Not required.",
             primarySettingsURL: nil,
             requiresReopenOnly: false
+        )
+    }
+
+    static func make(issue: SpeechPermissionIssue) -> PermissionRecoveryGuidance {
+        switch issue {
+        case .microphoneDenied:
+            return microphoneGuidance(settingsURL: issue.settingsURL)
+        case .speechRecognitionDenied:
+            return speechRecognitionGuidance(settingsURL: issue.settingsURL)
+        case .speechRecognitionNotDetermined:
+            return make(
+                title: "Approve Speech Recognition Permission",
+                failurePoint: "Speech Recognition permission has not been decided yet.",
+                nextStep: "Start dictation again and approve the system permission prompt.",
+                reopenInstruction: "Reopen VoiceInput if the status does not refresh.",
+                primarySettingsURL: nil,
+                requiresReopenOnly: false
+            )
+        case .unknownAuthorizationStatus:
+            return make(
+                title: "Check Speech Recognition Permission",
+                failurePoint: "Speech Recognition permission is in an unknown state.",
+                nextStep: "Open System Settings -> Privacy & Security -> Speech Recognition and verify VoiceInput.",
+                reopenInstruction: "Reopen VoiceInput if the status does not refresh.",
+                primarySettingsURL: SpeechPermissionIssue.speechRecognitionDenied.settingsURL,
+                requiresReopenOnly: false
+            )
+        }
+    }
+
+    static func make(for diagnostic: PermissionDiagnostic) -> PermissionRecoveryGuidance? {
+        guard !diagnostic.isReady else { return nil }
+
+        switch diagnostic.name {
+        case "Accessibility":
+            return accessibilityGuidance(settingsURL: diagnostic.settingsURL)
+        case "Input Monitoring":
+            return inputMonitoringGuidance(settingsURL: diagnostic.settingsURL)
+        case "Microphone":
+            return microphoneGuidance(settingsURL: diagnostic.settingsURL)
+        case "Speech Recognition":
+            return speechRecognitionGuidance(settingsURL: diagnostic.settingsURL)
+        default:
+            return nil
+        }
+    }
+
+    private static func accessibilityGuidance(settingsURL: URL?) -> PermissionRecoveryGuidance {
+        make(
+            title: "Fix Accessibility Permission",
+            failurePoint: "Accessibility permission is missing or stale.",
+            nextStep: "Open System Settings -> Privacy & Security -> Accessibility, enable VoiceInput. If already enabled, remove the old VoiceInput entry and add /Applications/VoiceInput.app again.",
+            reopenInstruction: "Quit and reopen VoiceInput after changing this permission.",
+            primarySettingsURL: settingsURL,
+            requiresReopenOnly: false
+        )
+    }
+
+    private static func inputMonitoringGuidance(settingsURL: URL?) -> PermissionRecoveryGuidance {
+        make(
+            title: "Fix Input Monitoring Permission",
+            failurePoint: "Input Monitoring permission is missing or stale.",
+            nextStep: "Open System Settings -> Privacy & Security -> Input Monitoring, enable VoiceInput. If already enabled, remove the old VoiceInput entry and add /Applications/VoiceInput.app again.",
+            reopenInstruction: "Quit and reopen VoiceInput after changing this permission.",
+            primarySettingsURL: settingsURL,
+            requiresReopenOnly: false
+        )
+    }
+
+    private static func microphoneGuidance(settingsURL: URL?) -> PermissionRecoveryGuidance {
+        make(
+            title: "Fix Microphone Permission",
+            failurePoint: "Microphone permission is missing.",
+            nextStep: "Open System Settings -> Privacy & Security -> Microphone and enable VoiceInput.",
+            reopenInstruction: "Reopen VoiceInput if the status does not refresh.",
+            primarySettingsURL: settingsURL,
+            requiresReopenOnly: false
+        )
+    }
+
+    private static func speechRecognitionGuidance(settingsURL: URL?) -> PermissionRecoveryGuidance {
+        make(
+            title: "Fix Speech Recognition Permission",
+            failurePoint: "Speech Recognition permission is missing.",
+            nextStep: "Open System Settings -> Privacy & Security -> Speech Recognition and enable VoiceInput.",
+            reopenInstruction: "Reopen VoiceInput if the status does not refresh.",
+            primarySettingsURL: settingsURL,
+            requiresReopenOnly: false
+        )
+    }
+
+    private static func make(
+        title: String,
+        failurePoint: String,
+        nextStep: String,
+        reopenInstruction: String,
+        primarySettingsURL: URL?,
+        requiresReopenOnly: Bool
+    ) -> PermissionRecoveryGuidance {
+        PermissionRecoveryGuidance(
+            title: title,
+            failurePoint: failurePoint,
+            nextStep: nextStep,
+            reopenInstruction: reopenInstruction,
+            detail: """
+            Failed: \(failurePoint)
+            Next: \(nextStep)
+            Reopen: \(reopenInstruction)
+            """,
+            primarySettingsURL: primarySettingsURL,
+            requiresReopenOnly: requiresReopenOnly
         )
     }
 }

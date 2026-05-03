@@ -6,7 +6,11 @@ final class SpeechPermissionIssueTests: XCTestCase {
     func testMicrophoneIssueExposesMessageAndSettingsLink() {
         XCTAssertEqual(
             SpeechPermissionIssue.microphoneDenied.message,
-            "Microphone access denied.\nGrant in System Settings → Privacy & Security → Microphone."
+            """
+            Failed: Microphone permission is missing.
+            Next: Open System Settings -> Privacy & Security -> Microphone and enable VoiceInput.
+            Reopen: Reopen VoiceInput if the status does not refresh.
+            """
         )
         XCTAssertEqual(
             SpeechPermissionIssue.microphoneDenied.settingsURL?.absoluteString,
@@ -17,7 +21,11 @@ final class SpeechPermissionIssueTests: XCTestCase {
     func testSpeechRecognitionIssueExposesMessageAndSettingsLink() {
         XCTAssertEqual(
             SpeechPermissionIssue.speechRecognitionDenied.message,
-            "Speech recognition denied.\nGrant in System Settings → Privacy & Security → Speech Recognition."
+            """
+            Failed: Speech Recognition permission is missing.
+            Next: Open System Settings -> Privacy & Security -> Speech Recognition and enable VoiceInput.
+            Reopen: Reopen VoiceInput if the status does not refresh.
+            """
         )
         XCTAssertEqual(
             SpeechPermissionIssue.speechRecognitionDenied.settingsURL?.absoluteString,
@@ -28,7 +36,11 @@ final class SpeechPermissionIssueTests: XCTestCase {
     func testNotDeterminedIssueDoesNotExposeSettingsLink() {
         XCTAssertEqual(
             SpeechPermissionIssue.speechRecognitionNotDetermined.message,
-            "Speech recognition permission not determined."
+            """
+            Failed: Speech Recognition permission has not been decided yet.
+            Next: Start dictation again and approve the system permission prompt.
+            Reopen: Reopen VoiceInput if the status does not refresh.
+            """
         )
         XCTAssertNil(SpeechPermissionIssue.speechRecognitionNotDetermined.settingsURL)
     }

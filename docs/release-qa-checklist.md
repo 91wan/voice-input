@@ -25,6 +25,7 @@ Use this checklist before a stable public release such as `v1.2.0`.
 - Speech Recognition missing.
 - Permissions enabled after launch, then quit and reopen VoiceInput.
 - Remove stale VoiceInput entries from Accessibility / Input Monitoring and add `/Applications/VoiceInput.app` again.
+- Permission errors use the `Failed / Next / Reopen` format.
 
 ## Dictation Shortcuts
 

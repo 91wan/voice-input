@@ -138,10 +138,13 @@ struct ReadinessDiagnostics: Equatable {
 
     private static func item(from diagnostic: PermissionDiagnostic, action: ReadinessAction) -> ReadinessItem {
         let state: ReadinessState = diagnostic.isReady ? .ready : .attention
+        let detail = PermissionRecoveryGuidance.make(for: diagnostic)?
+            .detail
+            .replacingOccurrences(of: "\n", with: " ") ?? diagnostic.state.displayText
         return ReadinessItem(
             title: diagnostic.name,
             state: state,
-            detail: diagnostic.state.displayText,
+            detail: detail,
             action: diagnostic.isReady ? nil : action
         )
     }

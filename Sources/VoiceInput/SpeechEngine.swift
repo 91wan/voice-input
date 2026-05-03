@@ -9,14 +9,8 @@ enum SpeechPermissionIssue: Equatable {
 
     var message: String {
         switch self {
-        case .microphoneDenied:
-            return "Microphone access denied.\nGrant in System Settings → Privacy & Security → Microphone."
-        case .speechRecognitionDenied:
-            return "Speech recognition denied.\nGrant in System Settings → Privacy & Security → Speech Recognition."
-        case .speechRecognitionNotDetermined:
-            return "Speech recognition permission not determined."
-        case .unknownAuthorizationStatus:
-            return "Unknown speech recognition authorization status."
+        case .microphoneDenied, .speechRecognitionDenied, .speechRecognitionNotDetermined, .unknownAuthorizationStatus:
+            return PermissionRecoveryGuidance.make(issue: self).detail
         }
     }
 
