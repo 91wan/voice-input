@@ -71,6 +71,7 @@ Dictionary 창에는 **Test Phrase** 입력이 포함됩니다. 예시 문장을
 - **Precise Dictation** 은 말한 내용에 가까운 결과를 유지합니다.
 - **Prompt Builder** 는 음성 메모를 ChatGPT, Claude, Cursor 등에 넣기 좋은 구조화된 프롬프트로 정리합니다.
 - `Fn`은 선택된 기본 모드를 사용합니다. `Option + Fn`은 기본 설정을 바꾸지 않고 이번 입력에만 Prompt Builder를 사용합니다.
+- LLM이 비활성화되었거나 설정되지 않아도 일반 `Fn`은 Apple Speech + DictionaryFilter로 동작하며 추가 오류를 만들지 않습니다.
 
 ## 빠른 시작
 
@@ -99,7 +100,7 @@ macOS에 "Apple could not verify VoiceInput" 이 표시되면:
 ## 메뉴 막대 제어
 
 - **Language**: 인식 언어를 전환합니다.
-- **Readiness...**: 새 권한 요청 없이 손쉬운 사용, 입력 모니터링, 마이크, 음성 인식, LLM, 사전 상태를 확인합니다.
+- **Readiness...**: 새 권한 요청 없이 손쉬운 사용, 입력 모니터링, 마이크, 음성 인식, 현재 받아쓰기 모드, LLM, 사전 상태를 확인합니다.
 - **Dictionary...**: 결정적 보정 규칙을 편집합니다.
 - **Recent Results...**: 현재 세션의 최근 10개 결과를 확인하고 빠르게 사전 보정을 추가합니다.
 - **LLM Refinement**: LLM 보정 활성화, 설정, 기본 모드 전환, `Fn` / `Option + Fn` 단축키 확인을 관리합니다.

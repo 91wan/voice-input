@@ -19,6 +19,7 @@ final class LastTranscriptionResultTests: XCTestCase {
             dictionaryResult: dictionaryResult,
             resolvedOutput: resolved,
             refinedText: "TypeScript prompt.",
+            dictationMode: .promptBuilder,
             refinementMode: .promptBuilder,
             injectionResult: nil
         )
@@ -28,9 +29,26 @@ final class LastTranscriptionResultTests: XCTestCase {
         XCTAssertEqual(result.refinedText, "TypeScript prompt.")
         XCTAssertEqual(result.finalText, "TypeScript prompt.")
         XCTAssertTrue(result.wasLLMRefined)
+        XCTAssertEqual(result.dictationModeSummary, "Mode: Prompt Builder")
         XCTAssertEqual(result.refinementSummary, "LLM: Prompt Builder")
         XCTAssertEqual(result.dictionarySummary, "type script → TypeScript")
         XCTAssertEqual(result.injectionSummary, "Insertion: pending")
+    }
+
+    func testTracksDictationModeEvenWhenLLMIsNotUsed() {
+        let result = LastTranscriptionResult.make(
+            rawText: "make a prompt",
+            dictionaryResult: DictionaryApplyResult(text: "make a prompt", matches: []),
+            resolvedOutput: TranscriptionResolution.Output(text: "make a prompt", wasLLMRefined: false),
+            refinedText: nil,
+            dictationMode: .promptBuilder,
+            refinementMode: nil,
+            injectionResult: nil
+        )
+
+        XCTAssertEqual(result.dictationMode, .promptBuilder)
+        XCTAssertEqual(result.dictationModeSummary, "Mode: Prompt Builder")
+        XCTAssertEqual(result.refinementSummary, "LLM: not used")
     }
 
     func testDefaultRuleDraftIsAvailableOnlyWhenRawAndFinalDiffer() {
@@ -68,6 +86,7 @@ final class LastTranscriptionResultTests: XCTestCase {
             finalText: "hello",
             dictionaryMatches: [],
             wasLLMRefined: false,
+            dictationMode: .precise,
             refinementMode: nil,
             injectionResult: nil
         )
@@ -76,6 +95,7 @@ final class LastTranscriptionResultTests: XCTestCase {
 
         XCTAssertEqual(updated.rawText, "hello")
         XCTAssertEqual(updated.finalText, "hello")
+        XCTAssertEqual(updated.dictationMode, .precise)
         XCTAssertNil(updated.refinementMode)
         XCTAssertEqual(updated.injectionResult, .failure(.pasteCommandFailed))
         XCTAssertEqual(updated.injectionSummary, "Insertion: failed - Paste failed. Text was copied to the clipboard.")

@@ -2,7 +2,7 @@
 
 ### Hold `Fn` to dictate. Release to insert text.
 
-> version-v1.4.0 | date-2026-05-03
+> version-v1.5.0 | date-2026-05-03
 
 [English](README.md) | [简体中文](README.zh-CN.md) | [日本語](README.ja.md) | [한국어](README.ko.md)
 
@@ -72,7 +72,8 @@ Open **Menu Bar -> LLM Refinement -> Settings** to configure an OpenAI-compatibl
 - If no API key is configured, normal `Fn` dictation still uses Apple Speech and DictionaryFilter without extra LLM failure noise.
 - **Precise Dictation** keeps the text close to what you said.
 - **Prompt Builder** rewrites rough speech into a structured prompt for ChatGPT, Claude, Cursor, or similar tools.
-- Hold `Fn` for the selected default mode, or hold `Option + Fn` to use Prompt Builder once without changing the default.
+- Hold `Fn` for the selected default mode. Option + Fn uses Prompt Builder once without changing the default.
+- If LLM is disabled or not configured, ordinary Fn still uses Apple Speech + DictionaryFilter without extra errors.
 
 ## Quick Start
 
@@ -103,7 +104,7 @@ Alternative: open **System Settings -> Privacy & Security**, allow VoiceInput ne
 ## Menu Bar Controls
 
 - **Language**: switch recognition locale.
-- **Readiness...**: inspect Accessibility, Input Monitoring, Microphone, Speech Recognition, LLM, and Dictionary status without requesting new permissions.
+- **Readiness...**: inspect Accessibility, Input Monitoring, Microphone, Speech Recognition, current dictation mode, LLM, and Dictionary status without requesting new permissions.
 - **Dictionary...**: edit deterministic correction rules.
 - **Recent Results...**: review the current session's latest 10 transcriptions and add a quick dictionary correction.
 - **LLM Refinement**: enable, disable, configure, select the default refinement mode, and see the `Fn` / `Option + Fn` shortcuts.

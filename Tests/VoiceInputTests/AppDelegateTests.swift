@@ -71,11 +71,18 @@ final class AppDelegateTests: XCTestCase {
     func testShortcutMenuTitleReflectsDefaultMode() {
         XCTAssertEqual(
             AppDelegate.defaultShortcutMenuTitle(defaultMode: .precise),
-            "Fn: Precise Dictation"
+            "Fn: Precise Dictation (default)"
         )
         XCTAssertEqual(
             AppDelegate.defaultShortcutMenuTitle(defaultMode: .promptBuilder),
-            "Fn: Prompt Builder"
+            "Fn: Prompt Builder (default)"
+        )
+    }
+
+    func testPromptBuilderShortcutMenuTitleMarksOneShotOverride() {
+        XCTAssertEqual(
+            AppDelegate.promptBuilderShortcutMenuTitle(),
+            "Option + Fn: Prompt Builder (one shot)"
         )
     }
 

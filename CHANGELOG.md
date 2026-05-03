@@ -4,6 +4,16 @@
 
 ---
 
+## [v1.5.0] - 2026-05-03
+
+### 新增
+- Dictation Workflow Clarity：菜单栏、Readiness 和 Recent Results 现在都会更明确展示当前听写模式。
+- `Fn` 标记为当前默认模式，`Option + Fn` 标记为一次性 Prompt Builder，不改变默认设置。
+- LLM disabled / no key 时，ordinary Fn still uses Apple Speech + DictionaryFilter，不再让普通听写产生额外 LLM 错误噪音。
+- Recent Results 会保留本次请求的模式 metadata，即使本次没有实际使用 LLM。
+
+---
+
 ## [v1.4.0] - 2026-05-03
 
 ### 变更

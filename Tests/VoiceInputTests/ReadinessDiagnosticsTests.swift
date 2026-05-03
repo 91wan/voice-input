@@ -26,9 +26,14 @@ final class ReadinessDiagnosticsTests: XCTestCase {
             "Microphone",
             "Speech Recognition",
             "LLM Refinement",
+            "Dictation Mode",
             "Dictionary",
         ])
         XCTAssertEqual(readiness.items.first(where: { $0.title == "LLM Refinement" })?.detail, "Ready")
+        XCTAssertEqual(
+            readiness.items.first(where: { $0.title == "Dictation Mode" })?.detail,
+            "Fn uses Precise Dictation. Option + Fn uses Prompt Builder once. LLM refinement is ready."
+        )
         XCTAssertEqual(readiness.items.first(where: { $0.title == "Dictionary" })?.detail, "Loaded 3 user rules")
     }
 
@@ -49,6 +54,10 @@ final class ReadinessDiagnosticsTests: XCTestCase {
         XCTAssertEqual(readiness.title, "VoiceInput is ready")
         XCTAssertEqual(readiness.items.first(where: { $0.title == "LLM Refinement" })?.state, .optional)
         XCTAssertEqual(readiness.items.first(where: { $0.title == "LLM Refinement" })?.action, .openLLMSettings)
+        XCTAssertTrue(
+            readiness.items.first(where: { $0.title == "Dictation Mode" })?.detail
+                .contains("ordinary Fn still uses Apple Speech + DictionaryFilter without extra errors") == true
+        )
     }
 
     func testMissingPermissionAndDictionaryLoadIssueNeedAttention() {

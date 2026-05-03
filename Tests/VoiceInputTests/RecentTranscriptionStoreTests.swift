@@ -22,6 +22,7 @@ final class RecentTranscriptionStoreTests: XCTestCase {
 
         XCTAssertEqual(store.results.map(\.finalText), ["latest", "first"])
         XCTAssertEqual(store.results.first?.injectionResult, .failure(.pasteCommandFailed))
+        XCTAssertEqual(store.results.first?.dictationMode, .precise)
         XCTAssertNil(store.results.last?.injectionResult)
     }
 
@@ -56,6 +57,7 @@ final class RecentTranscriptionStoreTests: XCTestCase {
             finalText: text,
             dictionaryMatches: [],
             wasLLMRefined: false,
+            dictationMode: .precise,
             refinementMode: nil,
             injectionResult: nil
         )
