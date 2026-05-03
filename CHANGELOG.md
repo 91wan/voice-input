@@ -4,6 +4,15 @@
 
 ---
 
+## [v1.6.0] - 2026-05-03
+
+### 变更
+- Unsigned Distribution Hardening：发布流程在创建 GitHub Release 前会挂载并验证 DMG。
+- 自动验证覆盖 `VoiceInput.app`、`Applications -> /Applications`、`.DS_Store`、版本号、ad-hoc codesign，以及当前 unsigned / not notarized 构建预期的 `spctl rejected` 结果。
+- Release QA checklist 区分自动 release gates 与需要人工执行的权限 / Fn QA，避免把不可自动验证的 macOS 权限链路伪装成 CI 覆盖。
+
+---
+
 ## [v1.5.0] - 2026-05-03
 
 ### 新增
