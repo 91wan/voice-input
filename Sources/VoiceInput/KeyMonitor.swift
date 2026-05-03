@@ -12,22 +12,43 @@ enum KeyMonitorAction: Equatable {
 
 struct KeyMonitorState {
     private var fnPressed = false
+    private var fnBlockedUntilRelease = false
 
-    mutating func transition(fnDown: Bool, optionDown: Bool = false) -> KeyMonitorAction? {
-        if fnDown && !fnPressed {
-            fnPressed = true
-            return .fnDown(mode: optionDown ? .promptBuilder : .defaultMode)
+    mutating func transition(
+        fnDown: Bool,
+        optionDown: Bool = false,
+        disallowedModifierDown: Bool = false
+    ) -> KeyMonitorAction? {
+        if !fnDown {
+            fnBlockedUntilRelease = false
+            if fnPressed {
+                fnPressed = false
+                return .fnUp
+            }
+            return nil
         }
 
-        if !fnDown && fnPressed {
-            fnPressed = false
-            return .fnUp
+        if disallowedModifierDown {
+            fnBlockedUntilRelease = true
+            if fnPressed {
+                fnPressed = false
+                return .fnUp
+            }
+            return nil
+        }
+
+        guard !fnBlockedUntilRelease else { return nil }
+
+        if !fnPressed {
+            fnPressed = true
+            return .fnDown(mode: optionDown ? .promptBuilder : .defaultMode)
         }
 
         return nil
     }
 
     mutating func resetForTapDisable() -> KeyMonitorAction? {
+        fnBlockedUntilRelease = false
         guard fnPressed else { return nil }
         fnPressed = false
         return .fnUp
@@ -103,7 +124,14 @@ final class KeyMonitor {
         let flags = event.flags
         let fnDown = flags.contains(.maskSecondaryFn)
         let optionDown = flags.contains(.maskAlternate)
-        if let action = state.transition(fnDown: fnDown, optionDown: optionDown) {
+        let disallowedModifierDown = flags.contains(.maskControl)
+            || flags.contains(.maskCommand)
+            || flags.contains(.maskShift)
+        if let action = state.transition(
+            fnDown: fnDown,
+            optionDown: optionDown,
+            disallowedModifierDown: disallowedModifierDown
+        ) {
             dispatch(action)
             return nil // suppress Fn press/release (prevents emoji picker)
         }

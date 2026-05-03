@@ -19,6 +19,38 @@ final class KeyMonitorTests: XCTestCase {
         XCTAssertEqual(state.transition(fnDown: false), .fnUp)
     }
 
+    func testFnWithControlDoesNotStartDictation() {
+        var state = KeyMonitorState()
+
+        XCTAssertNil(state.transition(fnDown: true, disallowedModifierDown: true))
+        XCTAssertNil(state.transition(fnDown: false))
+    }
+
+    func testOptionFnWithAnotherModifierDoesNotStartPromptBuilder() {
+        var state = KeyMonitorState()
+
+        XCTAssertNil(state.transition(fnDown: true, optionDown: true, disallowedModifierDown: true))
+        XCTAssertNil(state.transition(fnDown: false))
+    }
+
+    func testInvalidModifierChordMustReleaseFnBeforeStartingLater() {
+        var state = KeyMonitorState()
+
+        XCTAssertNil(state.transition(fnDown: true, disallowedModifierDown: true))
+        XCTAssertNil(state.transition(fnDown: true, disallowedModifierDown: false))
+        XCTAssertNil(state.transition(fnDown: false))
+        XCTAssertEqual(state.transition(fnDown: true), .fnDown(mode: .defaultMode))
+    }
+
+    func testAddingDisallowedModifierWhileDictatingStopsCurrentSession() {
+        var state = KeyMonitorState()
+
+        XCTAssertEqual(state.transition(fnDown: true), .fnDown(mode: .defaultMode))
+        XCTAssertEqual(state.transition(fnDown: true, disallowedModifierDown: true), .fnUp)
+        XCTAssertNil(state.transition(fnDown: true, disallowedModifierDown: false))
+        XCTAssertNil(state.transition(fnDown: false))
+    }
+
     func testTapDisableResetsPressedFnState() {
         var state = KeyMonitorState()
 
