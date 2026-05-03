@@ -4,6 +4,13 @@
 
 ---
 
+## [v1.1.2] - 2026-05-03
+
+### 文档
+- 明确 GitHub DMG 仍是 unsigned / not notarized build，并补充 Gatekeeper 首次打开说明：右键 `VoiceInput.app` 选择 **Open**，或在 **System Settings -> Privacy & Security** 中允许打开。
+
+---
+
 ## [v1.1.1] - 2026-05-03
 
 ### 修复

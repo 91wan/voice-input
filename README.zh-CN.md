@@ -83,7 +83,15 @@ Dictionary 窗口包含 **Test Phrase** 输入框。输入一句示例文本后�
    - 辅助功能
 5. 把光标放到任意输入框，按住 `Fn` 说话，松开后自动输入；需要临时整理 Prompt 时使用 `Option + Fn`。
 
-> 当前构建是轻量 macOS App bundle。若首次启动被系统拦截，可在 **系统设置 -> 隐私与安全性** 中允许打开，或右键 App 选择 **打开**。
+> 当前 GitHub DMG 是 **未签名 / 未 notarized** 构建。因此即使下载文件正常，macOS Gatekeeper 首次打开时也可能拦截。
+
+如果 macOS 显示“Apple could not verify VoiceInput”：
+
+1. 确认 `VoiceInput.app` 已放在 `/Applications`。
+2. 右键 `VoiceInput.app`，选择 **打开**。
+3. 在系统弹窗中再次确认 **打开**。
+
+替代路径：打开 **系统设置 -> 隐私与安全性**，在页面底部附近允许 VoiceInput 打开，然后重新启动应用。
 
 ## 菜单栏控制
 

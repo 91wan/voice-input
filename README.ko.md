@@ -83,7 +83,15 @@ Dictionary 창에는 **Test Phrase** 입력이 포함됩니다. 예시 문장을
    - 손쉬운 사용
 5. 입력창에 커서를 둔 뒤 `Fn`을 누르고 말한 다음 키를 놓습니다. 이번 입력만 Prompt Builder로 처리하려면 `Option + Fn`을 사용합니다.
 
-> 첫 실행 시 macOS가 앱을 차단하면 **시스템 설정 -> 개인정보 보호 및 보안** 에서 허용하거나, 앱을 우클릭한 뒤 **열기** 를 선택하세요.
+> 현재 GitHub DMG는 **서명되지 않았고 notarized 되지 않은** 빌드입니다. 따라서 다운로드가 정상이어도 macOS Gatekeeper가 첫 실행을 차단할 수 있습니다.
+
+macOS에 "Apple could not verify VoiceInput" 이 표시되면:
+
+1. `VoiceInput.app`을 `/Applications`에 둡니다.
+2. `VoiceInput.app`을 우클릭하고 **열기** 를 선택합니다.
+3. 시스템 대화상자에서 다시 **열기** 를 확인합니다.
+
+대안: **시스템 설정 -> 개인정보 보호 및 보안** 을 열고, 페이지 하단 근처에서 VoiceInput 실행을 허용한 뒤 다시 실행합니다.
 
 ## 메뉴 막대 제어
 

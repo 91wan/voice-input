@@ -2,7 +2,7 @@
 
 ### Hold `Fn` to dictate. Release to insert text.
 
-> version-v1.1.1 | date-2026-05-03
+> version-v1.1.2 | date-2026-05-03
 
 [English](README.md) | [简体中文](README.zh-CN.md) | [日本語](README.ja.md) | [한국어](README.ko.md)
 
@@ -85,7 +85,15 @@ Open **Menu Bar -> LLM Refinement -> Settings** to configure an OpenAI-compatibl
    - Accessibility
 5. Put the cursor in any text field, hold `Fn`, speak, and release. Use `Option + Fn` when you want a one-off Prompt Builder dictation.
 
-> Current builds are distributed as lightweight macOS app bundles. If macOS blocks the first launch, open **System Settings -> Privacy & Security** and allow the app, or right-click the app and choose **Open**.
+> Current GitHub DMGs are **unsigned / not notarized** builds. This means macOS Gatekeeper may block the first launch even when the download is valid.
+
+If macOS shows "Apple could not verify VoiceInput":
+
+1. Keep `VoiceInput.app` in `/Applications`.
+2. Right-click `VoiceInput.app` and choose **Open**.
+3. Confirm **Open** again in the system dialog.
+
+Alternative: open **System Settings -> Privacy & Security**, allow VoiceInput near the bottom of the page, then launch it again.
 
 ## Menu Bar Controls
 
