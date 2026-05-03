@@ -2,6 +2,13 @@ import XCTest
 @testable import VoiceInput
 
 final class KeyMonitorTests: XCTestCase {
+    func testMonitorIncludesKeyDownEventsForFnChords() {
+        XCTAssertNotEqual(
+            KeyMonitor.monitoredEventMask & CGEventMask(1 << CGEventType.keyDown.rawValue),
+            0
+        )
+    }
+
     func testFnTransitionsOnlyEmitOnEdges() {
         var state = KeyMonitorState()
 
@@ -49,6 +56,25 @@ final class KeyMonitorTests: XCTestCase {
         XCTAssertEqual(state.transition(fnDown: true, disallowedModifierDown: true), .fnUp)
         XCTAssertNil(state.transition(fnDown: true, disallowedModifierDown: false))
         XCTAssertNil(state.transition(fnDown: false))
+    }
+
+    func testNonModifierKeyDownWithFnCancelsPendingDictation() {
+        var state = KeyMonitorState()
+
+        XCTAssertEqual(state.transition(fnDown: true), .fnDown(mode: .defaultMode))
+        XCTAssertEqual(state.cancelForNonModifierKeyDown(fnDown: true), .fnUp)
+        XCTAssertNil(state.transition(fnDown: true))
+        XCTAssertNil(state.transition(fnDown: false))
+        XCTAssertEqual(state.transition(fnDown: true), .fnDown(mode: .defaultMode))
+    }
+
+    func testNonModifierKeyDownWithFnBeforeFlagsChangeBlocksUntilRelease() {
+        var state = KeyMonitorState()
+
+        XCTAssertNil(state.cancelForNonModifierKeyDown(fnDown: true))
+        XCTAssertNil(state.transition(fnDown: true))
+        XCTAssertNil(state.transition(fnDown: false))
+        XCTAssertEqual(state.transition(fnDown: true), .fnDown(mode: .defaultMode))
     }
 
     func testTapDisableResetsPressedFnState() {
