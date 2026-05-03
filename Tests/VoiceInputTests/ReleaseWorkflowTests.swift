@@ -57,4 +57,45 @@ final class ReleaseWorkflowTests: XCTestCase {
             "The compressed DMG must be created from the staging folder that contains the app and Applications shortcut."
         )
     }
+
+    func testUnsignedDistributionGuidanceIsPublishedForV112() throws {
+        let englishReadme = try String(contentsOfFile: "README.md", encoding: .utf8)
+        let chineseReadme = try String(contentsOfFile: "README.zh-CN.md", encoding: .utf8)
+        let japaneseReadme = try String(contentsOfFile: "README.ja.md", encoding: .utf8)
+        let koreanReadme = try String(contentsOfFile: "README.ko.md", encoding: .utf8)
+        let changelog = try String(contentsOfFile: "CHANGELOG.md", encoding: .utf8)
+
+        XCTAssertTrue(englishReadme.contains("unsigned / not notarized"))
+        XCTAssertTrue(englishReadme.contains("Right-click `VoiceInput.app`"))
+        XCTAssertTrue(englishReadme.contains("System Settings -> Privacy & Security"))
+
+        XCTAssertTrue(chineseReadme.contains("未签名 / 未 notarized"))
+        XCTAssertTrue(chineseReadme.contains("右键 `VoiceInput.app`"))
+        XCTAssertTrue(chineseReadme.contains("系统设置 -> 隐私与安全性"))
+
+        XCTAssertTrue(japaneseReadme.contains("署名なし / notarized されていない"))
+        XCTAssertTrue(japaneseReadme.contains("右クリック `VoiceInput.app`"))
+        XCTAssertTrue(japaneseReadme.contains("システム設定 -> プライバシーとセキュリティ"))
+
+        XCTAssertTrue(koreanReadme.contains("서명되지 않았고 notarized 되지 않은"))
+        XCTAssertTrue(koreanReadme.contains("`VoiceInput.app`을 우클릭"))
+        XCTAssertTrue(koreanReadme.contains("시스템 설정 -> 개인정보 보호 및 보안"))
+
+        XCTAssertTrue(changelog.contains("## [v1.1.2] - 2026-05-03"))
+        XCTAssertTrue(changelog.contains("not notarized"))
+        XCTAssertTrue(changelog.contains("右键 `VoiceInput.app`"))
+    }
+
+    func testVersionMetadataIsBumpedForV112() throws {
+        let englishReadme = try String(contentsOfFile: "README.md", encoding: .utf8)
+        XCTAssertTrue(englishReadme.contains("version-v1.1.2"))
+
+        let rootPlist = NSDictionary(contentsOf: URL(fileURLWithPath: "Info.plist"))
+        XCTAssertEqual(rootPlist?["CFBundleShortVersionString"] as? String, "1.1.2")
+        XCTAssertEqual(rootPlist?["CFBundleVersion"] as? String, "1.1.2")
+
+        let appPlist = NSDictionary(contentsOf: URL(fileURLWithPath: "VoiceInput.app/Contents/Info.plist"))
+        XCTAssertEqual(appPlist?["CFBundleShortVersionString"] as? String, "1.1.2")
+        XCTAssertEqual(appPlist?["CFBundleVersion"] as? String, "1.1.2")
+    }
 }
