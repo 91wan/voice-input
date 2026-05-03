@@ -19,7 +19,7 @@ Audio -> Apple Speech -> DictionaryFilter -> optional LLMRefiner -> TextInjector
 - **결정적 사전 보정**: 자주 발생하는 ASR 오류를 LLM 전에 빠르고 예측 가능하게 수정합니다.
 - **선택적 LLM 보정**: OpenAI 호환 API로 문장 정리 또는 Prompt Builder 모드를 사용할 수 있습니다.
 - **모드 단축키**: `Fn`은 선택된 LLM 모드를 사용하고, `Option + Fn`은 이번 입력에만 Prompt Builder를 사용합니다.
-- **Readiness 패널**: 손쉬운 사용, 마이크, 음성 인식, LLM 설정, 사전 로드 상태를 수동으로 권한 요청하지 않고 확인합니다.
+- **Readiness 패널**: 손쉬운 사용, 입력 모니터링, 마이크, 음성 인식, LLM 설정, 사전 로드 상태를 수동으로 권한 요청하지 않고 확인합니다.
 - **입력 실패 보호**: 커서 삽입이 실패해도 생성된 텍스트는 클립보드에 남습니다.
 - **Recent Results**: 현재 세션의 최근 10개 결과에서 raw / 사전 보정 / LLM 보정 / 최종 텍스트를 확인하고, 복사, 재삽입, 빠른 사전 규칙 저장을 할 수 있습니다.
 - **Dictionary Workbench**: 저장 전에 테스트 문장을 입력해 보정 결과와 매칭된 사전 규칙을 확인할 수 있습니다.
@@ -84,7 +84,7 @@ Dictionary 창에는 **Test Phrase** 입력이 포함됩니다. 예시 문장을
    - 입력 모니터링
 5. 입력창에 커서를 둔 뒤 `Fn`을 누르고 말한 다음 키를 놓습니다. 이번 입력만 Prompt Builder로 처리하려면 `Option + Fn`을 사용합니다.
 
-손쉬운 사용 권한을 켰는데도 VoiceInput이 권한 실패를 표시하면 VoiceInput을 종료한 뒤 다시 여세요. 업데이트 후에도 실패하면 손쉬운 사용 / 입력 모니터링에서 기존 VoiceInput 항목을 제거하고 `/Applications/VoiceInput.app`을 다시 추가하세요.
+손쉬운 사용 권한을 켰는데도 VoiceInput이 권한 실패를 표시하면 **Readiness... -> Fix Permission** 을 사용한 뒤 VoiceInput을 종료하고 다시 여세요. 업데이트 후에도 실패하면 손쉬운 사용 / 입력 모니터링에서 기존 VoiceInput 항목을 제거하고 `/Applications/VoiceInput.app`을 다시 추가하세요.
 
 > 현재 GitHub DMG는 **서명되지 않았고 notarized 되지 않은** 빌드입니다. 따라서 다운로드가 정상이어도 macOS Gatekeeper가 첫 실행을 차단할 수 있습니다.
 
@@ -99,7 +99,7 @@ macOS에 "Apple could not verify VoiceInput" 이 표시되면:
 ## 메뉴 막대 제어
 
 - **Language**: 인식 언어를 전환합니다.
-- **Readiness...**: 새 권한 요청 없이 손쉬운 사용, 마이크, 음성 인식, LLM, 사전 상태를 확인합니다.
+- **Readiness...**: 새 권한 요청 없이 손쉬운 사용, 입력 모니터링, 마이크, 음성 인식, LLM, 사전 상태를 확인합니다.
 - **Dictionary...**: 결정적 보정 규칙을 편집합니다.
 - **Recent Results...**: 현재 세션의 최근 10개 결과를 확인하고 빠르게 사전 보정을 추가합니다.
 - **LLM Refinement**: LLM 보정 활성화, 설정, 기본 모드 전환, `Fn` / `Option + Fn` 단축키 확인을 관리합니다.

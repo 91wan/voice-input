@@ -34,23 +34,34 @@ struct ReadinessDiagnostics: Equatable {
     }
 
     var title: String {
-        isReady ? "VoiceInput is ready" : "VoiceInput needs attention"
+        if hasReopenRequirement {
+            return "VoiceInput needs a restart"
+        }
+        return isReady ? "VoiceInput is ready" : "VoiceInput needs attention"
     }
 
     var menuTitle: String {
-        isReady ? "Readiness: Ready" : "Readiness: Needs Attention"
+        if hasReopenRequirement {
+            return "Readiness: Reopen App"
+        }
+        return isReady ? "Readiness: Ready" : "Readiness: Needs Attention"
     }
 
     var primaryAction: ReadinessAction? {
         items.first { $0.needsAttention && $0.action != nil }?.action
     }
 
-    static func capture() -> ReadinessDiagnostics {
+    private var hasReopenRequirement: Bool {
+        items.contains { $0.title == "Reopen VoiceInput" && $0.needsAttention }
+    }
+
+    static func capture(eventMonitorStartFailed: Bool = false) -> ReadinessDiagnostics {
         make(
             permissionDiagnostics: PermissionDiagnostics.capture(),
             isLLMConfigured: LLMRefiner.shared.isConfigured,
             dictionaryLoadIssue: DictionaryFilter.shared.lastLoadIssue,
-            userDictionaryEntryCount: DictionaryFilter.shared.userMap.count
+            userDictionaryEntryCount: DictionaryFilter.shared.userMap.count,
+            eventMonitorStartFailed: eventMonitorStartFailed
         )
     }
 
@@ -58,8 +69,13 @@ struct ReadinessDiagnostics: Equatable {
         permissionDiagnostics: PermissionDiagnostics,
         isLLMConfigured: Bool,
         dictionaryLoadIssue: String?,
-        userDictionaryEntryCount: Int
+        userDictionaryEntryCount: Int,
+        eventMonitorStartFailed: Bool = false
     ) -> ReadinessDiagnostics {
+        let guidance = PermissionRecoveryGuidance.make(
+            diagnostics: permissionDiagnostics,
+            eventMonitorStartFailed: eventMonitorStartFailed
+        )
         var items: [ReadinessItem] = [
             item(
                 from: permissionDiagnostics.accessibility,
@@ -78,6 +94,18 @@ struct ReadinessDiagnostics: Equatable {
                 action: .openSpeechSettings
             ),
         ]
+
+        if guidance.requiresReopenOnly {
+            items.insert(
+                ReadinessItem(
+                    title: "Reopen VoiceInput",
+                    state: .attention,
+                    detail: guidance.detail.replacingOccurrences(of: "\n", with: " "),
+                    action: nil
+                ),
+                at: 0
+            )
+        }
 
         items.append(ReadinessItem(
             title: "LLM Refinement",

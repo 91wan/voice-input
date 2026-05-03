@@ -19,7 +19,7 @@ VoiceInput 是一个 macOS 菜单栏语音输入工具，适合中英混输、�
 - **确定性字典纠错**：常见 ASR 误识别先由字典层修正，速度快、结果可控。
 - **可选 LLM 润色**：支持 OpenAI 兼容接口，可做语法修正或 Prompt Builder。
 - **模式快捷入口**：`Fn` 使用当前默认 LLM 模式；`Option + Fn` 只对本次听写使用 Prompt Builder。
-- **Readiness 面板**：被动检查辅助功能、麦克风、语音识别、LLM 配置和词典加载状态。
+- **Readiness 面板**：被动检查辅助功能、输入监控、麦克风、语音识别、LLM 配置和词典加载状态。
 - **插入失败兜底**：如果无法注入当前光标，文本会保留在剪贴板，避免内容丢失。
 - **最近结果回看**：查看当前会话最近 10 条 raw / 字典过滤 / LLM 润色 / 最终输出，支持复制、重试插入和快速保存字典规则。
 - **Dictionary Workbench**：保存前用测试短句预览过滤结果和命中的词典规则。
@@ -84,7 +84,7 @@ Dictionary 窗口包含 **Test Phrase** 输入框。输入一句示例文本后�
    - 输入监控
 5. 把光标放到任意输入框，按住 `Fn` 说话，松开后自动输入；需要临时整理 Prompt 时使用 `Option + Fn`。
 
-如果辅助功能已经开启但 VoiceInput 仍提示权限失败，请先退出并重新打开 VoiceInput。若更新后仍失败，请在“辅助功能 / 输入监控”中移除旧的 VoiceInput 项，再重新添加 `/Applications/VoiceInput.app`。
+如果辅助功能已经开启但 VoiceInput 仍提示权限失败，请使用 **Readiness... -> Fix Permission**，然后退出并重新打开 VoiceInput。若更新后仍失败，请在“辅助功能 / 输入监控”中移除旧的 VoiceInput 项，再重新添加 `/Applications/VoiceInput.app`。
 
 > 当前 GitHub DMG 是 **未签名 / 未 notarized** 构建。因此即使下载文件正常，macOS Gatekeeper 首次打开时也可能拦截。
 
@@ -99,7 +99,7 @@ Dictionary 窗口包含 **Test Phrase** 输入框。输入一句示例文本后�
 ## 菜单栏控制
 
 - **Language**：切换识别语言。
-- **Readiness...**：查看辅助功能、麦克风、语音识别、LLM 和词典状态，不会主动请求新权限。
+- **Readiness...**：查看辅助功能、输入监控、麦克风、语音识别、LLM 和词典状态，不会主动请求新权限。
 - **Dictionary...**：编辑确定性纠错规则。
 - **Recent Results...**：查看当前会话最近 10 条听写结果，并快速添加字典纠错。
 - **LLM Refinement**：启用、关闭、配置、切换默认润色模式，并查看 `Fn` / `Option + Fn` 快捷入口。

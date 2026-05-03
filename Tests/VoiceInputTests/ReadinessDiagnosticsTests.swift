@@ -71,4 +71,27 @@ final class ReadinessDiagnosticsTests: XCTestCase {
         XCTAssertEqual(readiness.items.first(where: { $0.title == "Dictionary" })?.state, .attention)
         XCTAssertEqual(readiness.items.first(where: { $0.title == "Dictionary" })?.action, .openDictionary)
     }
+
+    func testEventMonitorFailureWithReadyPermissionsSurfacesReopenAppStatus() {
+        let readiness = ReadinessDiagnostics.make(
+            permissionDiagnostics: .make(
+                accessibilityTrusted: true,
+                inputMonitoringAccess: .granted,
+                microphoneAuthorization: .authorized,
+                speechAuthorization: .authorized
+            ),
+            isLLMConfigured: true,
+            dictionaryLoadIssue: nil,
+            userDictionaryEntryCount: 0,
+            eventMonitorStartFailed: true
+        )
+
+        XCTAssertFalse(readiness.isReady)
+        XCTAssertEqual(readiness.title, "VoiceInput needs a restart")
+        XCTAssertEqual(readiness.menuTitle, "Readiness: Reopen App")
+        XCTAssertNil(readiness.primaryAction)
+        XCTAssertEqual(readiness.items.first?.title, "Reopen VoiceInput")
+        XCTAssertTrue(readiness.items.first?.detail.localizedCaseInsensitiveContains("quit and reopen") == true)
+        XCTAssertTrue(readiness.items.first?.detail.contains("/Applications/VoiceInput.app") == true)
+    }
 }
