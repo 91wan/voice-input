@@ -58,7 +58,7 @@ my project -> MyProject
 ~/Library/Application Support/VoiceInput/dictionary.json
 ```
 
-Dictionary ウィンドウには **Test Phrase** 入力があります。サンプル文を入力すると、辞書適用後の出力と一致したルールを即座に確認できます。ルール形式が不正な場合は保存前に表示されます。
+Dictionary ウィンドウには **Test Phrase** 入力があります。サンプル文を入力すると、辞書適用後の出力と一致したルールを即座に確認できます。**Import...** でテキストファイルから編集可能なルールを読み込み、**Export...** で現在のルールをポータブルなテキストとして保存できます。インポートした内容は **Save** を押すまで保存済み辞書を上書きしません。ルール形式が不正な場合は保存/エクスポート前に表示されます。
 
 ### LLM 補正
 
@@ -156,6 +156,7 @@ Sources/VoiceInput/
   KeyMonitor.swift           Fn キー監視
   SpeechEngine.swift         Apple Speech の録音と認識
   DictionaryFilter.swift     決定的な辞書補正レイヤー
+  DictionaryDocument.swift   辞書インポート/エクスポート正規化
   DictionaryWorkbench.swift  辞書テスト文の評価
   LLMRefiner.swift           任意の OpenAI 互換補正
   TextInjector.swift         カーソル挿入とクリップボード保護

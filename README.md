@@ -2,7 +2,7 @@
 
 ### Hold `Fn` to dictate. Release to insert text.
 
-> version-v1.2.0 | date-2026-05-03
+> version-v1.3.0 | date-2026-05-03
 
 [English](README.md) | [简体中文](README.zh-CN.md) | [日本語](README.ja.md) | [한국어](README.ko.md)
 
@@ -60,7 +60,7 @@ The user dictionary is saved at:
 ~/Library/Application Support/VoiceInput/dictionary.json
 ```
 
-The Dictionary window also includes a **Test Phrase** workbench. Type a sample sentence to preview the filtered output and see which dictionary rules match. Invalid rule formats block saving and are shown before they can silently affect dictation.
+The Dictionary window also includes a **Test Phrase** workbench. Type a sample sentence to preview the filtered output and see which dictionary rules match. Use **Import...** to load editable rules from a text file for review, and **Export...** to save the current rules as a portable text file. Imported rules are not written to the saved dictionary until you click **Save**. Invalid rule formats block saving/exporting and are shown before they can silently affect dictation.
 
 ### LLM refinement
 
@@ -161,6 +161,7 @@ Sources/VoiceInput/
   KeyMonitor.swift           Fn key monitoring
   SpeechEngine.swift         Apple Speech recording and recognition
   DictionaryFilter.swift     deterministic correction layer
+  DictionaryDocument.swift   dictionary import/export normalization
   DictionaryWorkbench.swift  dictionary test phrase evaluation
   LLMRefiner.swift           optional OpenAI-compatible refinement
   TextInjector.swift         cursor insertion and clipboard fallback

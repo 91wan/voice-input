@@ -58,7 +58,7 @@ my project -> MyProject
 ~/Library/Application Support/VoiceInput/dictionary.json
 ```
 
-Dictionary 窗口包含 **Test Phrase** 输入框。输入一句示例文本后，可以立即看到字典过滤后的输出和命中的规则；规则格式错误会阻止保存并直接提示。
+Dictionary 窗口包含 **Test Phrase** 输入框。输入一句示例文本后，可以立即看到字典过滤后的输出和命中的规则；也可以用 **Import...** 从文本文件导入规则进行检查，用 **Export...** 把当前规则导出为便携文本。导入后不会自动覆盖已保存词典，只有点击 **Save** 后才会写入；规则格式错误会阻止保存/导出并直接提示。
 
 ### LLM 润色
 
@@ -156,6 +156,7 @@ Sources/VoiceInput/
   KeyMonitor.swift           Fn 键监听
   SpeechEngine.swift         Apple Speech 录音与识别
   DictionaryFilter.swift     确定性字典纠错层
+  DictionaryDocument.swift   字典导入/导出规范化
   DictionaryWorkbench.swift  字典测试短句评估
   LLMRefiner.swift           可选 OpenAI 兼容润色
   TextInjector.swift         光标注入与剪贴板兜底
