@@ -12,6 +12,7 @@ struct LastTranscriptionResult: Equatable {
     let finalText: String
     let dictionaryMatches: [DictionaryMatch]
     let wasLLMRefined: Bool
+    let dictationMode: LLMRefinementMode?
     let refinementMode: LLMRefinementMode?
     let injectionResult: TextInjectionResult?
     let createdAt: Date
@@ -23,6 +24,7 @@ struct LastTranscriptionResult: Equatable {
         finalText: String,
         dictionaryMatches: [DictionaryMatch],
         wasLLMRefined: Bool,
+        dictationMode: LLMRefinementMode? = nil,
         refinementMode: LLMRefinementMode?,
         injectionResult: TextInjectionResult?,
         createdAt: Date = Date()
@@ -33,6 +35,7 @@ struct LastTranscriptionResult: Equatable {
         self.finalText = finalText
         self.dictionaryMatches = dictionaryMatches
         self.wasLLMRefined = wasLLMRefined
+        self.dictationMode = dictationMode
         self.refinementMode = refinementMode
         self.injectionResult = injectionResult
         self.createdAt = createdAt
@@ -43,6 +46,7 @@ struct LastTranscriptionResult: Equatable {
         dictionaryResult: DictionaryApplyResult,
         resolvedOutput: TranscriptionResolution.Output,
         refinedText: String?,
+        dictationMode: LLMRefinementMode? = nil,
         refinementMode: LLMRefinementMode?,
         injectionResult: TextInjectionResult?
     ) -> LastTranscriptionResult {
@@ -53,9 +57,15 @@ struct LastTranscriptionResult: Equatable {
             finalText: resolvedOutput.text,
             dictionaryMatches: dictionaryResult.matches,
             wasLLMRefined: resolvedOutput.wasLLMRefined,
+            dictationMode: dictationMode,
             refinementMode: refinementMode,
             injectionResult: injectionResult
         )
+    }
+
+    var dictationModeSummary: String {
+        guard let dictationMode else { return "Mode: Basic Dictation" }
+        return "Mode: \(dictationMode.menuTitle)"
     }
 
     var refinementSummary: String {
@@ -104,6 +114,7 @@ struct LastTranscriptionResult: Equatable {
             finalText: finalText,
             dictionaryMatches: dictionaryMatches,
             wasLLMRefined: wasLLMRefined,
+            dictationMode: dictationMode,
             refinementMode: refinementMode,
             injectionResult: injectionResult,
             createdAt: createdAt

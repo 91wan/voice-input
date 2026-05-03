@@ -232,7 +232,7 @@ final class LastResultWindow: NSPanel {
 
         resultPopup.isHidden = results.count <= 1
         let time = result.createdAt.formatted(date: .omitted, time: .standard)
-        summaryLabel.stringValue = "\(time) | \(result.refinementSummary) | \(result.dictionarySummary) | \(result.injectionSummary)"
+        summaryLabel.stringValue = "\(time) | \(result.dictationModeSummary) | \(result.refinementSummary) | \(result.dictionarySummary) | \(result.injectionSummary)"
         rawTextView.string = result.rawText
         filteredTextView.string = result.filteredText
         refinedTextView.string = result.refinedText ?? "No LLM refinement used."

@@ -36,6 +36,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var llmMenuItem: NSMenuItem!
     private var llmModeItems: [NSMenuItem] = []
     private var defaultShortcutMenuItem: NSMenuItem!
+    private var promptBuilderShortcutMenuItem: NSMenuItem!
+    private var dictationStatusMenuItem: NSMenuItem!
     private var dictionaryStatusMenuItem: NSMenuItem!
     private var lastResultMenuItem: NSMenuItem!
     private lazy var settingsWindow = SettingsWindow()
@@ -243,6 +245,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                         dictionaryResult: dictionaryResult,
                         output: output,
                         refinedText: refined,
+                        dictationMode: refinementMode,
                         refinementMode: refinementMode
                     )
                     if output.wasLLMRefined {
@@ -271,6 +274,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                         dictionaryResult: dictionaryResult,
                         output: output,
                         refinedText: nil,
+                        dictationMode: refinementMode,
                         refinementMode: refinementMode
                     )
                     self.overlayPanel.updateText("Refine failed, using dictionary result")
@@ -295,6 +299,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 dictionaryResult: dictionaryResult,
                 output: output,
                 refinedText: nil,
+                dictationMode: refinementMode,
                 refinementMode: nil
             )
             overlayPanel.dismiss()
@@ -311,6 +316,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         dictionaryResult: DictionaryApplyResult,
         output: TranscriptionResolution.Output,
         refinedText: String?,
+        dictationMode: LLMRefinementMode?,
         refinementMode: LLMRefinementMode?
     ) {
         let result = LastTranscriptionResult.make(
@@ -318,6 +324,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             dictionaryResult: dictionaryResult,
             resolvedOutput: output,
             refinedText: refinedText,
+            dictationMode: dictationMode,
             refinementMode: refinementMode,
             injectionResult: nil
         )
@@ -399,6 +406,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         permissionStatusMenuItem.isEnabled = false
         menu.addItem(permissionStatusMenuItem)
 
+        dictationStatusMenuItem = NSMenuItem(
+            title: Self.dictationWorkflowStatus().menuSummary,
+            action: nil,
+            keyEquivalent: ""
+        )
+        dictationStatusMenuItem.isEnabled = false
+        menu.addItem(dictationStatusMenuItem)
+
         let permissionsItem = NSMenuItem(title: "Readiness...", action: #selector(openPermissionDiagnostics), keyEquivalent: "")
         permissionsItem.target = self
         menu.addItem(permissionsItem)
@@ -450,9 +465,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         defaultShortcutMenuItem.isEnabled = false
         llmMenu.addItem(defaultShortcutMenuItem)
 
-        let promptShortcutItem = NSMenuItem(title: "Option + Fn: Prompt Builder", action: nil, keyEquivalent: "")
-        promptShortcutItem.isEnabled = false
-        llmMenu.addItem(promptShortcutItem)
+        promptBuilderShortcutMenuItem = NSMenuItem(
+            title: Self.promptBuilderShortcutMenuTitle(),
+            action: nil,
+            keyEquivalent: ""
+        )
+        promptBuilderShortcutMenuItem.isEnabled = false
+        llmMenu.addItem(promptBuilderShortcutMenuItem)
 
         llmMenu.addItem(.separator())
 
@@ -673,6 +692,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func updateLLMMenuItemState() {
         llmMenuItem?.state = LLMRefiner.shared.isEnabled ? .on : .off
+        let status = Self.dictationWorkflowStatus()
+        dictationStatusMenuItem?.title = status.menuSummary
+        defaultShortcutMenuItem?.title = status.defaultShortcutTitle
+        promptBuilderShortcutMenuItem?.title = status.promptBuilderShortcutTitle
     }
 
     private func updateLLMModeMenuItemStates() {
@@ -681,7 +704,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             guard let rawValue = item.representedObject as? String else { continue }
             item.state = rawValue == currentMode.rawValue ? .on : .off
         }
-        defaultShortcutMenuItem?.title = Self.defaultShortcutMenuTitle(defaultMode: currentMode)
+        let status = Self.dictationWorkflowStatus()
+        dictationStatusMenuItem?.title = status.menuSummary
+        defaultShortcutMenuItem?.title = status.defaultShortcutTitle
+        promptBuilderShortcutMenuItem?.title = status.promptBuilderShortcutTitle
     }
 
     static func locale(forSelectedLocaleCode code: String) -> Locale {
@@ -712,7 +738,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     static func defaultShortcutMenuTitle(defaultMode: LLMRefinementMode) -> String {
-        "Fn: \(defaultMode.menuTitle)"
+        DictationWorkflowStatus.make(
+            defaultMode: defaultMode,
+            isLLMEnabled: true,
+            isLLMConfigured: true
+        ).defaultShortcutTitle
+    }
+
+    static func promptBuilderShortcutMenuTitle() -> String {
+        DictationWorkflowStatus.make(
+            defaultMode: .precise,
+            isLLMEnabled: true,
+            isLLMConfigured: true
+        ).promptBuilderShortcutTitle
+    }
+
+    static func dictationWorkflowStatus() -> DictationWorkflowStatus {
+        DictationWorkflowStatus.make(
+            defaultMode: LLMRefiner.shared.mode,
+            isLLMEnabled: LLMRefiner.shared.isEnabled,
+            isLLMConfigured: LLMRefiner.shared.isConfigured
+        )
     }
 
     static func scheduleOneShotTimer(interval: TimeInterval, handler: @escaping (Timer) -> Void) -> Timer {

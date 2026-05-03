@@ -207,6 +207,36 @@ final class LLMRefinerTests: XCTestCase {
         XCTAssertNil(defaults.string(forKey: "llmMode"))
     }
 
+    func testRefineFallsBackToInputWithoutErrorWhenLLMIsUnavailable() throws {
+        let suiteName = "LLMRefinerTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defaults.removePersistentDomain(forName: suiteName)
+
+        let store = KeychainStore(
+            service: "app.voiceinput.VoiceInput.tests.\(UUID().uuidString)",
+            account: "llm-api-key"
+        )
+        defer {
+            try? store.delete()
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        let refiner = LLMRefiner(
+            userDefaults: defaults,
+            apiKeyStore: store,
+            logHandler: { _ in }
+        )
+        refiner.isEnabled = true
+
+        let expectation = expectation(description: "fallback delivered")
+        refiner.refine("filtered text", mode: .promptBuilder) { result in
+            XCTAssertEqual(try? result.get(), "filtered text")
+            expectation.fulfill()
+        }
+
+        wait(for: [expectation], timeout: 1)
+    }
+
     func testInvalidPersistedBaseURLFallsBackToDefaultAndIsCleared() throws {
         let suiteName = "LLMRefinerTests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))

@@ -111,17 +111,17 @@ final class ReleaseWorkflowTests: XCTestCase {
         XCTAssertTrue(changelog.contains("右键 `VoiceInput.app`"))
     }
 
-    func testVersionMetadataIsBumpedForV140() throws {
+    func testVersionMetadataIsBumpedForV150() throws {
         let englishReadme = try String(contentsOfFile: "README.md", encoding: .utf8)
-        XCTAssertTrue(englishReadme.contains("version-v1.4.0"))
+        XCTAssertTrue(englishReadme.contains("version-v1.5.0"))
 
         let rootPlist = NSDictionary(contentsOf: URL(fileURLWithPath: "Info.plist"))
-        XCTAssertEqual(rootPlist?["CFBundleShortVersionString"] as? String, "1.4.0")
-        XCTAssertEqual(rootPlist?["CFBundleVersion"] as? String, "1.4.0")
+        XCTAssertEqual(rootPlist?["CFBundleShortVersionString"] as? String, "1.5.0")
+        XCTAssertEqual(rootPlist?["CFBundleVersion"] as? String, "1.5.0")
 
         let appPlist = NSDictionary(contentsOf: URL(fileURLWithPath: "VoiceInput.app/Contents/Info.plist"))
-        XCTAssertEqual(appPlist?["CFBundleShortVersionString"] as? String, "1.4.0")
-        XCTAssertEqual(appPlist?["CFBundleVersion"] as? String, "1.4.0")
+        XCTAssertEqual(appPlist?["CFBundleShortVersionString"] as? String, "1.5.0")
+        XCTAssertEqual(appPlist?["CFBundleVersion"] as? String, "1.5.0")
     }
 
     func testModifierChordFixReleaseNotesArePublishedForV113() throws {
@@ -210,6 +210,18 @@ final class ReleaseWorkflowTests: XCTestCase {
         XCTAssertTrue(japaneseReadme.contains("Failed / Next / Reopen"))
         XCTAssertTrue(koreanReadme.contains("Failed / Next / Reopen"))
         XCTAssertTrue(checklist.contains("Failed / Next / Reopen"))
+    }
+
+    func testDictationWorkflowReleaseNotesArePublishedForV150() throws {
+        let changelog = try String(contentsOfFile: "CHANGELOG.md", encoding: .utf8)
+        let readme = try String(contentsOfFile: "README.md", encoding: .utf8)
+
+        XCTAssertTrue(changelog.contains("## [v1.5.0] - 2026-05-03"))
+        XCTAssertTrue(changelog.contains("Dictation Workflow Clarity"))
+        XCTAssertTrue(changelog.contains("Option + Fn"))
+        XCTAssertTrue(changelog.contains("ordinary Fn still uses Apple Speech + DictionaryFilter"))
+        XCTAssertTrue(readme.contains("Option + Fn uses Prompt Builder once"))
+        XCTAssertTrue(readme.contains("ordinary Fn still uses Apple Speech + DictionaryFilter"))
     }
 
     func testReleaseQAChecklistDocumentsV12ManualCoverage() throws {

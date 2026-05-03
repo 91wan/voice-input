@@ -31,6 +31,8 @@ Use this checklist before a stable public release such as `v1.2.0`.
 
 - Pure `Fn` starts dictation.
 - `Option + Fn` starts Prompt Builder for the current dictation only.
+- Menu and Readiness both show the default `Fn` mode and that `Option + Fn` is one-shot.
+- Recent Results shows the mode used for the selected result.
 - `Fn + normal key` does not start dictation.
 - `Fn + Control` does not start dictation.
 

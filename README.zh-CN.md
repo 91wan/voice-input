@@ -70,7 +70,8 @@ Dictionary 窗口包含 **Test Phrase** 输入框。输入一句示例文本后�
 - 未配置 API Key 时，普通 `Fn` 听写仍会走 Apple Speech + DictionaryFilter，不制造额外 LLM 失败噪音。
 - **Precise Dictation** 尽量保留原始听写内容。
 - **Prompt Builder** 会把口语整理成适合 ChatGPT、Claude、Cursor 等工具的结构化提示词。
-- 按住 `Fn` 使用当前默认模式；按住 `Option + Fn` 可临时使用 Prompt Builder，不会改变默认设置。
+- 按住 `Fn` 使用当前默认模式；`Option + Fn` 只对本次听写使用 Prompt Builder，不会改变默认设置。
+- 如果 LLM 关闭或没有配置 API key，普通 `Fn` 仍会使用 Apple Speech + DictionaryFilter，不制造额外错误噪音。
 
 ## 快速开始
 
@@ -99,7 +100,7 @@ Dictionary 窗口包含 **Test Phrase** 输入框。输入一句示例文本后�
 ## 菜单栏控制
 
 - **Language**：切换识别语言。
-- **Readiness...**：查看辅助功能、输入监控、麦克风、语音识别、LLM 和词典状态，不会主动请求新权限。
+- **Readiness...**：查看辅助功能、输入监控、麦克风、语音识别、当前听写模式、LLM 和词典状态，不会主动请求新权限。
 - **Dictionary...**：编辑确定性纠错规则。
 - **Recent Results...**：查看当前会话最近 10 条听写结果，并快速添加字典纠错。
 - **LLM Refinement**：启用、关闭、配置、切换默认润色模式，并查看 `Fn` / `Option + Fn` 快捷入口。

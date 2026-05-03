@@ -59,6 +59,8 @@ struct ReadinessDiagnostics: Equatable {
         make(
             permissionDiagnostics: PermissionDiagnostics.capture(),
             isLLMConfigured: LLMRefiner.shared.isConfigured,
+            isLLMEnabled: LLMRefiner.shared.isEnabled,
+            defaultDictationMode: LLMRefiner.shared.mode,
             dictionaryLoadIssue: DictionaryFilter.shared.lastLoadIssue,
             userDictionaryEntryCount: DictionaryFilter.shared.userMap.count,
             eventMonitorStartFailed: eventMonitorStartFailed
@@ -68,6 +70,8 @@ struct ReadinessDiagnostics: Equatable {
     static func make(
         permissionDiagnostics: PermissionDiagnostics,
         isLLMConfigured: Bool,
+        isLLMEnabled: Bool = true,
+        defaultDictationMode: LLMRefinementMode = .precise,
         dictionaryLoadIssue: String?,
         userDictionaryEntryCount: Int,
         eventMonitorStartFailed: Bool = false
@@ -112,6 +116,18 @@ struct ReadinessDiagnostics: Equatable {
             state: isLLMConfigured ? .ready : .optional,
             detail: isLLMConfigured ? "Ready" : "Optional: add an API key for LLM refinement",
             action: isLLMConfigured ? nil : .openLLMSettings
+        ))
+
+        let dictationStatus = DictationWorkflowStatus.make(
+            defaultMode: defaultDictationMode,
+            isLLMEnabled: isLLMEnabled,
+            isLLMConfigured: isLLMConfigured
+        )
+        items.append(ReadinessItem(
+            title: "Dictation Mode",
+            state: .ready,
+            detail: dictationStatus.readinessDetail,
+            action: nil
         ))
 
         if let dictionaryLoadIssue, !dictionaryLoadIssue.isEmpty {
