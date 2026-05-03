@@ -109,4 +109,10 @@ struct LastTranscriptionResult: Equatable {
             createdAt: createdAt
         )
     }
+
+    func hasSameIdentity(as other: LastTranscriptionResult) -> Bool {
+        createdAt == other.createdAt
+            && rawText == other.rawText
+            && finalText == other.finalText
+    }
 }

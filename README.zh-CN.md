@@ -19,9 +19,10 @@ VoiceInput 是一个 macOS 菜单栏语音输入工具，适合中英混输、�
 - **确定性字典纠错**：常见 ASR 误识别先由字典层修正，速度快、结果可控。
 - **可选 LLM 润色**：支持 OpenAI 兼容接口，可做语法修正或 Prompt Builder。
 - **模式快捷入口**：`Fn` 使用当前默认 LLM 模式；`Option + Fn` 只对本次听写使用 Prompt Builder。
-- **权限诊断**：菜单栏可查看辅助功能、麦克风、语音识别权限是否就绪。
+- **Readiness 面板**：被动检查辅助功能、麦克风、语音识别、LLM 配置和词典加载状态。
 - **插入失败兜底**：如果无法注入当前光标，文本会保留在剪贴板，避免内容丢失。
-- **最近结果回看**：查看最近一次 raw / 字典过滤 / LLM 润色 / 最终输出，支持复制、重试插入和快速保存字典规则。
+- **最近结果回看**：查看当前会话最近 10 条 raw / 字典过滤 / LLM 润色 / 最终输出，支持复制、重试插入和快速保存字典规则。
+- **Dictionary Workbench**：保存前用测试短句预览过滤结果和命中的词典规则。
 - **菜单栏优先**：主流程轻量，不需要打开复杂窗口。
 
 ## 功能特性
@@ -57,13 +58,16 @@ my project -> MyProject
 ~/Library/Application Support/VoiceInput/dictionary.json
 ```
 
+Dictionary 窗口包含 **Test Phrase** 输入框。输入一句示例文本后，可以立即看到字典过滤后的输出和命中的规则；规则格式错误会阻止保存并直接提示。
+
 ### LLM 润色
 
 打开 **菜单栏 -> LLM Refinement -> Settings** 配置 OpenAI 兼容接口。
 
 - API Key 保存到 macOS Keychain。
 - API Base URL 和模型名留空时会使用默认值。
-- 启用 LLM 但未填写 API Key 时，会自动打开设置窗口提示补全。
+- 设置窗口会显示当前状态：`Not configured`、`Ready` 或 `Test failed`。
+- 未配置 API Key 时，普通 `Fn` 听写仍会走 Apple Speech + DictionaryFilter，不制造额外 LLM 失败噪音。
 - **Precise Dictation** 尽量保留原始听写内容。
 - **Prompt Builder** 会把口语整理成适合 ChatGPT、Claude、Cursor 等工具的结构化提示词。
 - 按住 `Fn` 使用当前默认模式；按住 `Option + Fn` 可临时使用 Prompt Builder，不会改变默认设置。
@@ -84,9 +88,9 @@ my project -> MyProject
 ## 菜单栏控制
 
 - **Language**：切换识别语言。
-- **Permissions...**：查看辅助功能、麦克风、语音识别状态，不会主动请求新权限。
+- **Readiness...**：查看辅助功能、麦克风、语音识别、LLM 和词典状态，不会主动请求新权限。
 - **Dictionary...**：编辑确定性纠错规则。
-- **Last Result...**：查看最近一次听写结果，并快速添加字典纠错。
+- **Recent Results...**：查看当前会话最近 10 条听写结果，并快速添加字典纠错。
 - **LLM Refinement**：启用、关闭、配置、切换默认润色模式，并查看 `Fn` / `Option + Fn` 快捷入口。
 - **Quit**：退出 VoiceInput。
 
@@ -127,8 +131,8 @@ swift test --parallel
 
 ## Release 规则
 
-- 每次发版前必须在 `CHANGELOG.md` 添加对应版本条目，例如 `## [v1.0.2] - YYYY-MM-DD`。
-- 执行 `make version-bump VERSION=v1.0.2` 会更新版本元数据并创建 tag。
+- 每次发版前必须在 `CHANGELOG.md` 添加对应版本条目，例如 `## [v1.1.0] - YYYY-MM-DD`。
+- 执行 `make version-bump VERSION=v1.1.0` 会更新版本元数据并创建 tag。
 - 推送 `v*` tag 后，CI 会构建 macOS App、打包 `VoiceInput.dmg`，并从 `CHANGELOG.md` 生成 GitHub Release notes。
 - 大版本应同步更新 README 和产品定位。
 - 小版本也必须有清晰的 GitHub Release notes。
@@ -141,9 +145,12 @@ Sources/VoiceInput/
   KeyMonitor.swift           Fn 键监听
   SpeechEngine.swift         Apple Speech 录音与识别
   DictionaryFilter.swift     确定性字典纠错层
+  DictionaryWorkbench.swift  字典测试短句评估
   LLMRefiner.swift           可选 OpenAI 兼容润色
   TextInjector.swift         光标注入与剪贴板兜底
   DictionaryWindow.swift     用户词典编辑器
+  LastResultWindow.swift     当前会话最近结果回看
+  ReadinessWindow.swift      被动启动与就绪检查
   SettingsWindow.swift       LLM 设置窗口
 ```
 

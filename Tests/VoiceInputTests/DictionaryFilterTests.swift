@@ -195,4 +195,26 @@ final class DictionaryFilterTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: url.path))
         XCTAssertTrue(filter.userMap.isEmpty)
     }
+
+    func testWorkbenchEvaluatesPhraseAgainstEditableRules() {
+        let evaluation = DictionaryWorkbench.evaluate(
+            phrase: "open claw and type script",
+            rulesText: "open claw -> OpenClaw\n"
+        )
+
+        XCTAssertTrue(evaluation.canEvaluate)
+        XCTAssertEqual(evaluation.outputText, "OpenClaw and TypeScript")
+        XCTAssertEqual(evaluation.matchSummary, "type script → TypeScript, open claw → OpenClaw")
+    }
+
+    func testWorkbenchReportsRuleErrorsInsteadOfApplyingInvalidRules() {
+        let evaluation = DictionaryWorkbench.evaluate(
+            phrase: "open claw",
+            rulesText: "broken rule"
+        )
+
+        XCTAssertFalse(evaluation.canEvaluate)
+        XCTAssertTrue(evaluation.outputText.isEmpty)
+        XCTAssertTrue(evaluation.matchSummary.contains("第 1 行"))
+    }
 }

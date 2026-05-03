@@ -16,6 +16,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let keyMonitor = KeyMonitor()
     private let speechEngine = SpeechEngine()
     private let textInjector = TextInjector()
+    private let recentResults = RecentTranscriptionStore(capacity: 10)
     private lazy var overlayPanel = OverlayPanel()
 
     private var isEnabled = true
@@ -39,9 +40,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private lazy var settingsWindow = SettingsWindow()
     private lazy var dictionaryWindow = DictionaryWindow()
     private lazy var lastResultWindow = LastResultWindow()
+    private lazy var readinessWindow = ReadinessWindow()
     private var lastTranscriptionResult: LastTranscriptionResult? {
         didSet {
-            lastResultWindow.result = lastTranscriptionResult
+            lastResultWindow.update(results: recentResults.results, selected: lastTranscriptionResult)
             updateLastResultMenuItem()
         }
     }
@@ -82,14 +84,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             self?.syncLLMEnabledState()
             self?.updateLLMMenuItemState()
         }
-        lastResultWindow.onRetryInsert = { [weak self] text, completion in
+        readinessWindow.onAction = { [weak self] action in
+            self?.handleReadinessAction(action)
+        }
+        lastResultWindow.onRetryInsert = { [weak self] selectedResult, completion in
             guard let self else {
                 completion(.failure(.pasteCommandFailed))
                 return
             }
-            let result = self.textInjector.inject(text)
-            self.recordInjectionResult(result)
-            completion(result)
+            let injectionResult = self.textInjector.inject(selectedResult.finalText)
+            self.recordRetryInjectionResult(injectionResult, for: selectedResult)
+            completion(injectionResult)
         }
         lastResultWindow.onSaveDictionaryRule = { [weak self] source, replacement in
             var dict = DictionaryFilter.shared.userMap
@@ -309,7 +314,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         refinedText: String?,
         refinementMode: LLMRefinementMode?
     ) {
-        lastTranscriptionResult = LastTranscriptionResult.make(
+        let result = LastTranscriptionResult.make(
             rawText: rawText,
             dictionaryResult: dictionaryResult,
             resolvedOutput: output,
@@ -317,10 +322,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             refinementMode: refinementMode,
             injectionResult: nil
         )
+        recentResults.record(result)
+        lastTranscriptionResult = result
     }
 
     private func recordInjectionResult(_ result: TextInjectionResult) {
+        recentResults.updateMostRecentInjectionResult(result)
         lastTranscriptionResult = lastTranscriptionResult?.withInjectionResult(result)
+    }
+
+    private func recordRetryInjectionResult(_ injectionResult: TextInjectionResult, for selectedResult: LastTranscriptionResult) {
+        recentResults.updateInjectionResult(injectionResult, for: selectedResult)
+        if lastTranscriptionResult?.hasSameIdentity(as: selectedResult) == true {
+            lastTranscriptionResult = lastTranscriptionResult?.withInjectionResult(injectionResult)
+        }
     }
 
     private func performTextInjection(_ text: String, sessionID: Int) {
@@ -378,14 +393,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(enableMenuItem)
 
         permissionStatusMenuItem = NSMenuItem(
-            title: PermissionDiagnostics.capture().menuTitle,
+            title: ReadinessDiagnostics.capture().menuTitle,
             action: nil,
             keyEquivalent: ""
         )
         permissionStatusMenuItem.isEnabled = false
         menu.addItem(permissionStatusMenuItem)
 
-        let permissionsItem = NSMenuItem(title: "Permissions...", action: #selector(openPermissionDiagnostics), keyEquivalent: "")
+        let permissionsItem = NSMenuItem(title: "Readiness...", action: #selector(openPermissionDiagnostics), keyEquivalent: "")
         permissionsItem.target = self
         menu.addItem(permissionsItem)
 
@@ -457,7 +472,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         dictionaryStatusMenuItem.isEnabled = false
         menu.addItem(dictionaryStatusMenuItem)
 
-        lastResultMenuItem = NSMenuItem(title: "Last Result...", action: #selector(openLastResult), keyEquivalent: "")
+        lastResultMenuItem = NSMenuItem(title: "Recent Results...", action: #selector(openLastResult), keyEquivalent: "")
         lastResultMenuItem.target = self
         lastResultMenuItem.isEnabled = false
         menu.addItem(lastResultMenuItem)
@@ -555,27 +570,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func openLastResult() {
-        lastResultWindow.present(result: lastTranscriptionResult)
+        lastResultWindow.present(results: recentResults.results)
     }
 
     @objc private func openPermissionDiagnostics() {
-        let diagnostics = PermissionDiagnostics.capture()
-        let alert = NSAlert()
-        alert.messageText = diagnostics.isReady ? "Permissions Ready" : "Permissions Need Attention"
-        alert.informativeText = diagnostics.detailText
-        alert.alertStyle = diagnostics.isReady ? .informational : .warning
-
-        if let settingsURL = diagnostics.primarySettingsURL {
-            alert.addButton(withTitle: "Open System Settings")
-            alert.addButton(withTitle: "OK")
-            if alert.runModal() == .alertFirstButtonReturn {
-                NSWorkspace.shared.open(settingsURL)
-            }
-        } else {
-            alert.addButton(withTitle: "OK")
-            alert.runModal()
-        }
-
+        readinessWindow.present(ReadinessDiagnostics.capture())
         updatePermissionStatusMenuItem()
     }
 
@@ -649,11 +648,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func updatePermissionStatusMenuItem() {
-        permissionStatusMenuItem?.title = PermissionDiagnostics.capture().menuTitle
+        permissionStatusMenuItem?.title = ReadinessDiagnostics.capture().menuTitle
     }
 
     private func updateLastResultMenuItem() {
-        lastResultMenuItem?.isEnabled = lastTranscriptionResult != nil
+        lastResultMenuItem?.isEnabled = !recentResults.results.isEmpty
     }
 
     private func syncLLMEnabledState() {
@@ -712,5 +711,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let timer = Timer(timeInterval: interval, repeats: false, block: handler)
         RunLoop.main.add(timer, forMode: .common)
         return timer
+    }
+
+    private func handleReadinessAction(_ action: ReadinessAction) {
+        switch action {
+        case .openAccessibilitySettings:
+            openSystemSettings("x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
+        case .openMicrophoneSettings:
+            if let url = SpeechPermissionIssue.microphoneDenied.settingsURL {
+                NSWorkspace.shared.open(url)
+            }
+        case .openSpeechSettings:
+            if let url = SpeechPermissionIssue.speechRecognitionDenied.settingsURL {
+                NSWorkspace.shared.open(url)
+            }
+        case .openLLMSettings:
+            settingsWindow.present()
+        case .openDictionary:
+            openDictionary()
+        }
+    }
+
+    private func openSystemSettings(_ urlString: String) {
+        guard let url = URL(string: urlString) else { return }
+        NSWorkspace.shared.open(url)
     }
 }

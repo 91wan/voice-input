@@ -2,7 +2,7 @@
 
 ### Hold `Fn` to dictate. Release to insert text.
 
-> version-v1.0.2 | date-2026-05-02
+> version-v1.1.0 | date-2026-05-03
 
 [English](README.md) | [简体中文](README.zh-CN.md) | [日本語](README.ja.md) | [한국어](README.ko.md)
 
@@ -21,9 +21,10 @@ Audio -> Apple Speech -> DictionaryFilter -> optional LLMRefiner -> TextInjector
 - **Deterministic dictionary layer**: fixes predictable ASR mistakes before the text reaches an LLM.
 - **Optional LLM refinement**: supports OpenAI-compatible APIs for grammar cleanup or prompt-building.
 - **Mode shortcut**: `Fn` uses the selected LLM mode; `Option + Fn` runs Prompt Builder for the current dictation only.
-- **Permission diagnostics**: the menu bar can show whether Accessibility, Microphone, and Speech Recognition are ready.
+- **Readiness panel**: passively checks Accessibility, Microphone, Speech Recognition, LLM configuration, and dictionary loading.
 - **Cursor insertion fallback**: if paste-style insertion fails, the generated text stays on the clipboard instead of being lost.
-- **Last Result review**: inspect the most recent raw, dictionary-filtered, LLM-refined, and final text; copy it, retry insertion, or save a quick dictionary rule.
+- **Recent Results review**: inspect the current session's latest 10 results; copy final text, retry insertion, or save a quick dictionary rule.
+- **Dictionary Workbench**: test a phrase against the current dictionary rules before saving changes.
 - **Menu bar first**: no heavy window workflow; the main app lives in the macOS menu bar.
 
 ## Features
@@ -59,13 +60,16 @@ The user dictionary is saved at:
 ~/Library/Application Support/VoiceInput/dictionary.json
 ```
 
+The Dictionary window also includes a **Test Phrase** workbench. Type a sample sentence to preview the filtered output and see which dictionary rules match. Invalid rule formats block saving and are shown before they can silently affect dictation.
+
 ### LLM refinement
 
 Open **Menu Bar -> LLM Refinement -> Settings** to configure an OpenAI-compatible API.
 
 - API keys are stored in macOS Keychain.
 - Blank API Base URL and model values fall back to defaults.
-- If LLM refinement is enabled without an API key, VoiceInput opens Settings and asks for one.
+- Settings shows the current state: `Not configured`, `Ready`, or `Test failed`.
+- If no API key is configured, normal `Fn` dictation still uses Apple Speech and DictionaryFilter without extra LLM failure noise.
 - **Precise Dictation** keeps the text close to what you said.
 - **Prompt Builder** rewrites rough speech into a structured prompt for ChatGPT, Claude, Cursor, or similar tools.
 - Hold `Fn` for the selected default mode, or hold `Option + Fn` to use Prompt Builder once without changing the default.
@@ -86,9 +90,9 @@ Open **Menu Bar -> LLM Refinement -> Settings** to configure an OpenAI-compatibl
 ## Menu Bar Controls
 
 - **Language**: switch recognition locale.
-- **Permissions...**: inspect Accessibility, Microphone, and Speech Recognition status without requesting new permissions.
+- **Readiness...**: inspect Accessibility, Microphone, Speech Recognition, LLM, and Dictionary status without requesting new permissions.
 - **Dictionary...**: edit deterministic correction rules.
-- **Last Result...**: review the latest transcription and add a quick dictionary correction.
+- **Recent Results...**: review the current session's latest 10 transcriptions and add a quick dictionary correction.
 - **LLM Refinement**: enable, disable, configure, select the default refinement mode, and see the `Fn` / `Option + Fn` shortcuts.
 - **Quit**: stop VoiceInput.
 
@@ -129,8 +133,8 @@ swift test --parallel
 
 ## Release Policy
 
-- Add a matching `CHANGELOG.md` entry before every release, for example `## [v1.0.2] - YYYY-MM-DD`.
-- Run `make version-bump VERSION=v1.0.2` to update version metadata and create the tag.
+- Add a matching `CHANGELOG.md` entry before every release, for example `## [v1.1.0] - YYYY-MM-DD`.
+- Run `make version-bump VERSION=v1.1.0` to update version metadata and create the tag.
 - Pushing a `v*` tag builds the macOS app, packages `VoiceInput.dmg`, and publishes GitHub Release notes from `CHANGELOG.md`.
 - Major releases should update the README and product positioning.
 - Patch and minor releases should still have clear GitHub Release notes.
@@ -143,9 +147,12 @@ Sources/VoiceInput/
   KeyMonitor.swift           Fn key monitoring
   SpeechEngine.swift         Apple Speech recording and recognition
   DictionaryFilter.swift     deterministic correction layer
+  DictionaryWorkbench.swift  dictionary test phrase evaluation
   LLMRefiner.swift           optional OpenAI-compatible refinement
   TextInjector.swift         cursor insertion and clipboard fallback
   DictionaryWindow.swift     user dictionary editor
+  LastResultWindow.swift     current-session recent result review
+  ReadinessWindow.swift      passive setup and readiness checks
   SettingsWindow.swift       LLM settings UI
 ```
 
