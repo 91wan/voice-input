@@ -19,9 +19,10 @@ Audio -> Apple Speech -> DictionaryFilter -> optional LLMRefiner -> TextInjector
 - **결정적 사전 보정**: 자주 발생하는 ASR 오류를 LLM 전에 빠르고 예측 가능하게 수정합니다.
 - **선택적 LLM 보정**: OpenAI 호환 API로 문장 정리 또는 Prompt Builder 모드를 사용할 수 있습니다.
 - **모드 단축키**: `Fn`은 선택된 LLM 모드를 사용하고, `Option + Fn`은 이번 입력에만 Prompt Builder를 사용합니다.
-- **권한 진단**: 메뉴 막대에서 손쉬운 사용, 마이크, 음성 인식 권한 상태를 확인할 수 있습니다.
+- **Readiness 패널**: 손쉬운 사용, 마이크, 음성 인식, LLM 설정, 사전 로드 상태를 수동으로 권한 요청하지 않고 확인합니다.
 - **입력 실패 보호**: 커서 삽입이 실패해도 생성된 텍스트는 클립보드에 남습니다.
-- **최근 결과 확인**: raw / 사전 보정 / LLM 보정 / 최종 텍스트를 확인하고, 복사, 재삽입, 빠른 사전 규칙 저장을 할 수 있습니다.
+- **Recent Results**: 현재 세션의 최근 10개 결과에서 raw / 사전 보정 / LLM 보정 / 최종 텍스트를 확인하고, 복사, 재삽입, 빠른 사전 규칙 저장을 할 수 있습니다.
+- **Dictionary Workbench**: 저장 전에 테스트 문장을 입력해 보정 결과와 매칭된 사전 규칙을 확인할 수 있습니다.
 - **메뉴 막대 중심**: 무거운 창을 열지 않고 핵심 기능을 사용할 수 있습니다.
 
 ## 기능
@@ -57,13 +58,16 @@ my project -> MyProject
 ~/Library/Application Support/VoiceInput/dictionary.json
 ```
 
+Dictionary 창에는 **Test Phrase** 입력이 포함됩니다. 예시 문장을 입력하면 사전 적용 후 출력과 매칭된 규칙을 바로 확인할 수 있으며, 잘못된 규칙 형식은 저장 전에 표시됩니다.
+
 ### LLM 보정
 
 **Menu Bar -> LLM Refinement -> Settings** 에서 OpenAI 호환 API를 설정합니다.
 
 - API 키는 macOS Keychain에 저장됩니다.
 - API Base URL과 모델명이 비어 있으면 기본값을 사용합니다.
-- API 키 없이 LLM을 활성화하면 설정 창을 열어 입력을 요청합니다.
+- 설정 창은 `Not configured`, `Ready`, `Test failed` 상태를 표시합니다.
+- API 키가 없어도 일반 `Fn` 입력은 Apple Speech와 DictionaryFilter로 계속 동작하며, 불필요한 LLM 실패 소음을 만들지 않습니다.
 - **Precise Dictation** 은 말한 내용에 가까운 결과를 유지합니다.
 - **Prompt Builder** 는 음성 메모를 ChatGPT, Claude, Cursor 등에 넣기 좋은 구조화된 프롬프트로 정리합니다.
 - `Fn`은 선택된 기본 모드를 사용합니다. `Option + Fn`은 기본 설정을 바꾸지 않고 이번 입력에만 Prompt Builder를 사용합니다.
@@ -84,9 +88,9 @@ my project -> MyProject
 ## 메뉴 막대 제어
 
 - **Language**: 인식 언어를 전환합니다.
-- **Permissions...**: 새 권한 요청 없이 손쉬운 사용, 마이크, 음성 인식 상태를 확인합니다.
+- **Readiness...**: 새 권한 요청 없이 손쉬운 사용, 마이크, 음성 인식, LLM, 사전 상태를 확인합니다.
 - **Dictionary...**: 결정적 보정 규칙을 편집합니다.
-- **Last Result...**: 최근 음성 입력 결과를 확인하고 빠르게 사전 보정을 추가합니다.
+- **Recent Results...**: 현재 세션의 최근 10개 결과를 확인하고 빠르게 사전 보정을 추가합니다.
 - **LLM Refinement**: LLM 보정 활성화, 설정, 기본 모드 전환, `Fn` / `Option + Fn` 단축키 확인을 관리합니다.
 - **Quit**: VoiceInput을 종료합니다.
 
@@ -127,8 +131,8 @@ swift test --parallel
 
 ## 릴리스 정책
 
-- 릴리스 전에 `CHANGELOG.md`에 해당 버전 항목을 추가합니다. 예: `## [v1.0.2] - YYYY-MM-DD`
-- `make version-bump VERSION=v1.0.2` 로 버전 메타데이터를 업데이트하고 tag를 생성합니다.
+- 릴리스 전에 `CHANGELOG.md`에 해당 버전 항목을 추가합니다. 예: `## [v1.1.0] - YYYY-MM-DD`
+- `make version-bump VERSION=v1.1.0` 로 버전 메타데이터를 업데이트하고 tag를 생성합니다.
 - `v*` tag를 push하면 CI가 macOS 앱을 빌드하고 `VoiceInput.dmg`를 패키징하며, `CHANGELOG.md`에서 GitHub Release notes를 생성합니다.
 - 메이저 릴리스는 README와 제품 포지셔닝을 함께 업데이트해야 합니다.
 - 패치 / 마이너 릴리스도 명확한 GitHub Release notes를 남겨야 합니다.
@@ -141,9 +145,12 @@ Sources/VoiceInput/
   KeyMonitor.swift           Fn 키 감지
   SpeechEngine.swift         Apple Speech 녹음과 인식
   DictionaryFilter.swift     결정적 사전 보정 레이어
+  DictionaryWorkbench.swift  사전 테스트 문장 평가
   LLMRefiner.swift           선택적 OpenAI 호환 보정
   TextInjector.swift         커서 삽입과 클립보드 보호
   DictionaryWindow.swift     사용자 사전 편집기
+  LastResultWindow.swift     현재 세션 Recent Results 확인
+  ReadinessWindow.swift      수동 권한 요청 없는 준비 상태 확인
   SettingsWindow.swift       LLM 설정 창
 ```
 

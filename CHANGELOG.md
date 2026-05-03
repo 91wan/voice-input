@@ -2,6 +2,26 @@
 
 ## [Unreleased]
 
+---
+
+## [v1.1.0] - 2026-05-03
+
+### 新增
+- 新增 `Readiness...` 面板，被动展示 Accessibility、Microphone、Speech Recognition、LLM configured、Dictionary loaded 状态，并提供对应设置入口。
+- `Last Result...` 升级为 `Recent Results...`，当前会话内保留最近 10 条听写结果，支持 raw / filtered / refined / final 回看、复制、重试插入和快速保存字典规则。
+- Dictionary 窗口新增 `Test Phrase` workbench，保存前可实时预览字典过滤后的输出和命中的规则。
+- LLM Settings 新增 `Not configured` / `Ready` / `Test failed` 状态文案，并显示当前 base URL、model、mode，不展示 API key。
+
+### 修复
+- 修复从较旧 Recent Result 执行 `Retry Insert` 时错误更新最新记录插入状态的问题。
+
+### 文档
+- README 英 / 中 / 日 / 韩同步更新 v1.1 功能说明、菜单入口和 release policy 示例。
+
+---
+
+## [v1.0.3] - 2026-05-03
+
 ### 变更
 - GitHub Actions 升级到 Node 24 兼容版本：`actions/checkout@v6` 和 `softprops/action-gh-release@v3`，移除 Node.js 20 deprecation warning。
 - 菜单栏新增 `Last Result...`，可查看最近一次 raw / filtered / refined / final 结果，并支持复制、重试插入和快速保存字典规则。

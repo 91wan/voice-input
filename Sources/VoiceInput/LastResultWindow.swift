@@ -5,9 +5,10 @@ final class LastResultWindow: NSPanel {
         didSet { refresh() }
     }
 
-    var onRetryInsert: ((String, @escaping (TextInjectionResult) -> Void) -> Void)?
+    var onRetryInsert: ((LastTranscriptionResult, @escaping (TextInjectionResult) -> Void) -> Void)?
     var onSaveDictionaryRule: ((String, String) throws -> Int)?
 
+    private let resultPopup = NSPopUpButton()
     private let summaryLabel = NSTextField(labelWithString: "No transcription yet.")
     private let rawTextView = NSTextView()
     private let filteredTextView = NSTextView()
@@ -17,6 +18,7 @@ final class LastResultWindow: NSPanel {
     private let replacementField = NSTextField()
     private let statusLabel = NSTextField(labelWithString: "")
     private var previousActiveApplication: NSRunningApplication?
+    private var results: [LastTranscriptionResult] = []
     private var statusResetWorkItem: DispatchWorkItem?
 
     init() {
@@ -26,7 +28,7 @@ final class LastResultWindow: NSPanel {
             backing: .buffered,
             defer: false
         )
-        title = "Last Result"
+        title = "Recent Results"
         isReleasedWhenClosed = false
         minSize = NSSize(width: 640, height: 520)
         setupUI()
@@ -35,14 +37,35 @@ final class LastResultWindow: NSPanel {
     }
 
     func present(result: LastTranscriptionResult?) {
+        results = result.map { [$0] } ?? []
         let frontmostApplication = NSWorkspace.shared.frontmostApplication
         if frontmostApplication?.bundleIdentifier != Bundle.main.bundleIdentifier {
             previousActiveApplication = frontmostApplication
         }
 
         self.result = result
+        reloadResultPopup()
         makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    func present(results: [LastTranscriptionResult]) {
+        self.results = results
+        let frontmostApplication = NSWorkspace.shared.frontmostApplication
+        if frontmostApplication?.bundleIdentifier != Bundle.main.bundleIdentifier {
+            previousActiveApplication = frontmostApplication
+        }
+
+        result = results.first
+        reloadResultPopup()
+        makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    func update(results: [LastTranscriptionResult], selected: LastTranscriptionResult?) {
+        self.results = results
+        result = selected ?? results.first
+        reloadResultPopup(selecting: result)
     }
 
     private func setupUI() {
@@ -127,6 +150,10 @@ final class LastResultWindow: NSPanel {
             correctionStack.trailingAnchor.constraint(equalTo: correctionContentView.trailingAnchor, constant: -10),
             correctionStack.bottomAnchor.constraint(equalTo: correctionContentView.bottomAnchor, constant: -10),
         ])
+
+        resultPopup.target = self
+        resultPopup.action = #selector(selectResult)
+        stack.insertArrangedSubview(resultPopup, at: 0)
     }
 
     private func makeSection(title: String, textView: NSTextView, height: CGFloat) -> NSView {
@@ -191,6 +218,7 @@ final class LastResultWindow: NSPanel {
 
     private func refresh() {
         guard let result else {
+            resultPopup.isHidden = true
             summaryLabel.stringValue = "No transcription yet."
             rawTextView.string = ""
             filteredTextView.string = ""
@@ -202,6 +230,7 @@ final class LastResultWindow: NSPanel {
             return
         }
 
+        resultPopup.isHidden = results.count <= 1
         let time = result.createdAt.formatted(date: .omitted, time: .standard)
         summaryLabel.stringValue = "\(time) | \(result.refinementSummary) | \(result.dictionarySummary) | \(result.injectionSummary)"
         rawTextView.string = result.rawText
@@ -218,6 +247,29 @@ final class LastResultWindow: NSPanel {
         }
     }
 
+    private func reloadResultPopup(selecting selectedResult: LastTranscriptionResult? = nil) {
+        resultPopup.removeAllItems()
+        for (index, result) in results.enumerated() {
+            let time = result.createdAt.formatted(date: .omitted, time: .standard)
+            let text = result.finalText.replacingOccurrences(of: "\n", with: " ")
+            let preview = text.count > 48 ? "\(text.prefix(48))..." : text
+            resultPopup.addItem(withTitle: "\(index + 1). \(time) - \(preview)")
+        }
+        resultPopup.isHidden = results.count <= 1
+        if let selectedResult,
+           let index = results.firstIndex(where: { $0.hasSameIdentity(as: selectedResult) }) {
+            resultPopup.selectItem(at: index)
+        } else if !results.isEmpty {
+            resultPopup.selectItem(at: 0)
+        }
+    }
+
+    @objc private func selectResult() {
+        let index = resultPopup.indexOfSelectedItem
+        guard results.indices.contains(index) else { return }
+        result = results[index]
+    }
+
     @objc private func copyFinalText() {
         guard let text = result?.finalText.trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty else {
             showStatus("No final text to copy.", style: .warning, autoClear: true)
@@ -230,7 +282,11 @@ final class LastResultWindow: NSPanel {
     }
 
     @objc private func retryInsert() {
-        guard let text = result?.finalText.trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty else {
+        guard let selectedResult = result else {
+            showStatus("No final text to insert.", style: .warning, autoClear: true)
+            return
+        }
+        guard !selectedResult.finalText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             showStatus("No final text to insert.", style: .warning, autoClear: true)
             return
         }
@@ -240,7 +296,7 @@ final class LastResultWindow: NSPanel {
         }
 
         guard let targetApplication = previousActiveApplication else {
-            showStatus("No previous app to return to. Focus the target app, then open Last Result again.", style: .warning, autoClear: false)
+            showStatus("No previous app to return to. Focus the target app, then open Recent Results again.", style: .warning, autoClear: false)
             return
         }
 
@@ -249,10 +305,11 @@ final class LastResultWindow: NSPanel {
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
             guard let self else { return }
-            onRetryInsert(text) { [weak self] injectionResult in
+            onRetryInsert(selectedResult) { [weak self] injectionResult in
                 DispatchQueue.main.async {
                     guard let self else { return }
-                    self.result = self.result?.withInjectionResult(injectionResult)
+                    let updatedResult = selectedResult.withInjectionResult(injectionResult)
+                    self.updateDisplayedResult(updatedResult)
                     self.makeKeyAndOrderFront(nil)
                     NSApp.activate(ignoringOtherApps: true)
 
@@ -264,6 +321,16 @@ final class LastResultWindow: NSPanel {
                     }
                 }
             }
+        }
+    }
+
+    private func updateDisplayedResult(_ updatedResult: LastTranscriptionResult) {
+        if let index = results.firstIndex(where: { $0.hasSameIdentity(as: updatedResult) }) {
+            results[index] = updatedResult
+            result = updatedResult
+            reloadResultPopup(selecting: updatedResult)
+        } else {
+            result = updatedResult
         }
     }
 

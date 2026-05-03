@@ -23,6 +23,7 @@ final class SettingsWindow: NSPanel {
     private let statusLabel = NSTextField(labelWithString: "")
     private let defaultStatusText = "API key is stored in your macOS Keychain."
     private var statusGeneration = 0
+    private var testState: LLMSettingsTestState = .notRun
     var onSettingsSaved: (() -> Void)?
 
     init() {
@@ -107,6 +108,8 @@ final class SettingsWindow: NSPanel {
         apiBaseURLField.stringValue = refiner.apiBaseURL
         apiKeyField.stringValue = refiner.apiKey
         modelField.stringValue = refiner.model
+        testState = .notRun
+        refreshConfigurationStatus()
     }
 
     func present(message: String? = nil, success: Bool? = nil, focusAPIKey: Bool = false) {
@@ -115,7 +118,7 @@ final class SettingsWindow: NSPanel {
         if let message {
             showStatus(message, success: success)
         } else {
-            showStatus(defaultStatusText, success: nil)
+            refreshConfigurationStatus()
         }
         makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
@@ -142,15 +145,18 @@ final class SettingsWindow: NSPanel {
             return
         }
 
-        showStatus("Testing...", success: nil)
+        testState = .testing
+        refreshConfigurationStatus()
 
         refiner.refine("Hello, this is a test.", force: true) { [weak self] result in
             guard let self, self.statusGeneration == generation else { return }
             switch result {
             case .success(let text):
-                self.showStatus("OK: \(text)", success: true)
+                self.testState = .succeeded(text)
+                self.refreshConfigurationStatus()
             case .failure(let error):
-                self.showStatus(error.localizedDescription, success: false)
+                self.testState = .failed(error.localizedDescription)
+                self.refreshConfigurationStatus()
             }
         }
     }
@@ -160,7 +166,8 @@ final class SettingsWindow: NSPanel {
         do {
             try applyFields()
             onSettingsSaved?()
-            showStatus("Saved to Keychain", success: true)
+            testState = .notRun
+            refreshConfigurationStatus(prefix: "Saved. ")
         } catch {
             showStatus(error.localizedDescription, success: false)
             return
@@ -177,6 +184,18 @@ final class SettingsWindow: NSPanel {
         try refiner.updateAPIKey(apiKeyField.stringValue)
         refiner.apiBaseURL = settings.apiBaseURL
         refiner.model = settings.model
+    }
+
+    private func refreshConfigurationStatus(prefix: String = "") {
+        let refiner = LLMRefiner.shared
+        let status = LLMSettingsStatus.make(
+            isConfigured: refiner.isConfigured,
+            apiBaseURL: refiner.apiBaseURL,
+            model: refiner.model,
+            mode: refiner.mode,
+            testState: testState
+        )
+        showStatus(prefix + status.displayText, success: status.isReady ? true : nil)
     }
 
     static func validatedSettings(apiBaseURL: String, model: String) throws -> ValidatedSettings {
