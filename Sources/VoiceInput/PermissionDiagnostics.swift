@@ -1,6 +1,7 @@
 import ApplicationServices
 import AVFoundation
 import Foundation
+import IOKit.hidsystem
 import Speech
 
 enum PermissionDiagnosticState: Equatable {
@@ -23,6 +24,35 @@ enum PermissionDiagnosticState: Equatable {
     }
 }
 
+enum InputMonitoringAccess: Equatable {
+    case granted
+    case denied
+    case unknown
+
+    var diagnosticState: PermissionDiagnosticState {
+        switch self {
+        case .granted:
+            return .ready
+        case .denied:
+            return .missing
+        case .unknown:
+            return .unknown
+        }
+    }
+
+    static func capture() -> InputMonitoringAccess {
+        let access = IOHIDCheckAccess(kIOHIDRequestTypeListenEvent)
+        switch access {
+        case kIOHIDAccessTypeGranted:
+            return .granted
+        case kIOHIDAccessTypeDenied:
+            return .denied
+        default:
+            return .unknown
+        }
+    }
+}
+
 struct PermissionDiagnostic: Equatable {
     let name: String
     let state: PermissionDiagnosticState
@@ -39,6 +69,7 @@ struct PermissionDiagnostic: Equatable {
 
 struct PermissionDiagnostics: Equatable {
     let accessibility: PermissionDiagnostic
+    let inputMonitoring: PermissionDiagnostic
     let microphone: PermissionDiagnostic
     let speechRecognition: PermissionDiagnostic
 
@@ -64,12 +95,13 @@ struct PermissionDiagnostics: Equatable {
     }
 
     private var allDiagnostics: [PermissionDiagnostic] {
-        [accessibility, microphone, speechRecognition]
+        [accessibility, inputMonitoring, microphone, speechRecognition]
     }
 
     static func capture() -> PermissionDiagnostics {
         make(
             accessibilityTrusted: AXIsProcessTrusted(),
+            inputMonitoringAccess: .capture(),
             microphoneAuthorization: AVCaptureDevice.authorizationStatus(for: .audio),
             speechAuthorization: SFSpeechRecognizer.authorizationStatus()
         )
@@ -77,6 +109,7 @@ struct PermissionDiagnostics: Equatable {
 
     static func make(
         accessibilityTrusted: Bool,
+        inputMonitoringAccess: InputMonitoringAccess,
         microphoneAuthorization: AVAuthorizationStatus,
         speechAuthorization: SFSpeechRecognizerAuthorizationStatus
     ) -> PermissionDiagnostics {
@@ -85,6 +118,11 @@ struct PermissionDiagnostics: Equatable {
                 name: "Accessibility",
                 state: accessibilityTrusted ? .ready : .missing,
                 settingsURL: URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
+            ),
+            inputMonitoring: PermissionDiagnostic(
+                name: "Input Monitoring",
+                state: inputMonitoringAccess.diagnosticState,
+                settingsURL: URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent")
             ),
             microphone: PermissionDiagnostic(
                 name: "Microphone",

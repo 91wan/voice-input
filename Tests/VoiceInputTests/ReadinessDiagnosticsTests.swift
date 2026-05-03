@@ -8,6 +8,7 @@ final class ReadinessDiagnosticsTests: XCTestCase {
         let readiness = ReadinessDiagnostics.make(
             permissionDiagnostics: .make(
                 accessibilityTrusted: true,
+                inputMonitoringAccess: .granted,
                 microphoneAuthorization: .authorized,
                 speechAuthorization: .authorized
             ),
@@ -21,6 +22,7 @@ final class ReadinessDiagnosticsTests: XCTestCase {
         XCTAssertEqual(readiness.menuTitle, "Readiness: Ready")
         XCTAssertEqual(readiness.items.map(\.title), [
             "Accessibility",
+            "Input Monitoring",
             "Microphone",
             "Speech Recognition",
             "LLM Refinement",
@@ -34,6 +36,7 @@ final class ReadinessDiagnosticsTests: XCTestCase {
         let readiness = ReadinessDiagnostics.make(
             permissionDiagnostics: .make(
                 accessibilityTrusted: true,
+                inputMonitoringAccess: .granted,
                 microphoneAuthorization: .authorized,
                 speechAuthorization: .authorized
             ),
@@ -52,6 +55,7 @@ final class ReadinessDiagnosticsTests: XCTestCase {
         let readiness = ReadinessDiagnostics.make(
             permissionDiagnostics: .make(
                 accessibilityTrusted: false,
+                inputMonitoringAccess: .denied,
                 microphoneAuthorization: .authorized,
                 speechAuthorization: .authorized
             ),

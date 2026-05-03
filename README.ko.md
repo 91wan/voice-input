@@ -81,7 +81,10 @@ Dictionary 창에는 **Test Phrase** 입력이 포함됩니다. 예시 문장을
    - 마이크
    - 음성 인식
    - 손쉬운 사용
+   - 입력 모니터링
 5. 입력창에 커서를 둔 뒤 `Fn`을 누르고 말한 다음 키를 놓습니다. 이번 입력만 Prompt Builder로 처리하려면 `Option + Fn`을 사용합니다.
+
+손쉬운 사용 권한을 켰는데도 VoiceInput이 권한 실패를 표시하면 VoiceInput을 종료한 뒤 다시 여세요. 업데이트 후에도 실패하면 손쉬운 사용 / 입력 모니터링에서 기존 VoiceInput 항목을 제거하고 `/Applications/VoiceInput.app`을 다시 추가하세요.
 
 > 현재 GitHub DMG는 **서명되지 않았고 notarized 되지 않은** 빌드입니다. 따라서 다운로드가 정상이어도 macOS Gatekeeper가 첫 실행을 차단할 수 있습니다.
 

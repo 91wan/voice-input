@@ -81,7 +81,10 @@ Dictionary 窗口包含 **Test Phrase** 输入框。输入一句示例文本后�
    - 麦克风
    - 语音识别
    - 辅助功能
+   - 输入监控
 5. 把光标放到任意输入框，按住 `Fn` 说话，松开后自动输入；需要临时整理 Prompt 时使用 `Option + Fn`。
+
+如果辅助功能已经开启但 VoiceInput 仍提示权限失败，请先退出并重新打开 VoiceInput。若更新后仍失败，请在“辅助功能 / 输入监控”中移除旧的 VoiceInput 项，再重新添加 `/Applications/VoiceInput.app`。
 
 > 当前 GitHub DMG 是 **未签名 / 未 notarized** 构建。因此即使下载文件正常，macOS Gatekeeper 首次打开时也可能拦截。
 

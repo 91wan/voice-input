@@ -142,7 +142,7 @@ final class ReadinessWindow: NSPanel {
 
     private func titleForAction(_ action: ReadinessAction) -> String {
         switch action {
-        case .openAccessibilitySettings, .openMicrophoneSettings, .openSpeechSettings:
+        case .openAccessibilitySettings, .openInputMonitoringSettings, .openMicrophoneSettings, .openSpeechSettings:
             return "Open Settings"
         case .openLLMSettings:
             return "Open LLM"
