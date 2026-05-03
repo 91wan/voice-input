@@ -2,6 +2,13 @@
 
 Use this checklist before a stable public release such as `v1.2.0`.
 
+## Stable Release Gate
+
+- Install / first launch / permission / Fn / Option + Fn coverage must pass before tagging a stable public release.
+- README and GitHub Release notes must document the full first-install path.
+- README and GitHub Release notes must document the update permission recovery path.
+- If any manual QA item fails, ship only a narrow fix or defer the release.
+
 ## Installation And First Launch
 
 - Download the GitHub Release `VoiceInput.dmg`.

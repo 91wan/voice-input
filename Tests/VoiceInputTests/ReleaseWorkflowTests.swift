@@ -111,17 +111,17 @@ final class ReleaseWorkflowTests: XCTestCase {
         XCTAssertTrue(changelog.contains("右键 `VoiceInput.app`"))
     }
 
-    func testVersionMetadataIsBumpedForV117() throws {
+    func testVersionMetadataIsBumpedForV120() throws {
         let englishReadme = try String(contentsOfFile: "README.md", encoding: .utf8)
-        XCTAssertTrue(englishReadme.contains("version-v1.1.7"))
+        XCTAssertTrue(englishReadme.contains("version-v1.2.0"))
 
         let rootPlist = NSDictionary(contentsOf: URL(fileURLWithPath: "Info.plist"))
-        XCTAssertEqual(rootPlist?["CFBundleShortVersionString"] as? String, "1.1.7")
-        XCTAssertEqual(rootPlist?["CFBundleVersion"] as? String, "1.1.7")
+        XCTAssertEqual(rootPlist?["CFBundleShortVersionString"] as? String, "1.2.0")
+        XCTAssertEqual(rootPlist?["CFBundleVersion"] as? String, "1.2.0")
 
         let appPlist = NSDictionary(contentsOf: URL(fileURLWithPath: "VoiceInput.app/Contents/Info.plist"))
-        XCTAssertEqual(appPlist?["CFBundleShortVersionString"] as? String, "1.1.7")
-        XCTAssertEqual(appPlist?["CFBundleVersion"] as? String, "1.1.7")
+        XCTAssertEqual(appPlist?["CFBundleShortVersionString"] as? String, "1.2.0")
+        XCTAssertEqual(appPlist?["CFBundleVersion"] as? String, "1.2.0")
     }
 
     func testModifierChordFixReleaseNotesArePublishedForV113() throws {
@@ -165,9 +165,20 @@ final class ReleaseWorkflowTests: XCTestCase {
         XCTAssertTrue(changelog.contains("Fix Permission"))
     }
 
+    func testStableDistributionReleaseNotesArePublishedForV120() throws {
+        let changelog = try String(contentsOfFile: "CHANGELOG.md", encoding: .utf8)
+
+        XCTAssertTrue(changelog.contains("## [v1.2.0] - 2026-05-03"))
+        XCTAssertTrue(changelog.contains("首次安装完整路径"))
+        XCTAssertTrue(changelog.contains("更新后权限失效恢复路径"))
+        XCTAssertTrue(changelog.contains("Release QA checklist"))
+    }
+
     func testReleaseQAChecklistDocumentsV12ManualCoverage() throws {
         let checklist = try String(contentsOfFile: "docs/release-qa-checklist.md", encoding: .utf8)
 
+        XCTAssertTrue(checklist.contains("Stable Release Gate"))
+        XCTAssertTrue(checklist.contains("Install / first launch / permission / Fn / Option + Fn"))
         XCTAssertTrue(checklist.contains("Fn + normal key"))
         XCTAssertTrue(checklist.contains("Option + Fn"))
         XCTAssertTrue(checklist.contains("Accessibility enabled but Input Monitoring missing"))
