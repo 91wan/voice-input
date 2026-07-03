@@ -95,6 +95,10 @@ final class TextInjectorTests: XCTestCase {
         )
     }
 
+    func testDefaultPasteboardRestoreDelayAllowsSlowPasteConsumers() {
+        XCTAssertEqual(TextInjector.defaultPasteboardRestoreDelay, 1.5)
+    }
+
     func testPasteboardSnapshotRoundTripsStringAndCustomData() throws {
         let pasteboard = NSPasteboard.withUniqueName()
         let customType = NSPasteboard.PasteboardType("com.voiceinput.test")
