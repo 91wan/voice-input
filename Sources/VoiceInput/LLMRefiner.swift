@@ -176,14 +176,21 @@ final class LLMRefiner {
         }
         addActiveRequest(requestHandle)
 
-        let task = requestPerformer(request) { data, _, error in
+        let task = requestPerformer(request) { data, response, error in
             if let error {
                 self.logHandler("Network error: \(error.localizedDescription)")
                 if (error as? URLError)?.code == .cancelled {
                     requestHandle.complete(.failure(RefinerError.cancelled))
                 } else {
-                    requestHandle.complete(.failure(error))
+                    requestHandle.complete(.failure(RefinerError.transport(error.localizedDescription)))
                 }
+                return
+            }
+            if let httpResponse = response as? HTTPURLResponse,
+               !(200...299).contains(httpResponse.statusCode) {
+                let message = data.flatMap(Self.apiErrorMessage(from:))
+                self.logHandler("HTTP error: \(httpResponse.statusCode) \(message ?? "no error message")")
+                requestHandle.complete(.failure(RefinerError.httpStatus(httpResponse.statusCode, message)))
                 return
             }
             guard let data else {
@@ -371,6 +378,34 @@ final class LLMRefiner {
         return normalizedHost == "localhost" || normalizedHost == "127.0.0.1" || normalizedHost == "::1"
     }
 
+    private static func apiErrorMessage(from data: Data) -> String? {
+        guard
+            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let error = json["error"] as? [String: Any],
+            let message = error["message"] as? String
+        else {
+            return nil
+        }
+
+        let redacted = redactSensitiveTokens(in: message)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return redacted.isEmpty ? nil : redacted
+    }
+
+    private static func redactSensitiveTokens(in message: String) -> String {
+        let patterns = [
+            #"Bearer\s+[A-Za-z0-9._\-]+"#,
+            #"sk-[A-Za-z0-9._\-]+"#,
+        ]
+        return patterns.reduce(message) { current, pattern in
+            current.replacingOccurrences(
+                of: pattern,
+                with: "[redacted]",
+                options: .regularExpression
+            )
+        }
+    }
+
     private func addActiveRequest(_ request: LLMRefinementRequest) {
         requestLock.lock()
         activeRequests.append(request)
@@ -385,14 +420,63 @@ final class LLMRefiner {
 
     enum RefinerError: LocalizedError, Equatable {
         case invalidURL
+        case transport(String)
+        case httpStatus(Int, String?)
         case invalidResponse
         case cancelled
 
         var errorDescription: String? {
             switch self {
             case .invalidURL: return "Invalid API base URL"
+            case .transport(let message): return "Network error: \(message)"
+            case .httpStatus(let statusCode, let message):
+                return Self.httpStatusDescription(statusCode: statusCode, message: message)
             case .invalidResponse: return "Invalid response from LLM API"
             case .cancelled: return "LLM request was cancelled"
+            }
+        }
+
+        private static func httpStatusDescription(statusCode: Int, message: String?) -> String {
+            var parts = ["\(statusCode) \(statusTitle(statusCode))"]
+            if let message, !message.isEmpty {
+                parts.append(message)
+            }
+            if let hint = recoveryHint(statusCode) {
+                parts.append(hint)
+            }
+            return parts.joined(separator: " - ")
+        }
+
+        private static func statusTitle(_ statusCode: Int) -> String {
+            switch statusCode {
+            case 400: return "Bad Request"
+            case 401: return "Unauthorized"
+            case 403: return "Forbidden"
+            case 404: return "Not Found"
+            case 408: return "Request Timeout"
+            case 409: return "Conflict"
+            case 422: return "Unprocessable Content"
+            case 429: return "Rate Limited"
+            case 500: return "Server Error"
+            case 502: return "Bad Gateway"
+            case 503: return "Service Unavailable"
+            case 504: return "Gateway Timeout"
+            default: return "HTTP Error"
+            }
+        }
+
+        private static func recoveryHint(_ statusCode: Int) -> String? {
+            switch statusCode {
+            case 401, 403:
+                return "check API key"
+            case 404:
+                return "check model or API base URL"
+            case 429:
+                return "try later"
+            case 500...599:
+                return "try later or check the API provider status"
+            default:
+                return nil
             }
         }
     }
