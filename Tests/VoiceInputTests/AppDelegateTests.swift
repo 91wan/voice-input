@@ -53,6 +53,18 @@ final class AppDelegateTests: XCTestCase {
         XCTAssertFalse(AppDelegate.shouldAcceptSpeechCallback(activeSessionID: expiredSessionID, sessions: sessions))
     }
 
+    func testOnlyLatestDictationCompletionCanMutateCurrentSession() {
+        var sessions = SessionCounter()
+        let firstSessionID = sessions.begin()
+        XCTAssertTrue(sessions.claimCurrent(firstSessionID))
+
+        let latestSessionID = sessions.begin()
+        XCTAssertTrue(sessions.claimCurrent(latestSessionID))
+
+        XCTAssertFalse(AppDelegate.shouldAcceptTranscriptionCompletion(activeSessionID: firstSessionID, sessions: sessions))
+        XCTAssertTrue(AppDelegate.shouldAcceptTranscriptionCompletion(activeSessionID: latestSessionID, sessions: sessions))
+    }
+
     func testShortcutModeMapsToSingleUsePromptBuilderOverride() {
         XCTAssertEqual(
             AppDelegate.refinementMode(for: .defaultMode, defaultMode: .precise),

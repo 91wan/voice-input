@@ -4,6 +4,25 @@ import XCTest
 @testable import VoiceInput
 
 final class LLMRefinerTests: XCTestCase {
+    private final class MockNetworkTask: LLMNetworkTask {
+        private(set) var resumeCount = 0
+        private(set) var cancelCount = 0
+
+        func resume() {
+            resumeCount += 1
+        }
+
+        func cancel() {
+            cancelCount += 1
+        }
+    }
+
+    private struct CapturedRequest {
+        let request: URLRequest
+        let task: MockNetworkTask
+        let completion: (Data?, URLResponse?, Error?) -> Void
+    }
+
     func testApiKeyMigratesFromUserDefaultsToKeychain() throws {
         let suiteName = "LLMRefinerTests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
@@ -237,6 +256,98 @@ final class LLMRefinerTests: XCTestCase {
         wait(for: [expectation], timeout: 1)
     }
 
+    func testCancelDeliversCancellationInsteadOfDroppingCompletion() throws {
+        let suiteName = "LLMRefinerTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defaults.removePersistentDomain(forName: suiteName)
+        let store = KeychainStore(service: "app.voiceinput.VoiceInput.tests.\(UUID().uuidString)", account: "llm-api-key")
+        defer {
+            try? store.delete()
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        var capturedRequests: [CapturedRequest] = []
+        let refiner = LLMRefiner(
+            userDefaults: defaults,
+            apiKeyStore: store,
+            logHandler: { _ in },
+            requestPerformer: { request, completion in
+                let task = MockNetworkTask()
+                capturedRequests.append(CapturedRequest(request: request, task: task, completion: completion))
+                return task
+            }
+        )
+
+        let expectation = expectation(description: "cancel delivered")
+        refiner.refine("filtered text", force: true) { result in
+            guard case .failure(let error as LLMRefiner.RefinerError) = result else {
+                return XCTFail("Expected cancellation error, got \(result)")
+            }
+            XCTAssertEqual(error, .cancelled)
+            expectation.fulfill()
+        }
+
+        XCTAssertEqual(capturedRequests.count, 1)
+        XCTAssertEqual(capturedRequests[0].task.resumeCount, 1)
+
+        refiner.cancel()
+
+        wait(for: [expectation], timeout: 1)
+        XCTAssertEqual(capturedRequests[0].task.cancelCount, 1)
+    }
+
+    func testStartingSettingsTestDoesNotCancelActiveDictationRefinement() throws {
+        let suiteName = "LLMRefinerTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defaults.removePersistentDomain(forName: suiteName)
+        let store = KeychainStore(service: "app.voiceinput.VoiceInput.tests.\(UUID().uuidString)", account: "llm-api-key")
+        defer {
+            try? store.delete()
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        var capturedRequests: [CapturedRequest] = []
+        let refiner = LLMRefiner(
+            userDefaults: defaults,
+            apiKeyStore: store,
+            logHandler: { _ in },
+            requestPerformer: { request, completion in
+                let task = MockNetworkTask()
+                capturedRequests.append(CapturedRequest(request: request, task: task, completion: completion))
+                return task
+            }
+        )
+
+        let dictationExpectation = expectation(description: "dictation completes")
+        let settingsExpectation = expectation(description: "settings completes")
+
+        refiner.refine("dictation text", force: true) { result in
+            XCTAssertEqual(try? result.get(), "dictation refined")
+            dictationExpectation.fulfill()
+        }
+        refiner.refine("Hello, this is a test.", force: true) { result in
+            XCTAssertEqual(try? result.get(), "settings refined")
+            settingsExpectation.fulfill()
+        }
+
+        XCTAssertEqual(capturedRequests.count, 2)
+        XCTAssertEqual(capturedRequests[0].task.cancelCount, 0)
+        XCTAssertEqual(capturedRequests[1].task.cancelCount, 0)
+
+        capturedRequests[0].completion(
+            Self.successData("dictation refined"),
+            HTTPURLResponse(url: capturedRequests[0].request.url!, statusCode: 200, httpVersion: nil, headerFields: nil),
+            nil
+        )
+        capturedRequests[1].completion(
+            Self.successData("settings refined"),
+            HTTPURLResponse(url: capturedRequests[1].request.url!, statusCode: 200, httpVersion: nil, headerFields: nil),
+            nil
+        )
+
+        wait(for: [dictationExpectation, settingsExpectation], timeout: 1)
+    }
+
     func testInvalidPersistedBaseURLFallsBackToDefaultAndIsCleared() throws {
         let suiteName = "LLMRefinerTests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
@@ -315,5 +426,23 @@ final class LLMRefinerTests: XCTestCase {
         XCTAssertNil(LLMRefiner.chatCompletionsURL(from: "not a url"))
         XCTAssertNil(LLMRefiner.chatCompletionsURL(from: "https://api.openai.com/v1?debug=true"))
         XCTAssertNil(LLMRefiner.chatCompletionsURL(from: "https://user:pass@api.openai.com/v1"))
+    }
+
+    private static func successData(_ content: String, file: StaticString = #filePath, line: UInt = #line) -> Data {
+        let json: [String: Any] = [
+            "choices": [
+                [
+                    "message": [
+                        "content": content,
+                    ],
+                ],
+            ],
+        ]
+        do {
+            return try JSONSerialization.data(withJSONObject: json)
+        } catch {
+            XCTFail("Failed to encode test response JSON: \(error)", file: file, line: line)
+            return Data()
+        }
     }
 }

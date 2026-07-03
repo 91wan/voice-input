@@ -21,6 +21,16 @@ private func logToFile(_ message: String) {
     }
 }
 
+protocol CancellableRequest: AnyObject {
+    func cancel()
+}
+
+protocol LLMNetworkTask: CancellableRequest {
+    func resume()
+}
+
+extension URLSessionDataTask: LLMNetworkTask {}
+
 enum LLMRefinementMode: String, CaseIterable, Equatable {
     case precise
     case promptBuilder
@@ -70,6 +80,8 @@ enum LLMRefinementMode: String, CaseIterable, Equatable {
 }
 
 final class LLMRefiner {
+    typealias RequestPerformer = (URLRequest, @escaping (Data?, URLResponse?, Error?) -> Void) -> LLMNetworkTask
+
     static let shared = LLMRefiner()
     static let defaultAPIBaseURL = "https://api.openai.com/v1"
     static let defaultModel = "gpt-4o-mini"
@@ -77,6 +89,9 @@ final class LLMRefiner {
     private let userDefaults: UserDefaults
     private let apiKeyStore: KeychainStore
     private let logHandler: (String) -> Void
+    private let requestPerformer: RequestPerformer
+    private let requestLock = NSLock()
+    private var activeRequests: [LLMRefinementRequest] = []
 
     var isEnabled: Bool {
         get { userDefaults.bool(forKey: "llmEnabled") }
@@ -110,41 +125,38 @@ final class LLMRefiner {
 
     var isConfigured: Bool { !apiKey.isEmpty }
 
-    private var currentTask: URLSessionDataTask?
-    private var requestGeneration = 0
-
     init(
         userDefaults: UserDefaults = .standard,
         apiKeyStore: KeychainStore = KeychainStore(
             service: "app.voiceinput.VoiceInput",
             account: "llm-api-key"
         ),
-        logHandler: @escaping (String) -> Void = logToFile
+        logHandler: @escaping (String) -> Void = logToFile,
+        requestPerformer: @escaping RequestPerformer = { request, completion in
+            URLSession.shared.dataTask(with: request, completionHandler: completion)
+        }
     ) {
         self.userDefaults = userDefaults
         self.apiKeyStore = apiKeyStore
         self.logHandler = logHandler
+        self.requestPerformer = requestPerformer
     }
 
+    @discardableResult
     func refine(
         _ text: String,
         mode modeOverride: LLMRefinementMode? = nil,
         force: Bool = false,
         completion: @escaping (Result<String, Error>) -> Void
-    ) {
+    ) -> CancellableRequest? {
         guard force || (isEnabled && isConfigured) else {
             completion(.success(text))
-            return
+            return nil
         }
-
-        requestGeneration += 1
-        let generation = requestGeneration
-        currentTask?.cancel()
-        currentTask = nil
 
         guard let url = Self.chatCompletionsURL(from: apiBaseURL) else {
             completion(.failure(RefinerError.invalidURL))
-            return
+            return nil
         }
 
         var request = URLRequest(url: url)
@@ -159,23 +171,24 @@ final class LLMRefiner {
         logHandler("Request: \(url.absoluteString) model=\(model) mode=\(requestMode.rawValue)")
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
 
-        currentTask = URLSession.shared.dataTask(with: request) { data, _, error in
-            let deliver: (Result<String, Error>) -> Void = { result in
-                DispatchQueue.main.async {
-                    guard self.requestGeneration == generation else { return }
-                    self.currentTask = nil
-                    completion(result)
-                }
-            }
+        let requestHandle = LLMRefinementRequest(completion: completion) { [weak self] request in
+            self?.removeActiveRequest(request)
+        }
+        addActiveRequest(requestHandle)
 
+        let task = requestPerformer(request) { data, _, error in
             if let error {
                 self.logHandler("Network error: \(error.localizedDescription)")
-                deliver(.failure(error))
+                if (error as? URLError)?.code == .cancelled {
+                    requestHandle.complete(.failure(RefinerError.cancelled))
+                } else {
+                    requestHandle.complete(.failure(error))
+                }
                 return
             }
             guard let data else {
                 self.logHandler("No data in response")
-                deliver(.failure(RefinerError.invalidResponse))
+                requestHandle.complete(.failure(RefinerError.invalidResponse))
                 return
             }
             self.logHandler("Response bytes: \(data.count)")
@@ -185,16 +198,19 @@ final class LLMRefiner {
                   let content = message["content"] as? String
             else {
                 self.logHandler("Failed to parse response")
-                deliver(.failure(RefinerError.invalidResponse))
+                requestHandle.complete(.failure(RefinerError.invalidResponse))
                 return
             }
             let refined = content.trimmingCharacters(in: .whitespacesAndNewlines)
             self.logHandler(
                 "Refined changed=\(refined != text) input_chars=\(text.count) output_chars=\(refined.count)"
             )
-            deliver(.success(refined))
+            requestHandle.complete(.success(refined))
         }
-        currentTask?.resume()
+        if requestHandle.setTask(task) {
+            task.resume()
+        }
+        return requestHandle
     }
 
     func chatRequestBody(for text: String, mode modeOverride: LLMRefinementMode? = nil) -> [String: Any] {
@@ -210,9 +226,14 @@ final class LLMRefiner {
     }
 
     func cancel() {
-        requestGeneration += 1
-        currentTask?.cancel()
-        currentTask = nil
+        let requests: [LLMRefinementRequest]
+        requestLock.lock()
+        requests = activeRequests
+        requestLock.unlock()
+
+        for request in requests {
+            request.cancel()
+        }
     }
 
     func updateAPIKey(_ value: String) throws {
@@ -350,15 +371,81 @@ final class LLMRefiner {
         return normalizedHost == "localhost" || normalizedHost == "127.0.0.1" || normalizedHost == "::1"
     }
 
-    enum RefinerError: LocalizedError {
+    private func addActiveRequest(_ request: LLMRefinementRequest) {
+        requestLock.lock()
+        activeRequests.append(request)
+        requestLock.unlock()
+    }
+
+    private func removeActiveRequest(_ request: LLMRefinementRequest) {
+        requestLock.lock()
+        activeRequests.removeAll { $0 === request }
+        requestLock.unlock()
+    }
+
+    enum RefinerError: LocalizedError, Equatable {
         case invalidURL
         case invalidResponse
+        case cancelled
 
         var errorDescription: String? {
             switch self {
             case .invalidURL: return "Invalid API base URL"
             case .invalidResponse: return "Invalid response from LLM API"
+            case .cancelled: return "LLM request was cancelled"
             }
+        }
+    }
+}
+
+private final class LLMRefinementRequest: CancellableRequest {
+    private let lock = NSLock()
+    private var completion: ((Result<String, Error>) -> Void)?
+    private var task: LLMNetworkTask?
+    private let cleanup: (LLMRefinementRequest) -> Void
+
+    init(
+        completion: @escaping (Result<String, Error>) -> Void,
+        cleanup: @escaping (LLMRefinementRequest) -> Void
+    ) {
+        self.completion = completion
+        self.cleanup = cleanup
+    }
+
+    func setTask(_ task: LLMNetworkTask) -> Bool {
+        lock.lock()
+        guard completion != nil else {
+            lock.unlock()
+            task.cancel()
+            return false
+        }
+        self.task = task
+        lock.unlock()
+        return true
+    }
+
+    func cancel() {
+        lock.lock()
+        let taskToCancel = task
+        lock.unlock()
+
+        taskToCancel?.cancel()
+        complete(.failure(LLMRefiner.RefinerError.cancelled))
+    }
+
+    func complete(_ result: Result<String, Error>) {
+        lock.lock()
+        guard let completion else {
+            lock.unlock()
+            return
+        }
+        self.completion = nil
+        task = nil
+        lock.unlock()
+
+        cleanup(self)
+        DispatchQueue.main.async {
+            completion(result)
         }
     }
 }
