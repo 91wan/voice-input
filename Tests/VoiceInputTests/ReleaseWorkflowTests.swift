@@ -111,17 +111,37 @@ final class ReleaseWorkflowTests: XCTestCase {
         XCTAssertTrue(changelog.contains("右键 `VoiceInput.app`"))
     }
 
-    func testVersionMetadataIsBumpedForV160() throws {
+    func testVersionMetadataIsConsistentAcrossSourceFiles() throws {
         let englishReadme = try String(contentsOfFile: "README.md", encoding: .utf8)
-        XCTAssertTrue(englishReadme.contains("version-v1.6.0"))
+        let readmeVersion = try XCTUnwrap(Self.firstCapture(in: englishReadme, pattern: #"version-v([0-9]+\.[0-9]+\.[0-9]+)"#))
+        let expectedTag = "v\(readmeVersion)"
 
         let rootPlist = NSDictionary(contentsOf: URL(fileURLWithPath: "Info.plist"))
-        XCTAssertEqual(rootPlist?["CFBundleShortVersionString"] as? String, "1.6.0")
-        XCTAssertEqual(rootPlist?["CFBundleVersion"] as? String, "1.6.0")
+        XCTAssertEqual(rootPlist?["CFBundleShortVersionString"] as? String, String(readmeVersion))
+        XCTAssertEqual(rootPlist?["CFBundleVersion"] as? String, String(readmeVersion))
 
-        let appPlist = NSDictionary(contentsOf: URL(fileURLWithPath: "VoiceInput.app/Contents/Info.plist"))
-        XCTAssertEqual(appPlist?["CFBundleShortVersionString"] as? String, "1.6.0")
-        XCTAssertEqual(appPlist?["CFBundleVersion"] as? String, "1.6.0")
+        let changelog = try String(contentsOfFile: "CHANGELOG.md", encoding: .utf8)
+        XCTAssertTrue(
+            changelog.contains("## [\(expectedTag)]"),
+            "CHANGELOG.md must contain release notes for the README/Info.plist version."
+        )
+    }
+
+    func testGeneratedAppBundleIsIgnored() throws {
+        let gitignore = try String(contentsOfFile: ".gitignore", encoding: .utf8)
+
+        XCTAssertTrue(
+            gitignore.components(separatedBy: .newlines).contains("VoiceInput.app/"),
+            ".gitignore must ignore the full generated app bundle."
+        )
+        XCTAssertTrue(
+            gitignore.components(separatedBy: .newlines).contains("*.dmg"),
+            ".gitignore must ignore generated DMG artifacts."
+        )
+        XCTAssertFalse(
+            gitignore.contains("VoiceInput.app/Contents/MacOS/VoiceInput"),
+            "Ignoring only selected files inside the app bundle can still leave tracked generated metadata."
+        )
     }
 
     func testModifierChordFixReleaseNotesArePublishedForV113() throws {
@@ -263,5 +283,17 @@ final class ReleaseWorkflowTests: XCTestCase {
         XCTAssertTrue(checklist.contains("Accessibility enabled but Input Monitoring missing"))
         XCTAssertTrue(checklist.contains("LLM disabled"))
         XCTAssertTrue(checklist.contains("Developer ID signing and notarization are out of scope"))
+    }
+
+    private static func firstCapture(in text: String, pattern: String) throws -> String? {
+        let regex = try NSRegularExpression(pattern: pattern)
+        let range = NSRange(text.startIndex..<text.endIndex, in: text)
+        guard let match = regex.firstMatch(in: text, range: range), match.numberOfRanges > 1 else {
+            return nil
+        }
+        guard let captureRange = Range(match.range(at: 1), in: text) else {
+            return nil
+        }
+        return String(text[captureRange])
     }
 }

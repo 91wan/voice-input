@@ -1,5 +1,6 @@
 APP_NAME := VoiceInput
 APP_BUNDLE := $(APP_NAME).app
+APP_ICON_SOURCE := Resources/AppIcon.icns
 APP_ICON := $(APP_BUNDLE)/Contents/Resources/AppIcon.icns
 
 .PHONY: build clean install run
@@ -12,8 +13,10 @@ build:
 	mkdir -p $(APP_BUNDLE)/Contents/Resources; \
 	cp "$$BUILD_DIR/$(APP_NAME)" $(APP_BUNDLE)/Contents/MacOS/; \
 	cp Info.plist $(APP_BUNDLE)/Contents/; \
-	if [ ! -f "$(APP_ICON)" ]; then \
-		echo "⚠️  Missing $(APP_ICON); app will build without a custom icon."; \
+	if [ -f "$(APP_ICON_SOURCE)" ]; then \
+		cp $(APP_ICON_SOURCE) $(APP_ICON); \
+	else \
+		echo "⚠️  Missing $(APP_ICON_SOURCE); app will build without a custom icon."; \
 	fi; \
 	codesign --force --sign - $(APP_BUNDLE)
 	@echo "\n✅ Built $(APP_BUNDLE)"
@@ -24,7 +27,8 @@ run: build
 
 clean:
 	swift package clean
-	rm -f $(APP_BUNDLE)/Contents/MacOS/$(APP_NAME)
+	rm -rf $(APP_BUNDLE)
+	rm -f $(APP_NAME).dmg
 
 install: build
 	rm -rf /Applications/$(APP_BUNDLE)
@@ -66,10 +70,8 @@ version-bump:
 	sed -i '' -e 's/version-v[0-9][0-9a-z._-]*/version-$(VERSION)/g' README.md; \
 	sed -i '' -e 's/date-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/date-$(shell date +%Y-%m-%d)/g' README.md; \
 	/usr/libexec/PlistBuddy -c "Set :CFBundleVersion $$VERSION_NO_V" Info.plist; \
-	/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $$VERSION_NO_V" Info.plist; \
-	/usr/libexec/PlistBuddy -c "Set :CFBundleVersion $$VERSION_NO_V" VoiceInput.app/Contents/Info.plist; \
-	/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $$VERSION_NO_V" VoiceInput.app/Contents/Info.plist
-	@git add README.md Info.plist VoiceInput.app/Contents/Info.plist
+	/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $$VERSION_NO_V" Info.plist
+	@git add README.md Info.plist
 	@git commit -m "chore: bump version to $(VERSION)"
 	@git tag $(VERSION)
 	@echo "✅ 完成。执行以下命令触发自动构建与发布:"
