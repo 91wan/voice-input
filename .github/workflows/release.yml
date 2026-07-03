@@ -27,29 +27,7 @@ jobs:
       - name: Run CI gate
         run: make ci
 
-  # ── Job 1：push main → 自动更新 README 日期 ──────────────────────────
-  auto-doc:
-    name: 📄 Auto-Doc
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Update README date
-        run: |
-          TODAY=$(date +%Y-%m-%d)
-          sed -i "s/date-[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}/date-${TODAY}/g" README.md
-          if ! git diff --quiet README.md; then
-            git config --global user.name  "github-actions[bot]"
-            git config --global user.email "github-actions[bot]@users.noreply.github.com"
-            git add README.md
-            git commit -m "docs: auto-update README date [skip ci]"
-            git push
-          fi
-
-  # ── Job 2：push v* tag → macOS 编译 + DMG + GitHub Release ──────────
+  # ── push v* tag → macOS 编译 + DMG + GitHub Release ────────────────
   release:
     name: 🚀 Release
     runs-on: macos-15

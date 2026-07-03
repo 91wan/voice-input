@@ -172,6 +172,23 @@ final class ReleaseWorkflowTests: XCTestCase {
         )
     }
 
+    func testMainPushDoesNotAutoCommitReadmeDate() throws {
+        let workflow = try String(contentsOfFile: ".github/workflows/release.yml", encoding: .utf8)
+
+        XCTAssertFalse(
+            workflow.contains("auto-doc:"),
+            "Main branch pushes should not run an auto-doc job that creates follow-up README date commits."
+        )
+        XCTAssertFalse(
+            workflow.contains("Update README date"),
+            "README date updates should be explicit release metadata changes, not automatic push side effects."
+        )
+        XCTAssertFalse(
+            workflow.contains("git push"),
+            "The release workflow should not push automatic documentation commits back to main."
+        )
+    }
+
     func testReleaseQAChecklistDocumentsV12ManualCoverage() throws {
         let checklist = try String(contentsOfFile: "docs/release-qa-checklist.md", encoding: .utf8)
 
