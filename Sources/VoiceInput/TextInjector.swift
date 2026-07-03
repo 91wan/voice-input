@@ -76,6 +76,8 @@ struct PasteboardSnapshot {
 }
 
 final class TextInjector {
+    static let defaultPasteboardRestoreDelay: TimeInterval = 1.5
+
     private let pasteboard: NSPasteboard
     private let inputSourceRestoreDelay: TimeInterval
     private let pasteboardRestoreDelay: TimeInterval
@@ -85,7 +87,7 @@ final class TextInjector {
     init(
         pasteboard: NSPasteboard = .general,
         inputSourceRestoreDelay: TimeInterval = 0.3,
-        pasteboardRestoreDelay: TimeInterval = 0.5,
+        pasteboardRestoreDelay: TimeInterval = TextInjector.defaultPasteboardRestoreDelay,
         isProcessTrusted: @escaping () -> Bool = { AXIsProcessTrusted() },
         postPasteCommandHandler: @escaping () -> Bool = TextInjector.defaultPostPasteCommand
     ) {

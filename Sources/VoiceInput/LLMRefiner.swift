@@ -21,6 +21,16 @@ private func logToFile(_ message: String) {
     }
 }
 
+protocol CancellableRequest: AnyObject {
+    func cancel()
+}
+
+protocol LLMNetworkTask: CancellableRequest {
+    func resume()
+}
+
+extension URLSessionDataTask: LLMNetworkTask {}
+
 enum LLMRefinementMode: String, CaseIterable, Equatable {
     case precise
     case promptBuilder
@@ -70,6 +80,8 @@ enum LLMRefinementMode: String, CaseIterable, Equatable {
 }
 
 final class LLMRefiner {
+    typealias RequestPerformer = (URLRequest, @escaping (Data?, URLResponse?, Error?) -> Void) -> LLMNetworkTask
+
     static let shared = LLMRefiner()
     static let defaultAPIBaseURL = "https://api.openai.com/v1"
     static let defaultModel = "gpt-4o-mini"
@@ -77,6 +89,9 @@ final class LLMRefiner {
     private let userDefaults: UserDefaults
     private let apiKeyStore: KeychainStore
     private let logHandler: (String) -> Void
+    private let requestPerformer: RequestPerformer
+    private let requestLock = NSLock()
+    private var activeRequests: [LLMRefinementRequest] = []
 
     var isEnabled: Bool {
         get { userDefaults.bool(forKey: "llmEnabled") }
@@ -110,41 +125,38 @@ final class LLMRefiner {
 
     var isConfigured: Bool { !apiKey.isEmpty }
 
-    private var currentTask: URLSessionDataTask?
-    private var requestGeneration = 0
-
     init(
         userDefaults: UserDefaults = .standard,
         apiKeyStore: KeychainStore = KeychainStore(
             service: "app.voiceinput.VoiceInput",
             account: "llm-api-key"
         ),
-        logHandler: @escaping (String) -> Void = logToFile
+        logHandler: @escaping (String) -> Void = logToFile,
+        requestPerformer: @escaping RequestPerformer = { request, completion in
+            URLSession.shared.dataTask(with: request, completionHandler: completion)
+        }
     ) {
         self.userDefaults = userDefaults
         self.apiKeyStore = apiKeyStore
         self.logHandler = logHandler
+        self.requestPerformer = requestPerformer
     }
 
+    @discardableResult
     func refine(
         _ text: String,
         mode modeOverride: LLMRefinementMode? = nil,
         force: Bool = false,
         completion: @escaping (Result<String, Error>) -> Void
-    ) {
+    ) -> CancellableRequest? {
         guard force || (isEnabled && isConfigured) else {
             completion(.success(text))
-            return
+            return nil
         }
-
-        requestGeneration += 1
-        let generation = requestGeneration
-        currentTask?.cancel()
-        currentTask = nil
 
         guard let url = Self.chatCompletionsURL(from: apiBaseURL) else {
             completion(.failure(RefinerError.invalidURL))
-            return
+            return nil
         }
 
         var request = URLRequest(url: url)
@@ -159,23 +171,31 @@ final class LLMRefiner {
         logHandler("Request: \(url.absoluteString) model=\(model) mode=\(requestMode.rawValue)")
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
 
-        currentTask = URLSession.shared.dataTask(with: request) { data, _, error in
-            let deliver: (Result<String, Error>) -> Void = { result in
-                DispatchQueue.main.async {
-                    guard self.requestGeneration == generation else { return }
-                    self.currentTask = nil
-                    completion(result)
-                }
-            }
+        let requestHandle = LLMRefinementRequest(completion: completion) { [weak self] request in
+            self?.removeActiveRequest(request)
+        }
+        addActiveRequest(requestHandle)
 
+        let task = requestPerformer(request) { data, response, error in
             if let error {
                 self.logHandler("Network error: \(error.localizedDescription)")
-                deliver(.failure(error))
+                if (error as? URLError)?.code == .cancelled {
+                    requestHandle.complete(.failure(RefinerError.cancelled))
+                } else {
+                    requestHandle.complete(.failure(RefinerError.transport(error.localizedDescription)))
+                }
+                return
+            }
+            if let httpResponse = response as? HTTPURLResponse,
+               !(200...299).contains(httpResponse.statusCode) {
+                let message = data.flatMap(Self.apiErrorMessage(from:))
+                self.logHandler("HTTP error: \(httpResponse.statusCode) \(message ?? "no error message")")
+                requestHandle.complete(.failure(RefinerError.httpStatus(httpResponse.statusCode, message)))
                 return
             }
             guard let data else {
                 self.logHandler("No data in response")
-                deliver(.failure(RefinerError.invalidResponse))
+                requestHandle.complete(.failure(RefinerError.invalidResponse))
                 return
             }
             self.logHandler("Response bytes: \(data.count)")
@@ -185,16 +205,19 @@ final class LLMRefiner {
                   let content = message["content"] as? String
             else {
                 self.logHandler("Failed to parse response")
-                deliver(.failure(RefinerError.invalidResponse))
+                requestHandle.complete(.failure(RefinerError.invalidResponse))
                 return
             }
             let refined = content.trimmingCharacters(in: .whitespacesAndNewlines)
             self.logHandler(
                 "Refined changed=\(refined != text) input_chars=\(text.count) output_chars=\(refined.count)"
             )
-            deliver(.success(refined))
+            requestHandle.complete(.success(refined))
         }
-        currentTask?.resume()
+        if requestHandle.setTask(task) {
+            task.resume()
+        }
+        return requestHandle
     }
 
     func chatRequestBody(for text: String, mode modeOverride: LLMRefinementMode? = nil) -> [String: Any] {
@@ -210,9 +233,14 @@ final class LLMRefiner {
     }
 
     func cancel() {
-        requestGeneration += 1
-        currentTask?.cancel()
-        currentTask = nil
+        let requests: [LLMRefinementRequest]
+        requestLock.lock()
+        requests = activeRequests
+        requestLock.unlock()
+
+        for request in requests {
+            request.cancel()
+        }
     }
 
     func updateAPIKey(_ value: String) throws {
@@ -350,15 +378,158 @@ final class LLMRefiner {
         return normalizedHost == "localhost" || normalizedHost == "127.0.0.1" || normalizedHost == "::1"
     }
 
-    enum RefinerError: LocalizedError {
+    private static func apiErrorMessage(from data: Data) -> String? {
+        guard
+            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let error = json["error"] as? [String: Any],
+            let message = error["message"] as? String
+        else {
+            return nil
+        }
+
+        let redacted = redactSensitiveTokens(in: message)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return redacted.isEmpty ? nil : redacted
+    }
+
+    private static func redactSensitiveTokens(in message: String) -> String {
+        let patterns = [
+            #"Bearer\s+[A-Za-z0-9._\-]+"#,
+            #"sk-[A-Za-z0-9._\-]+"#,
+        ]
+        return patterns.reduce(message) { current, pattern in
+            current.replacingOccurrences(
+                of: pattern,
+                with: "[redacted]",
+                options: .regularExpression
+            )
+        }
+    }
+
+    private func addActiveRequest(_ request: LLMRefinementRequest) {
+        requestLock.lock()
+        activeRequests.append(request)
+        requestLock.unlock()
+    }
+
+    private func removeActiveRequest(_ request: LLMRefinementRequest) {
+        requestLock.lock()
+        activeRequests.removeAll { $0 === request }
+        requestLock.unlock()
+    }
+
+    enum RefinerError: LocalizedError, Equatable {
         case invalidURL
+        case transport(String)
+        case httpStatus(Int, String?)
         case invalidResponse
+        case cancelled
 
         var errorDescription: String? {
             switch self {
             case .invalidURL: return "Invalid API base URL"
+            case .transport(let message): return "Network error: \(message)"
+            case .httpStatus(let statusCode, let message):
+                return Self.httpStatusDescription(statusCode: statusCode, message: message)
             case .invalidResponse: return "Invalid response from LLM API"
+            case .cancelled: return "LLM request was cancelled"
             }
+        }
+
+        private static func httpStatusDescription(statusCode: Int, message: String?) -> String {
+            var parts = ["\(statusCode) \(statusTitle(statusCode))"]
+            if let message, !message.isEmpty {
+                parts.append(message)
+            }
+            if let hint = recoveryHint(statusCode) {
+                parts.append(hint)
+            }
+            return parts.joined(separator: " - ")
+        }
+
+        private static func statusTitle(_ statusCode: Int) -> String {
+            switch statusCode {
+            case 400: return "Bad Request"
+            case 401: return "Unauthorized"
+            case 403: return "Forbidden"
+            case 404: return "Not Found"
+            case 408: return "Request Timeout"
+            case 409: return "Conflict"
+            case 422: return "Unprocessable Content"
+            case 429: return "Rate Limited"
+            case 500: return "Server Error"
+            case 502: return "Bad Gateway"
+            case 503: return "Service Unavailable"
+            case 504: return "Gateway Timeout"
+            default: return "HTTP Error"
+            }
+        }
+
+        private static func recoveryHint(_ statusCode: Int) -> String? {
+            switch statusCode {
+            case 401, 403:
+                return "check API key"
+            case 404:
+                return "check model or API base URL"
+            case 429:
+                return "try later"
+            case 500...599:
+                return "try later or check the API provider status"
+            default:
+                return nil
+            }
+        }
+    }
+}
+
+private final class LLMRefinementRequest: CancellableRequest {
+    private let lock = NSLock()
+    private var completion: ((Result<String, Error>) -> Void)?
+    private var task: LLMNetworkTask?
+    private let cleanup: (LLMRefinementRequest) -> Void
+
+    init(
+        completion: @escaping (Result<String, Error>) -> Void,
+        cleanup: @escaping (LLMRefinementRequest) -> Void
+    ) {
+        self.completion = completion
+        self.cleanup = cleanup
+    }
+
+    func setTask(_ task: LLMNetworkTask) -> Bool {
+        lock.lock()
+        guard completion != nil else {
+            lock.unlock()
+            task.cancel()
+            return false
+        }
+        self.task = task
+        lock.unlock()
+        return true
+    }
+
+    func cancel() {
+        lock.lock()
+        let taskToCancel = task
+        lock.unlock()
+
+        taskToCancel?.cancel()
+        complete(.failure(LLMRefiner.RefinerError.cancelled))
+    }
+
+    func complete(_ result: Result<String, Error>) {
+        lock.lock()
+        guard let completion else {
+            lock.unlock()
+            return
+        }
+        self.completion = nil
+        task = nil
+        lock.unlock()
+
+        cleanup(self)
+        DispatchQueue.main.async {
+            completion(result)
         }
     }
 }

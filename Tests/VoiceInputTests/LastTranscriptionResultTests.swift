@@ -78,6 +78,23 @@ final class LastTranscriptionResultTests: XCTestCase {
         XCTAssertNil(unchanged.defaultRuleDraft)
     }
 
+    func testSuccessfulInjectionSummarySaysPasteCommandSent() {
+        let result = LastTranscriptionResult(
+            rawText: "hello",
+            filteredText: "hello",
+            refinedText: nil,
+            finalText: "hello",
+            dictionaryMatches: [],
+            wasLLMRefined: false,
+            refinementMode: nil,
+            injectionResult: .success
+        )
+
+        XCTAssertEqual(result.injectionSummary, "Insertion: paste command sent")
+        XCTAssertFalse(result.injectionSummary.localizedCaseInsensitiveContains("confirmed"))
+        XCTAssertFalse(result.injectionSummary.localizedCaseInsensitiveContains("inserted"))
+    }
+
     func testUpdatingInjectionResultPreservesTranscriptionFields() {
         let result = LastTranscriptionResult(
             rawText: "hello",

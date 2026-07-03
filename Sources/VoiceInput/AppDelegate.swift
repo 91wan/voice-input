@@ -24,6 +24,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var lastPartialResult = ""
     private var finalResultTimer: Timer?
     private var fnHoldTimer: Timer?
+    private var activeLLMRequest: CancellableRequest?
     private var transcriptionSessions = SessionCounter()
     private var activeTranscriptionSessionID = 0
     private var activeShortcutMode: DictationShortcutMode = .defaultMode
@@ -119,7 +120,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         fnHoldTimer?.invalidate()
         fnHoldTimer = Self.scheduleOneShotTimer(interval: fnHoldThreshold) { [weak self] _ in
             guard let self, self.isEnabled, !self.isRecording else { return }
-            LLMRefiner.shared.cancel()
+            self.cancelActiveLLMRequest()
             let sessionID = self.transcriptionSessions.begin()
             self.activeTranscriptionSessionID = sessionID
             self.activeShortcutMode = shortcutMode
@@ -231,9 +232,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         )
         if refiner.isEnabled && refiner.isConfigured {
             overlayPanel.showRefining()
-            refiner.refine(filtered, mode: refinementMode) { [weak self] result in
+            activeLLMRequest = refiner.refine(filtered, mode: refinementMode) { [weak self] result in
                 guard let self else { return }
-                guard self.transcriptionSessions.isCurrent(sessionID) else { return }
+                guard Self.shouldAcceptTranscriptionCompletion(
+                    activeSessionID: sessionID,
+                    sessions: self.transcriptionSessions
+                ) else { return }
+                self.activeLLMRequest = nil
                 switch result {
                 case .success(let refined):
                     let output = TranscriptionResolution.resolve(
@@ -377,7 +382,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         transcriptionSessions.invalidate()
         activeTranscriptionSessionID = transcriptionSessions.currentID
         activeShortcutMode = .defaultMode
-        LLMRefiner.shared.cancel()
+        cancelActiveLLMRequest()
         speechEngine.cancel()
         isRecording = false
         lastPartialResult = ""
@@ -546,7 +551,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let refiner = LLMRefiner.shared
         if refiner.isEnabled {
             refiner.isEnabled = false
-            refiner.cancel()
+            cancelActiveLLMRequest()
             updateLLMMenuItemState()
             return
         }
@@ -686,7 +691,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let refiner = LLMRefiner.shared
         if refiner.isEnabled && !refiner.isConfigured {
             refiner.isEnabled = false
-            refiner.cancel()
+            cancelActiveLLMRequest()
         }
     }
 
@@ -723,6 +728,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     static func shouldAcceptSpeechCallback(activeSessionID: Int, sessions: SessionCounter) -> Bool {
         sessions.isCurrent(activeSessionID) && !sessions.isClaimed(activeSessionID)
+    }
+
+    static func shouldAcceptTranscriptionCompletion(activeSessionID: Int, sessions: SessionCounter) -> Bool {
+        sessions.isCurrent(activeSessionID)
     }
 
     static func refinementMode(
@@ -765,6 +774,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let timer = Timer(timeInterval: interval, repeats: false, block: handler)
         RunLoop.main.add(timer, forMode: .common)
         return timer
+    }
+
+    private func cancelActiveLLMRequest() {
+        activeLLMRequest?.cancel()
+        activeLLMRequest = nil
     }
 
     private func handleReadinessAction(_ action: ReadinessAction) {

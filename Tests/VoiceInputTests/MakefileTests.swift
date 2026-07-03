@@ -20,6 +20,53 @@ final class MakefileTests: XCTestCase {
         )
     }
 
+    func testBuildRecipeCopiesIconFromSourceResources() throws {
+        let makefile = try String(contentsOfFile: "Makefile", encoding: .utf8)
+
+        XCTAssertTrue(
+            makefile.contains("APP_ICON_SOURCE := Resources/AppIcon.icns"),
+            "The source icon should live outside the generated app bundle."
+        )
+        XCTAssertTrue(
+            makefile.contains("cp $(APP_ICON_SOURCE) $(APP_ICON)"),
+            "make build must copy the source icon into the generated app bundle."
+        )
+    }
+
+    func testCleanRemovesGeneratedBundleAndDMG() throws {
+        let makefile = try String(contentsOfFile: "Makefile", encoding: .utf8)
+
+        XCTAssertTrue(
+            makefile.contains("rm -rf $(APP_BUNDLE)"),
+            "make clean must remove the entire generated app bundle, not just the executable."
+        )
+        XCTAssertTrue(
+            makefile.contains("rm -f $(APP_NAME).dmg"),
+            "make clean should remove the generated DMG artifact."
+        )
+    }
+
+    func testCIGateRunsDocumentedLocalVerification() throws {
+        let makefile = try String(contentsOfFile: "Makefile", encoding: .utf8)
+
+        XCTAssertTrue(
+            makefile.contains("ci:\n\t@set -e; \\"),
+            "Makefile should expose a single ci target for local and GitHub verification."
+        )
+        XCTAssertTrue(
+            makefile.contains("swift test --parallel"),
+            "make ci must run the same parallel test command documented in the release checklist."
+        )
+        XCTAssertTrue(
+            makefile.contains("swift build -Xswiftc -warnings-as-errors"),
+            "make ci must fail on Swift warnings before release packaging."
+        )
+        XCTAssertTrue(
+            makefile.contains("$(MAKE) build"),
+            "make ci must build the signed app bundle through the existing build target."
+        )
+    }
+
     func testVersionBumpFailsFastDuringVersionWrites() throws {
         let makefile = try String(contentsOfFile: "Makefile", encoding: .utf8)
 
@@ -74,6 +121,19 @@ final class MakefileTests: XCTestCase {
         XCTAssertFalse(
             makefile.contains("s/version-[0-9a-z._-]*/version-$(VERSION)/g"),
             "A broad version-* replacement corrupts README examples like `make version-bump VERSION=v1.0.2`."
+        )
+    }
+
+    func testVersionBumpDoesNotEditGeneratedAppBundle() throws {
+        let makefile = try String(contentsOfFile: "Makefile", encoding: .utf8)
+
+        XCTAssertFalse(
+            makefile.contains("VoiceInput.app/Contents/Info.plist"),
+            "version-bump must only update source metadata; generated app bundle plists are build artifacts."
+        )
+        XCTAssertFalse(
+            makefile.contains("git add README.md Info.plist VoiceInput.app"),
+            "version-bump must not stage generated app bundle files."
         )
     }
 }

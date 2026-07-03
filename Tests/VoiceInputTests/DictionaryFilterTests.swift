@@ -98,6 +98,56 @@ final class DictionaryFilterTests: XCTestCase {
         ])
     }
 
+    func testPureASCIIRuleDoesNotMatchInsideLongerWord() {
+        let filter = DictionaryFilter(
+            builtinMap: [
+                "ai": "AI",
+            ],
+            notificationCenter: NotificationCenter()
+        )
+
+        let result = filter.applying("said ai plainly")
+
+        XCTAssertEqual(result.text, "said AI plainly")
+        XCTAssertEqual(result.matches, [
+            DictionaryMatch(source: "ai", replacement: "AI", count: 1),
+        ])
+    }
+
+    func testPureASCIIRuleMatchesStandaloneTechnicalTerm() {
+        let filter = DictionaryFilter(
+            builtinMap: [
+                "ai": "AI",
+            ],
+            notificationCenter: NotificationCenter()
+        )
+
+        let result = filter.applying("use ai now")
+
+        XCTAssertEqual(result.text, "use AI now")
+        XCTAssertEqual(result.matches, [
+            DictionaryMatch(source: "ai", replacement: "AI", count: 1),
+        ])
+    }
+
+    func testBoundaryProtectionKeepsPhraseAndCJKRulesWorking() {
+        let filter = DictionaryFilter(
+            builtinMap: [
+                "type script": "TypeScript",
+                "杰森": "JSON",
+            ],
+            notificationCenter: NotificationCenter()
+        )
+
+        let result = filter.applying("type script 和 杰森")
+
+        XCTAssertEqual(result.text, "TypeScript 和 JSON")
+        XCTAssertEqual(result.matches, [
+            DictionaryMatch(source: "type script", replacement: "TypeScript", count: 1),
+            DictionaryMatch(source: "杰森", replacement: "JSON", count: 1),
+        ])
+    }
+
     func testUserDictionaryOverridesBuiltinRulesCaseInsensitively() {
         let filter = DictionaryFilter(
             builtinMap: [

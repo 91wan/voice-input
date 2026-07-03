@@ -89,7 +89,7 @@ struct LastTranscriptionResult: Equatable {
 
         switch injectionResult {
         case .success:
-            return "Insertion: success"
+            return "Insertion: paste command sent"
         case .failure(let failure):
             return "Insertion: failed - \(failure.localizedDescription)"
         }

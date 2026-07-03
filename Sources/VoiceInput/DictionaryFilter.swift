@@ -378,12 +378,23 @@ final class DictionaryFilter {
 
     private func matchRanges(of search: String, in text: String) -> [NSRange] {
         guard !search.isEmpty else { return [] }
-        let pattern = NSRegularExpression.escapedPattern(for: search)
+        let escapedSearch = NSRegularExpression.escapedPattern(for: search)
+        let pattern: String
+        if Self.requiresASCIIBoundaryProtection(search) {
+            pattern = #"(?<![A-Za-z0-9_])"# + escapedSearch + #"(?![A-Za-z0-9_])"#
+        } else {
+            pattern = escapedSearch
+        }
         guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else {
             return []
         }
         let range = NSRange(text.startIndex..<text.endIndex, in: text)
         return regex.matches(in: text, options: [], range: range).map(\.range)
+    }
+
+    private static func requiresASCIIBoundaryProtection(_ search: String) -> Bool {
+        let asciiWordCharacters = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_")
+        return search.unicodeScalars.allSatisfy { asciiWordCharacters.contains($0) }
     }
 
     private static func rangesOverlap(_ lhs: NSRange, _ rhs: NSRange) -> Bool {
