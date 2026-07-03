@@ -50,6 +50,10 @@ final class MakefileTests: XCTestCase {
         let makefile = try String(contentsOfFile: "Makefile", encoding: .utf8)
 
         XCTAssertTrue(
+            makefile.contains("test -s $(APP_ICON_SOURCE)"),
+            "make ci must fail fast if the declared app icon source is missing or empty."
+        )
+        XCTAssertTrue(
             makefile.contains("ci:\n\t@set -e; \\"),
             "Makefile should expose a single ci target for local and GitHub verification."
         )

@@ -65,6 +65,13 @@ final class AppDelegateTests: XCTestCase {
         XCTAssertTrue(AppDelegate.shouldAcceptTranscriptionCompletion(activeSessionID: latestSessionID, sessions: sessions))
     }
 
+    func testBusyDictationPhaseDoesNotStartNewDictationSession() {
+        XCTAssertTrue(AppDelegate.shouldStartNewDictation(isEnabled: true, phase: .idle))
+        XCTAssertFalse(AppDelegate.shouldStartNewDictation(isEnabled: false, phase: .idle))
+        XCTAssertFalse(AppDelegate.shouldStartNewDictation(isEnabled: true, phase: .resolving(sessionID: 1)))
+        XCTAssertFalse(AppDelegate.shouldStartNewDictation(isEnabled: true, phase: .injecting(sessionID: 1)))
+    }
+
     func testShortcutModeMapsToSingleUsePromptBuilderOverride() {
         XCTAssertEqual(
             AppDelegate.refinementMode(for: .defaultMode, defaultMode: .precise),

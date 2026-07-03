@@ -172,6 +172,29 @@ final class ReleaseWorkflowTests: XCTestCase {
         )
     }
 
+    func testPullRequestsToMainRunCIGateBeforeMerge() throws {
+        let workflow = try String(contentsOfFile: ".github/workflows/release.yml", encoding: .utf8)
+
+        XCTAssertTrue(
+            workflow.contains("pull_request:\n    branches:\n      - main"),
+            "Pull requests should run the test job before merge instead of waiting for main push."
+        )
+    }
+
+    func testWorkflowUsesReadOnlyTopLevelPermissionsAndWriteOnlyForRelease() throws {
+        let workflow = try String(contentsOfFile: ".github/workflows/release.yml", encoding: .utf8)
+
+        XCTAssertTrue(
+            workflow.contains("permissions:\n  contents: read"),
+            "Workflow default permissions should be read-only."
+        )
+        XCTAssertTrue(
+            workflow.contains("release:\n    name:") &&
+            workflow.contains("    permissions:\n      contents: write"),
+            "Only the release job should request write permission for publishing GitHub Releases."
+        )
+    }
+
     func testMainPushDoesNotAutoCommitReadmeDate() throws {
         let workflow = try String(contentsOfFile: ".github/workflows/release.yml", encoding: .utf8)
 
@@ -187,6 +210,23 @@ final class ReleaseWorkflowTests: XCTestCase {
             workflow.contains("git push"),
             "The release workflow should not push automatic documentation commits back to main."
         )
+    }
+
+    func testUnreleasedChangelogSectionDocumentsPostReleaseChanges() throws {
+        let section = try XCTUnwrap(Self.changelogSection(for: "Unreleased"))
+
+        XCTAssertTrue(
+            section.contains("- "),
+            "Unreleased should capture post-release changes before the next version bump."
+        )
+        XCTAssertFalse(section.localizedCaseInsensitiveContains("todo"))
+    }
+
+    func testDMGVerifierChecksAppIconExistsAndIsNonEmpty() throws {
+        let verifier = try String(contentsOfFile: "scripts/verify-dmg.sh", encoding: .utf8)
+
+        XCTAssertTrue(verifier.contains("VoiceInput.app/Contents/Resources/AppIcon.icns"))
+        XCTAssertTrue(verifier.contains("test -s"))
     }
 
     func testReleaseQAChecklistDocumentsV12ManualCoverage() throws {

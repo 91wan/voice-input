@@ -23,6 +23,7 @@ build:
 
 ci:
 	@set -e; \
+	test -s $(APP_ICON_SOURCE); \
 	swift test --parallel; \
 	swift build -Xswiftc -warnings-as-errors; \
 	$(MAKE) build
