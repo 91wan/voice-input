@@ -11,7 +11,7 @@ Use this checklist before a stable public release such as `v1.2.0`.
 
 ## Automated Release Gate
 
-- `make ci` runs the local CI gate used by GitHub Actions.
+- `make ci` runs the local CI gate used by GitHub Actions on pull requests and main/tag pushes.
 - `swift test --parallel`.
 - `swift build -Xswiftc -warnings-as-errors`.
 - `make build`.

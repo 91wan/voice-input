@@ -75,10 +75,69 @@ struct PasteboardSnapshot {
     }
 }
 
+final class PasteboardInjectionCoordinator {
+    private struct Ownership {
+        let originalSnapshot: PasteboardSnapshot
+        var latestInjectedChangeCount: Int?
+        var generation: Int
+    }
+
+    private var ownership: Ownership?
+    private var nextGeneration = 0
+
+    func prepareInjection(on pasteboard: NSPasteboard) -> Int {
+        let originalSnapshot: PasteboardSnapshot
+        if let currentOwnership = ownership,
+           currentOwnership.latestInjectedChangeCount == pasteboard.changeCount {
+            originalSnapshot = currentOwnership.originalSnapshot
+        } else {
+            originalSnapshot = PasteboardSnapshot.capture(from: pasteboard)
+        }
+
+        nextGeneration += 1
+        ownership = Ownership(
+            originalSnapshot: originalSnapshot,
+            latestInjectedChangeCount: nil,
+            generation: nextGeneration
+        )
+        return nextGeneration
+    }
+
+    func recordInjectedChangeCount(_ changeCount: Int, generation: Int) {
+        guard ownership?.generation == generation else { return }
+        ownership?.latestInjectedChangeCount = changeCount
+    }
+
+    func restoreIfStillOwned(on pasteboard: NSPasteboard, generation: Int) {
+        guard let currentOwnership = ownership else { return }
+        guard currentOwnership.generation == generation else { return }
+        guard currentOwnership.latestInjectedChangeCount == pasteboard.changeCount else {
+            ownership = nil
+            return
+        }
+
+        currentOwnership.originalSnapshot.restore(to: pasteboard)
+        ownership = nil
+    }
+
+    func cancelInjection(on pasteboard: NSPasteboard, generation: Int, restoreOriginal: Bool) {
+        guard let currentOwnership = ownership,
+              currentOwnership.generation == generation
+        else { return }
+
+        if restoreOriginal {
+            currentOwnership.originalSnapshot.restore(to: pasteboard)
+        }
+        ownership = nil
+    }
+}
+
 final class TextInjector {
     static let defaultPasteboardRestoreDelay: TimeInterval = 1.5
+    private static let sharedPasteboardCoordinator = PasteboardInjectionCoordinator()
 
     private let pasteboard: NSPasteboard
+    private let pasteboardCoordinator: PasteboardInjectionCoordinator
     private let inputSourceRestoreDelay: TimeInterval
     private let pasteboardRestoreDelay: TimeInterval
     private let isProcessTrusted: () -> Bool
@@ -86,12 +145,14 @@ final class TextInjector {
 
     init(
         pasteboard: NSPasteboard = .general,
+        pasteboardCoordinator: PasteboardInjectionCoordinator = TextInjector.sharedPasteboardCoordinator,
         inputSourceRestoreDelay: TimeInterval = 0.3,
         pasteboardRestoreDelay: TimeInterval = TextInjector.defaultPasteboardRestoreDelay,
         isProcessTrusted: @escaping () -> Bool = { AXIsProcessTrusted() },
         postPasteCommandHandler: @escaping () -> Bool = TextInjector.defaultPostPasteCommand
     ) {
         self.pasteboard = pasteboard
+        self.pasteboardCoordinator = pasteboardCoordinator
         self.inputSourceRestoreDelay = inputSourceRestoreDelay
         self.pasteboardRestoreDelay = pasteboardRestoreDelay
         self.isProcessTrusted = isProcessTrusted
@@ -104,20 +165,33 @@ final class TextInjector {
         guard !normalizedText.isEmpty else { return .failure(.emptyText) }
         guard isProcessTrusted() else { return .failure(.accessibilityPermissionMissing) }
 
-        let snapshot = PasteboardSnapshot.capture(from: pasteboard)
+        let injectionGeneration = pasteboardCoordinator.prepareInjection(on: pasteboard)
 
         let injectedItem = NSPasteboardItem()
         guard injectedItem.setString(normalizedText, forType: .string) else {
+            pasteboardCoordinator.cancelInjection(
+                on: pasteboard,
+                generation: injectionGeneration,
+                restoreOriginal: false
+            )
             return .failure(.pasteboardWriteFailed)
         }
 
         pasteboard.clearContents()
         guard pasteboard.writeObjects([injectedItem]) else {
-            snapshot.restore(to: pasteboard)
+            pasteboardCoordinator.cancelInjection(
+                on: pasteboard,
+                generation: injectionGeneration,
+                restoreOriginal: true
+            )
             return .failure(.pasteboardWriteFailed)
         }
 
         let injectedChangeCount = pasteboard.changeCount
+        pasteboardCoordinator.recordInjectedChangeCount(
+            injectedChangeCount,
+            generation: injectionGeneration
+        )
 
         let originalSource = currentKeyboardInputSource()
         let needSwitch = originalSource.map { !isASCIICapable($0) } ?? false
@@ -143,7 +217,7 @@ final class TextInjector {
 
         DispatchQueue.main.asyncAfter(deadline: .now() + pasteboardRestoreDelay) { [weak self] in
             guard let self else { return }
-            self.restorePasteboardIfStillOwned(snapshot: snapshot, injectedChangeCount: injectedChangeCount)
+            self.restorePasteboardIfStillOwned(generation: injectionGeneration)
         }
 
         return .success
@@ -155,13 +229,8 @@ final class TextInjector {
 
     // MARK: - Pasteboard / Event helpers
 
-    private func restorePasteboardIfStillOwned(snapshot: PasteboardSnapshot, injectedChangeCount: Int) {
-        guard Self.shouldRestorePasteboard(
-            currentChangeCount: pasteboard.changeCount,
-            injectedChangeCount: injectedChangeCount
-        ) else { return }
-
-        snapshot.restore(to: pasteboard)
+    private func restorePasteboardIfStillOwned(generation: Int) {
+        pasteboardCoordinator.restoreIfStillOwned(on: pasteboard, generation: generation)
     }
 
     private static func defaultPostPasteCommand() -> Bool {

@@ -23,6 +23,7 @@ final class SettingsWindow: NSPanel {
     private let statusLabel = NSTextField(labelWithString: "")
     private let defaultStatusText = "API key is stored in your macOS Keychain."
     private var statusGeneration = 0
+    private let testController = LLMSettingsTestController()
     private var testState: LLMSettingsTestState = .notRun
     var onSettingsSaved: (() -> Void)?
 
@@ -127,9 +128,13 @@ final class SettingsWindow: NSPanel {
         }
     }
 
+    override func close() {
+        testController.cancelActiveTest()
+        super.close()
+    }
+
     @objc private func test() {
         statusGeneration += 1
-        let generation = statusGeneration
 
         do {
             try applyFields()
@@ -148,21 +153,29 @@ final class SettingsWindow: NSPanel {
         testState = .testing
         refreshConfigurationStatus()
 
-        refiner.refine("Hello, this is a test.", force: true) { [weak self] result in
-            guard let self, self.statusGeneration == generation else { return }
+        let generation = testController.beginTest()
+        let request = refiner.refine("Hello, this is a test.", force: true) { [weak self] result in
+            guard let self, self.testController.finishTest(generation: generation) else { return }
             switch result {
             case .success(let text):
                 self.testState = .succeeded(text)
                 self.refreshConfigurationStatus()
             case .failure(let error):
+                if case LLMRefiner.RefinerError.cancelled = error {
+                    self.testState = .notRun
+                    self.showStatus("Test cancelled.", success: nil)
+                    return
+                }
                 self.testState = .failed(error.localizedDescription)
                 self.refreshConfigurationStatus()
             }
         }
+        testController.setActiveRequest(request, generation: generation)
     }
 
     @objc private func save() {
         statusGeneration += 1
+        testController.cancelActiveTest()
         do {
             try applyFields()
             onSettingsSaved?()

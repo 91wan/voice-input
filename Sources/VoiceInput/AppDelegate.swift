@@ -20,7 +20,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private lazy var overlayPanel = OverlayPanel()
 
     private var isEnabled = true
-    private var isRecording = false
+    private var dictationPhase: DictationPhase = .idle
     private var lastPartialResult = ""
     private var finalResultTimer: Timer?
     private var fnHoldTimer: Timer?
@@ -114,17 +114,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // MARK: - Key events
 
     private func fnDown(shortcutMode: DictationShortcutMode) {
-        guard isEnabled, !isRecording else { return }
+        guard isEnabled else { return }
+        guard Self.shouldStartNewDictation(isEnabled: isEnabled, phase: dictationPhase) else {
+            showBusyDictationHint()
+            return
+        }
+        guard dictationPhase.fnDown() == .startHold else {
+            showBusyDictationHint()
+            return
+        }
         // Start a hold timer — only activate recording after fnHoldThreshold.
         // This prevents single taps from triggering any UI or audio.
         fnHoldTimer?.invalidate()
         fnHoldTimer = Self.scheduleOneShotTimer(interval: fnHoldThreshold) { [weak self] _ in
-            guard let self, self.isEnabled, !self.isRecording else { return }
-            self.cancelActiveLLMRequest()
+            guard let self, self.isEnabled, self.dictationPhase == .holding else { return }
             let sessionID = self.transcriptionSessions.begin()
+            guard self.dictationPhase.holdThresholdReached(sessionID: sessionID) == .startRecording(sessionID: sessionID) else {
+                self.transcriptionSessions.invalidate()
+                self.activeTranscriptionSessionID = self.transcriptionSessions.currentID
+                return
+            }
             self.activeTranscriptionSessionID = sessionID
             self.activeShortcutMode = shortcutMode
-            self.isRecording = true
             self.lastPartialResult = ""
             self.updateStatusIcon(recording: true)
             let prompt = shortcutMode == .promptBuilder ? "Listening... Prompt Builder" : "Listening..."
@@ -139,16 +150,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if let timer = fnHoldTimer, timer.isValid {
             timer.invalidate()
             fnHoldTimer = nil
+            _ = dictationPhase.reset()
             return
         }
         fnHoldTimer = nil
 
-        guard isRecording else { return }
-        isRecording = false
+        guard case .stopRecording(let sessionID) = dictationPhase.fnUp() else { return }
 
         updateStatusIcon(recording: false)
         speechEngine.stopRecording()
-        let sessionID = activeTranscriptionSessionID
 
         finalResultTimer = Self.scheduleOneShotTimer(interval: 2.0) { [weak self] _ in
             self?.finishTranscription(sessionID: sessionID)
@@ -216,6 +226,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             transcriptionSessions.invalidate()
             activeTranscriptionSessionID = transcriptionSessions.currentID
             speechEngine.cancel()
+            _ = dictationPhase.reset()
             overlayPanel.dismiss()
             lastPartialResult = ""
             activeShortcutMode = .defaultMode
@@ -351,8 +362,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func performTextInjection(_ text: String, sessionID: Int) {
         guard transcriptionSessions.isCurrent(sessionID) else { return }
+        guard dictationPhase.beginInjection(sessionID: sessionID) == .beginInjecting(sessionID: sessionID) else { return }
         let injectionResult = textInjector.inject(text)
         recordInjectionResult(injectionResult)
+        _ = dictationPhase.finishInjection(sessionID: sessionID)
 
         switch injectionResult {
         case .success:
@@ -384,7 +397,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         activeShortcutMode = .defaultMode
         cancelActiveLLMRequest()
         speechEngine.cancel()
-        isRecording = false
+        _ = dictationPhase.reset()
         lastPartialResult = ""
         updateStatusIcon(recording: false)
     }
@@ -734,6 +747,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         sessions.isCurrent(activeSessionID)
     }
 
+    static func shouldStartNewDictation(isEnabled: Bool, phase: DictationPhase) -> Bool {
+        isEnabled && phase.isIdle
+    }
+
     static func refinementMode(
         for shortcutMode: DictationShortcutMode,
         defaultMode: LLMRefinementMode
@@ -779,6 +796,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func cancelActiveLLMRequest() {
         activeLLMRequest?.cancel()
         activeLLMRequest = nil
+    }
+
+    private func showBusyDictationHint() {
+        overlayPanel.show(text: "Finishing previous dictation...")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
+            guard let self, !self.dictationPhase.isIdle else { return }
+            self.overlayPanel.dismiss()
+        }
     }
 
     private func handleReadinessAction(_ action: ReadinessAction) {
