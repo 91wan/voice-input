@@ -46,6 +46,27 @@ final class MakefileTests: XCTestCase {
         )
     }
 
+    func testCIGateRunsDocumentedLocalVerification() throws {
+        let makefile = try String(contentsOfFile: "Makefile", encoding: .utf8)
+
+        XCTAssertTrue(
+            makefile.contains("ci:\n\t@set -e; \\"),
+            "Makefile should expose a single ci target for local and GitHub verification."
+        )
+        XCTAssertTrue(
+            makefile.contains("swift test --parallel"),
+            "make ci must run the same parallel test command documented in the release checklist."
+        )
+        XCTAssertTrue(
+            makefile.contains("swift build -Xswiftc -warnings-as-errors"),
+            "make ci must fail on Swift warnings before release packaging."
+        )
+        XCTAssertTrue(
+            makefile.contains("$(MAKE) build"),
+            "make ci must build the signed app bundle through the existing build target."
+        )
+    }
+
     func testVersionBumpFailsFastDuringVersionWrites() throws {
         let makefile = try String(contentsOfFile: "Makefile", encoding: .utf8)
 

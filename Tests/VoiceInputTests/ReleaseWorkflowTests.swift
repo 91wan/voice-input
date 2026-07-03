@@ -259,6 +259,24 @@ final class ReleaseWorkflowTests: XCTestCase {
         XCTAssertTrue(verifier.contains("grep -qi \"rejected\""))
     }
 
+    func testReleaseWorkflowUsesMakeCIGate() throws {
+        let workflow = try String(contentsOfFile: ".github/workflows/release.yml", encoding: .utf8)
+        let checklist = try String(contentsOfFile: "docs/release-qa-checklist.md", encoding: .utf8)
+
+        XCTAssertTrue(
+            workflow.contains("- name: Run CI gate\n        run: make ci"),
+            "The release workflow test job should call the same make ci gate developers run locally."
+        )
+        XCTAssertFalse(
+            workflow.contains("run: swift test\n"),
+            "The workflow should not use a weaker test command than the release checklist."
+        )
+        XCTAssertTrue(
+            checklist.contains("`make ci`"),
+            "The release checklist should name make ci as the local automated gate."
+        )
+    }
+
     func testUnsignedDistributionHardeningReleaseNotesArePublishedForV160() throws {
         let changelog = try String(contentsOfFile: "CHANGELOG.md", encoding: .utf8)
         let readme = try String(contentsOfFile: "README.md", encoding: .utf8)

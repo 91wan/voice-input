@@ -3,7 +3,7 @@ APP_BUNDLE := $(APP_NAME).app
 APP_ICON_SOURCE := Resources/AppIcon.icns
 APP_ICON := $(APP_BUNDLE)/Contents/Resources/AppIcon.icns
 
-.PHONY: build clean install run
+.PHONY: build clean install run ci
 
 build:
 	@set -e; \
@@ -20,6 +20,12 @@ build:
 	fi; \
 	codesign --force --sign - $(APP_BUNDLE)
 	@echo "\n✅ Built $(APP_BUNDLE)"
+
+ci:
+	@set -e; \
+	swift test --parallel; \
+	swift build -Xswiftc -warnings-as-errors; \
+	$(MAKE) build
 
 run: build
 	-pkill -x $(APP_NAME) 2>/dev/null || true

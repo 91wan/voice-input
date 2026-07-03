@@ -24,11 +24,8 @@ jobs:
           sudo xcode-select -s /Applications/Xcode_16.3.app/Contents/Developer 2>/dev/null || \
           sudo xcode-select -s $(ls -d /Applications/Xcode*.app | tail -1)/Contents/Developer
 
-      - name: Run tests
-        run: swift test
-
-      - name: Build app bundle
-        run: make build
+      - name: Run CI gate
+        run: make ci
 
   # ── Job 1：push main → 自动更新 README 日期 ──────────────────────────
   auto-doc:
