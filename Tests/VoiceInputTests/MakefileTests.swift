@@ -28,8 +28,25 @@ final class MakefileTests: XCTestCase {
             "The source icon should live outside the generated app bundle."
         )
         XCTAssertTrue(
-            makefile.contains("cp $(APP_ICON_SOURCE) $(APP_ICON)"),
+            makefile.contains("cp \"$(APP_ICON_SOURCE)\" \"$(APP_ICON)\""),
             "make build must copy the source icon into the generated app bundle."
+        )
+    }
+
+    func testBuildFailsWhenSourceIconMissingOrEmpty() throws {
+        let makefile = try String(contentsOfFile: "Makefile", encoding: .utf8)
+
+        XCTAssertTrue(
+            makefile.contains("test -s \"$(APP_ICON_SOURCE)\""),
+            "make build should fail fast when the declared icon source is missing or empty."
+        )
+        XCTAssertTrue(
+            makefile.contains("Missing or empty $(APP_ICON_SOURCE)"),
+            "make build should explain the icon failure clearly."
+        )
+        XCTAssertFalse(
+            makefile.contains("app will build without a custom icon"),
+            "make build should not create release-incompatible bundles with a warning-only icon path."
         )
     }
 

@@ -128,6 +128,13 @@ Requirements:
 
 - macOS 14 Sonoma or newer
 - Xcode Command Line Tools
+- `Resources/AppIcon.icns` is a required build input
+
+Run the full local gate:
+
+```bash
+make ci
+```
 
 Build the app bundle:
 
@@ -141,7 +148,7 @@ Run locally:
 make run
 ```
 
-Run tests:
+Run unit tests only:
 
 ```bash
 swift test --parallel

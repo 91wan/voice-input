@@ -135,6 +135,8 @@ final class SettingsWindow: NSPanel {
 
     @objc private func test() {
         statusGeneration += 1
+        let generation = testController.beginAttempt()
+        testState = .notRun
 
         do {
             try applyFields()
@@ -153,7 +155,6 @@ final class SettingsWindow: NSPanel {
         testState = .testing
         refreshConfigurationStatus()
 
-        let generation = testController.beginTest()
         let request = refiner.refine("Hello, this is a test.", force: true) { [weak self] result in
             guard let self, self.testController.finishTest(generation: generation) else { return }
             switch result {

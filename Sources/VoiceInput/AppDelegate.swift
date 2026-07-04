@@ -799,11 +799,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func showBusyDictationHint() {
-        overlayPanel.show(text: "Finishing previous dictation...")
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
-            guard let self, !self.dictationPhase.isIdle else { return }
-            self.overlayPanel.dismiss()
-        }
+        guard BusyDictationHintPolicy.shouldShowTransient(
+            phase: dictationPhase,
+            isOverlayVisible: overlayPanel.isVisible
+        ) else { return }
+
+        overlayPanel.showTransient(text: "Finishing previous dictation...", duration: 0.8)
     }
 
     private func handleReadinessAction(_ action: ReadinessAction) {

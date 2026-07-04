@@ -122,8 +122,15 @@ macOS に "Apple could not verify VoiceInput" と表示された場合:
 
 - macOS 14 Sonoma 以降
 - Xcode Command Line Tools
+- `Resources/AppIcon.icns` は必須のビルド入力です
 
-アプリをビルド:
+ローカルのフルゲートを実行:
+
+```bash
+make ci
+```
+
+アプリバンドルをビルド:
 
 ```bash
 make build
@@ -135,7 +142,7 @@ make build
 make run
 ```
 
-テスト:
+ユニットテストのみ:
 
 ```bash
 swift test --parallel

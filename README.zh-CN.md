@@ -122,8 +122,15 @@ Dictionary 窗口包含 **Test Phrase** 输入框。输入一句示例文本后�
 
 - macOS 14 Sonoma 或更新版本
 - Xcode Command Line Tools
+- `Resources/AppIcon.icns` 是必需的构建输入
 
-构建 App：
+运行完整本地门禁：
+
+```bash
+make ci
+```
+
+构建 App bundle：
 
 ```bash
 make build
@@ -135,7 +142,7 @@ make build
 make run
 ```
 
-运行测试：
+仅运行单元测试：
 
 ```bash
 swift test --parallel

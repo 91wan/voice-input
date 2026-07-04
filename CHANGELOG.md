@@ -5,9 +5,12 @@
 ### 变更
 - PR CI gate：pull requests targeting `main` now run `make ci` before merge, while release publishing keeps write permission scoped to the tag release job.
 - Dictation lifecycle：new `Fn` presses are rejected while the previous dictation is resolving or injecting, preventing silent result loss.
+- Busy overlay lifecycle：busy `Fn` rejections no longer overwrite or dismiss an active dictation overlay, and transient hints only dismiss their own presentation.
 - Settings Test lifecycle：repeated Test runs and window close/save now cancel only the active Settings test request without touching dictation refinement.
+- Settings Test early returns：new invalid or unconfigured Test attempts now cancel any previous in-flight Settings test before showing validation or API key status.
 - Clipboard injection ownership：consecutive fast dictations restore the user's original clipboard instead of a previous generated text.
-- Release validation：local CI and DMG verification now require a non-empty bundled app icon.
+- Release validation：local CI, `make build`, and DMG verification now require a non-empty bundled app icon, and tag releases fail when matching changelog notes are missing.
+- Documentation：README build-from-source instructions now document `make ci` as the full local gate and `swift test --parallel` as unit-test-only.
 
 ---
 
