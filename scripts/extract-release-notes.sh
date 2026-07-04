@@ -59,6 +59,12 @@ END {
   while (count > 0 && lines[count] ~ /^[[:space:]]*$/) {
     count--
   }
+  if (count > 0 && lines[count] ~ /^[[:space:]]*---[[:space:]]*$/) {
+    count--
+  }
+  while (count > 0 && lines[count] ~ /^[[:space:]]*$/) {
+    count--
+  }
   if (count == 0) {
     exit 3
   }

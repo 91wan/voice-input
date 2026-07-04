@@ -25,19 +25,25 @@ build:
 
 ci:
 	@set -e; \
-	test -s $(APP_ICON_SOURCE); \
+	test -s "$(APP_ICON_SOURCE)"; \
+	test -x scripts/package-dmg.sh; \
+	test -x scripts/verify-dmg.sh; \
+	test -x scripts/extract-release-notes.sh; \
 	swift test --parallel; \
 	swift build -Xswiftc -warnings-as-errors; \
 	$(MAKE) build
 
 package-dmg: build
-	./scripts/package-dmg.sh $(APP_BUNDLE) $(DMG_PATH) $(APP_NAME)
+	./scripts/package-dmg.sh "$(APP_BUNDLE)" "$(DMG_PATH)" "$(APP_NAME)"
 
 verify-dmg:
 	@test -n "$(VERSION)" || { echo "❌ Missing VERSION"; exit 1; }
-	./scripts/verify-dmg.sh $(DMG_PATH) "$(VERSION)" $(APP_NAME)
+	./scripts/verify-dmg.sh "$(DMG_PATH)" "$(VERSION)" "$(APP_NAME)"
 
-release-artifact: package-dmg verify-dmg
+release-artifact:
+	@set -e; \
+	$(MAKE) package-dmg DMG_PATH="$(DMG_PATH)"; \
+	$(MAKE) verify-dmg VERSION="$(VERSION)" DMG_PATH="$(DMG_PATH)"
 
 release-check: ci
 	$(MAKE) release-artifact VERSION="$(VERSION)" DMG_PATH="$(DMG_PATH)"

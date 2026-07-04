@@ -50,4 +50,17 @@ final class RetryInsertPolicyTests: XCTestCase {
             .proceed
         )
     }
+
+    func testDelayedRetryInsertRechecksAvailabilityBeforeProceeding() {
+        XCTAssertEqual(
+            RetryInsertPresentationPolicy.delayedPlan(
+                availability: .busy("Finish the current dictation before retrying insertion.")
+            ),
+            .showBusyStatus("Finish the current dictation before retrying insertion.")
+        )
+        XCTAssertEqual(
+            RetryInsertPresentationPolicy.delayedPlan(availability: .allowed),
+            .proceed
+        )
+    }
 }

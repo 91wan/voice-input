@@ -67,8 +67,20 @@ final class MakefileTests: XCTestCase {
         let makefile = try String(contentsOfFile: "Makefile", encoding: .utf8)
 
         XCTAssertTrue(
-            makefile.contains("test -s $(APP_ICON_SOURCE)"),
+            makefile.contains("test -s \"$(APP_ICON_SOURCE)\""),
             "make ci must fail fast if the declared app icon source is missing or empty."
+        )
+        XCTAssertTrue(
+            makefile.contains("test -x scripts/package-dmg.sh"),
+            "make ci should catch a missing package-dmg executable bit before tag-only release jobs."
+        )
+        XCTAssertTrue(
+            makefile.contains("test -x scripts/verify-dmg.sh"),
+            "make ci should catch a missing verify-dmg executable bit before tag-only release jobs."
+        )
+        XCTAssertTrue(
+            makefile.contains("test -x scripts/extract-release-notes.sh"),
+            "make ci should catch a missing release-notes executable bit before tag-only release jobs."
         )
         XCTAssertTrue(
             makefile.contains("ci:\n\t@set -e; \\"),
@@ -94,10 +106,27 @@ final class MakefileTests: XCTestCase {
         XCTAssertTrue(makefile.contains("DMG_PATH ?= VoiceInput.dmg"))
         XCTAssertTrue(makefile.contains("VERSION ?= $(shell /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Info.plist)"))
         XCTAssertTrue(makefile.contains("package-dmg: build"))
-        XCTAssertTrue(makefile.contains("./scripts/package-dmg.sh $(APP_BUNDLE) $(DMG_PATH) $(APP_NAME)"))
+        XCTAssertTrue(makefile.contains("./scripts/package-dmg.sh \"$(APP_BUNDLE)\" \"$(DMG_PATH)\" \"$(APP_NAME)\""))
         XCTAssertTrue(makefile.contains("verify-dmg:"))
-        XCTAssertTrue(makefile.contains("./scripts/verify-dmg.sh $(DMG_PATH) \"$(VERSION)\" $(APP_NAME)"))
-        XCTAssertTrue(makefile.contains("release-artifact: package-dmg verify-dmg"))
+        XCTAssertTrue(makefile.contains("./scripts/verify-dmg.sh \"$(DMG_PATH)\" \"$(VERSION)\" \"$(APP_NAME)\""))
+        XCTAssertFalse(
+            makefile.contains("release-artifact: package-dmg verify-dmg"),
+            "release-artifact must not list package and verify as parallel prerequisites; make -j can verify before packaging finishes."
+        )
+        XCTAssertTrue(
+            makefile.contains("release-artifact:\n\t@set -e; \\"),
+            "release-artifact should use an explicit sequential recipe."
+        )
+        XCTAssertTrue(
+            makefile.contains("$(MAKE) package-dmg DMG_PATH=\"$(DMG_PATH)\"") &&
+            makefile.contains("$(MAKE) verify-dmg VERSION=\"$(VERSION)\" DMG_PATH=\"$(DMG_PATH)\""),
+            "release-artifact should package first, then verify the same DMG path."
+        )
+        XCTAssertLessThan(
+            try XCTUnwrap(makefile.range(of: "$(MAKE) package-dmg DMG_PATH=\"$(DMG_PATH)\"")?.lowerBound),
+            try XCTUnwrap(makefile.range(of: "$(MAKE) verify-dmg VERSION=\"$(VERSION)\" DMG_PATH=\"$(DMG_PATH)\"")?.lowerBound),
+            "release-artifact should call package before verify."
+        )
         XCTAssertTrue(makefile.contains("release-check: ci"))
         XCTAssertTrue(makefile.contains("$(MAKE) release-artifact VERSION=\"$(VERSION)\" DMG_PATH=\"$(DMG_PATH)\""))
     }

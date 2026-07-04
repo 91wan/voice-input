@@ -319,6 +319,18 @@ final class LastResultWindow: NSPanel {
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
             guard let self else { return }
+            let delayedPlan = RetryInsertPresentationPolicy.delayedPlan(
+                availability: self.onCanRetryInsert?() ?? .allowed
+            )
+            guard delayedPlan == .proceed else {
+                self.makeKeyAndOrderFront(nil)
+                NSApp.activate(ignoringOtherApps: true)
+                if case .showBusyStatus(let message) = delayedPlan {
+                    self.showStatus(message, style: .warning, autoClear: true)
+                }
+                return
+            }
+
             onRetryInsert(selectedResult) { [weak self] injectionResult in
                 DispatchQueue.main.async {
                     guard let self else { return }

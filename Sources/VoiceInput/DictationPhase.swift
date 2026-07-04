@@ -96,4 +96,8 @@ enum RetryInsertPresentationPolicy {
             return .showBusyStatus(message)
         }
     }
+
+    static func delayedPlan(availability: RetryInsertAvailability) -> RetryInsertPresentationPlan {
+        plan(availability: availability, hasTargetApplication: true)
+    }
 }

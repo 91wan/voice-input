@@ -72,6 +72,21 @@ final class AppDelegateTests: XCTestCase {
         XCTAssertFalse(AppDelegate.shouldStartNewDictation(isEnabled: true, phase: .injecting(sessionID: 1)))
     }
 
+    func testFinalRetryInsertGateReturnsBusyFailureWithoutInjecting() {
+        var didInject = false
+
+        let result = AppDelegate.retryInsertResult(
+            finalText: "hello",
+            phase: .resolving(sessionID: 1)
+        ) { _ in
+            didInject = true
+            return .success
+        }
+
+        XCTAssertEqual(result, .failure(.dictationBusy))
+        XCTAssertFalse(didInject)
+    }
+
     func testShortcutModeMapsToSingleUsePromptBuilderOverride() {
         XCTAssertEqual(
             AppDelegate.refinementMode(for: .defaultMode, defaultMode: .precise),
