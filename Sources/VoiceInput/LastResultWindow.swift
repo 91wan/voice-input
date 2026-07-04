@@ -6,6 +6,7 @@ final class LastResultWindow: NSPanel {
     }
 
     var onRetryInsert: ((LastTranscriptionResult, @escaping (TextInjectionResult) -> Void) -> Void)?
+    var onCanRetryInsert: (() -> RetryInsertAvailability)?
     var onSaveDictionaryRule: ((String, String) throws -> Int)?
 
     private let resultPopup = NSPopUpButton()
@@ -295,10 +296,23 @@ final class LastResultWindow: NSPanel {
             return
         }
 
-        guard let targetApplication = previousActiveApplication else {
+        let presentationPlan = RetryInsertPresentationPolicy.plan(
+            availability: onCanRetryInsert?() ?? .allowed,
+            hasTargetApplication: previousActiveApplication != nil
+        )
+
+        switch presentationPlan {
+        case .showBusyStatus(let message):
+            showStatus(message, style: .warning, autoClear: true)
+            return
+        case .missingTargetApplication:
             showStatus("No previous app to return to. Focus the target app, then open Recent Results again.", style: .warning, autoClear: false)
             return
+        case .proceed:
+            break
         }
+
+        guard let targetApplication = previousActiveApplication else { return }
 
         orderOut(nil)
         targetApplication.activate()

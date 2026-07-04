@@ -130,10 +130,16 @@ Requirements:
 - Xcode Command Line Tools
 - `Resources/AppIcon.icns` is a required build input
 
-Run the full local gate:
+Run the local CI gate used by PRs and main pushes:
 
 ```bash
 make ci
+```
+
+Run the local release gate, including DMG packaging and verification:
+
+```bash
+make release-check VERSION=1.6.0 DMG_PATH=/tmp/VoiceInput-test.dmg
 ```
 
 Build the app bundle:

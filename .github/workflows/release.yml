@@ -45,43 +45,16 @@ jobs:
           sudo xcode-select -s /Applications/Xcode_16.3.app/Contents/Developer 2>/dev/null || \
           sudo xcode-select -s $(ls -d /Applications/Xcode*.app | tail -1)/Contents/Developer
 
-      - name: Build app bundle
-        run: make build
-
-      - name: Package DMG
-        run: |
-          ./scripts/package-dmg.sh VoiceInput.app VoiceInput.dmg VoiceInput
-
-      - name: Verify unsigned DMG artifact
+      - name: Build and verify release artifact
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          ./scripts/verify-dmg.sh VoiceInput.dmg "$VERSION" VoiceInput
+          make release-artifact VERSION="$VERSION" DMG_PATH=VoiceInput.dmg
 
       - name: Extract release notes from CHANGELOG.md
         id: notes
         run: |
           TAG="${GITHUB_REF_NAME}"
-          if [ -f CHANGELOG.md ]; then
-            NOTES=$(awk -v tag="$TAG" '
-              /^## / {
-                if (found) { exit }
-                heading = $0
-                sub(/^##[[:space:]]+\[/, "", heading)
-                sub(/^##[[:space:]]+/, "", heading)
-                sub(/\].*$/, "", heading)
-                sub(/[[:space:]].*$/, "", heading)
-                if (heading == tag) {
-                  found = 1
-                  next
-                }
-              }
-              found { print }
-            ' CHANGELOG.md)
-          fi
-          if [ -z "$NOTES" ]; then
-            echo "::error::CHANGELOG.md missing release notes for ${TAG}"
-            exit 1
-          fi
+          NOTES="$(./scripts/extract-release-notes.sh CHANGELOG.md "$TAG")"
           echo "notes<<EOF" >> $GITHUB_OUTPUT
           echo "$NOTES"     >> $GITHUB_OUTPUT
           echo "EOF"        >> $GITHUB_OUTPUT

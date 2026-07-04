@@ -17,13 +17,10 @@ final class ReleaseWorkflowTests: XCTestCase {
         let workflow = try String(contentsOfFile: ".github/workflows/release.yml", encoding: .utf8)
 
         XCTAssertTrue(
-            workflow.contains("awk -v tag=\"$TAG\""),
-            "Release notes extraction should pass the tag as an awk variable instead of interpolating it into a regex."
+            workflow.contains("./scripts/extract-release-notes.sh CHANGELOG.md \"$TAG\""),
+            "Release notes extraction should use the shared script so exact-match behavior is tested locally."
         )
-        XCTAssertTrue(
-            workflow.contains("heading == tag"),
-            "Release notes extraction must compare normalized changelog headings exactly so v1.0.1 cannot match v1.0.10."
-        )
+        XCTAssertFalse(workflow.contains("awk -v tag=\"$TAG\""))
         XCTAssertFalse(
             workflow.contains("awk \"/^## \\[?${TAG}\\]?/"),
             "The old regex prefix match can extract notes from the wrong changelog section."
@@ -32,18 +29,19 @@ final class ReleaseWorkflowTests: XCTestCase {
 
     func testReleaseNotesMissingForTagFailsClosed() throws {
         let workflow = try String(contentsOfFile: ".github/workflows/release.yml", encoding: .utf8)
+        let script = try String(contentsOfFile: "scripts/extract-release-notes.sh", encoding: .utf8)
 
         XCTAssertFalse(
             workflow.contains("NOTES=\"Release ${TAG}\""),
             "Release workflow must not publish placeholder release notes when changelog notes are missing."
         )
         XCTAssertTrue(
-            workflow.contains("::error::CHANGELOG.md missing release notes for ${TAG}"),
+            script.contains("CHANGELOG.md missing release notes for ${TAG}"),
             "Release workflow should emit an actionable changelog error."
         )
         XCTAssertTrue(
-            workflow.contains("exit 1"),
-            "Release workflow should fail closed instead of publishing empty notes."
+            workflow.contains("NOTES=\"$(./scripts/extract-release-notes.sh CHANGELOG.md \"$TAG\")\""),
+            "Release workflow should fail closed through the release notes extraction script."
         )
     }
 
@@ -58,7 +56,9 @@ final class ReleaseWorkflowTests: XCTestCase {
         for path in readmePaths {
             let readme = try String(contentsOfFile: path, encoding: .utf8)
 
-            XCTAssertTrue(readme.contains("make ci"), "\(path) should document make ci as the full local gate.")
+            XCTAssertTrue(readme.contains("make ci"), "\(path) should document make ci as the local CI gate.")
+            XCTAssertTrue(readme.contains("make release-check"), "\(path) should document make release-check as the local release gate.")
+            XCTAssertFalse(readme.localizedCaseInsensitiveContains("full local gate"), "\(path) should not describe make ci as the full local gate.")
             XCTAssertTrue(readme.contains("Resources/AppIcon.icns"), "\(path) should document the required icon input.")
         }
 
@@ -91,10 +91,8 @@ final class ReleaseWorkflowTests: XCTestCase {
         let workflow = try String(contentsOfFile: ".github/workflows/release.yml", encoding: .utf8)
         let packageScript = try String(contentsOfFile: "scripts/package-dmg.sh", encoding: .utf8)
 
-        XCTAssertTrue(
-            workflow.contains("./scripts/package-dmg.sh"),
-            "Release workflow should use the shared packaging script so local and CI DMGs have the same install layout."
-        )
+        XCTAssertTrue(workflow.contains("make release-artifact VERSION=\"$VERSION\" DMG_PATH=VoiceInput.dmg"))
+        XCTAssertFalse(workflow.contains("./scripts/package-dmg.sh VoiceInput.app VoiceInput.dmg VoiceInput"))
         XCTAssertTrue(
             packageScript.contains("ln -s /Applications \"$STAGING_DIR/Applications\""),
             "The DMG staging folder must include an /Applications shortcut for drag-to-install."
@@ -179,7 +177,8 @@ final class ReleaseWorkflowTests: XCTestCase {
         let workflow = try String(contentsOfFile: ".github/workflows/release.yml", encoding: .utf8)
         let verifier = try String(contentsOfFile: "scripts/verify-dmg.sh", encoding: .utf8)
 
-        XCTAssertTrue(workflow.contains("./scripts/verify-dmg.sh VoiceInput.dmg \"$VERSION\" VoiceInput"))
+        XCTAssertTrue(workflow.contains("make release-artifact VERSION=\"$VERSION\" DMG_PATH=VoiceInput.dmg"))
+        XCTAssertFalse(workflow.contains("./scripts/verify-dmg.sh VoiceInput.dmg \"$VERSION\" VoiceInput"))
         XCTAssertTrue(workflow.contains("VERSION=\"${GITHUB_REF_NAME#v}\""))
         XCTAssertTrue(verifier.contains("test -d \"$MOUNT_DIR/VoiceInput.app\""))
         XCTAssertTrue(verifier.contains("readlink \"$MOUNT_DIR/Applications\""))
@@ -204,7 +203,11 @@ final class ReleaseWorkflowTests: XCTestCase {
         )
         XCTAssertTrue(
             checklist.contains("`make ci`"),
-            "The release checklist should name make ci as the local automated gate."
+            "The release checklist should name make ci as the PR/main automated gate."
+        )
+        XCTAssertTrue(
+            checklist.contains("`make release-check VERSION=<version> DMG_PATH=/tmp/VoiceInput-test.dmg`"),
+            "The release checklist should name make release-check as the local release gate."
         )
     }
 
@@ -275,6 +278,79 @@ final class ReleaseWorkflowTests: XCTestCase {
         XCTAssertTrue(checklist.contains("Accessibility enabled but Input Monitoring missing"))
         XCTAssertTrue(checklist.contains("LLM disabled"))
         XCTAssertTrue(checklist.contains("Developer ID signing and notarization are out of scope"))
+        XCTAssertTrue(checklist.contains("docs/manual-qa-log-template.md"))
+    }
+
+    func testManualQALogTemplateDocumentsRequiredScenariosWithoutClaimingPass() throws {
+        let template = try String(contentsOfFile: "docs/manual-qa-log-template.md", encoding: .utf8)
+
+        XCTAssertTrue(template.contains("| Date | Build | macOS | Scenario | Result | Notes |"))
+        XCTAssertTrue(template.contains("Fresh launch with no permissions"))
+        XCTAssertTrue(template.contains("Accessibility enabled but Input Monitoring missing"))
+        XCTAssertTrue(template.contains("Microphone missing"))
+        XCTAssertTrue(template.contains("Speech Recognition missing"))
+        XCTAssertTrue(template.contains("Fn pure dictation"))
+        XCTAssertTrue(template.contains("Option + Fn prompt builder"))
+        XCTAssertTrue(template.contains("Fn + normal key does not start dictation"))
+        XCTAssertTrue(template.contains("Insert into TextEdit"))
+        XCTAssertTrue(template.contains("Insert into browser field"))
+        XCTAssertTrue(template.contains("Recent Results retry insert idle path"))
+        XCTAssertTrue(template.contains("Recent Results retry insert busy path"))
+        XCTAssertTrue(template.contains("LLM disabled basic dictation"))
+        XCTAssertTrue(template.contains("LLM configured test request cancel/retry"))
+        XCTAssertTrue(template.contains("Not run / Pass / Fail"))
+        XCTAssertTrue(template.contains("does not mean manual QA has passed"))
+    }
+
+    func testReleaseNotesExtractionScriptHasFixtureCoverage() throws {
+        let script = try String(contentsOfFile: "scripts/extract-release-notes.sh", encoding: .utf8)
+
+        XCTAssertTrue(script.contains("CHANGELOG_FILE"))
+        XCTAssertTrue(script.contains("TAG"))
+        XCTAssertFalse(script.contains("Release ${TAG}"))
+
+        let fixture = """
+        # Changelog
+
+        ## [Unreleased]
+
+        - Work in progress.
+
+        ## [v1.0.10] - 2026-01-10
+
+        - Ten patch.
+
+        ## [v1.0.1] - 2026-01-01
+
+        - One patch.
+        """
+        let url = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("voiceinput-release-notes-\(UUID().uuidString).md")
+        try fixture.write(to: url, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        XCTAssertEqual(try Self.runReleaseNotesScript(changelog: url.path, tag: "v1.0.1").trimmingCharacters(in: .whitespacesAndNewlines), "- One patch.")
+        XCTAssertEqual(try Self.runReleaseNotesScript(changelog: url.path, tag: "v1.0.10").trimmingCharacters(in: .whitespacesAndNewlines), "- Ten patch.")
+        XCTAssertThrowsError(try Self.runReleaseNotesScript(changelog: url.path, tag: "v1.0.2"))
+        XCTAssertThrowsError(try Self.runReleaseNotesScript(changelog: url.path, tag: "Unreleased"))
+    }
+
+    func testReleaseNotesExtractionFailsForEmptySection() throws {
+        let fixture = """
+        # Changelog
+
+        ## [v1.0.0] - 2026-01-01
+
+        ## [v0.9.0] - 2025-12-31
+
+        - Previous release.
+        """
+        let url = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("voiceinput-empty-release-notes-\(UUID().uuidString).md")
+        try fixture.write(to: url, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        XCTAssertThrowsError(try Self.runReleaseNotesScript(changelog: url.path, tag: "v1.0.0"))
     }
 
     private static func firstCapture(in text: String, pattern: String) throws -> String? {
@@ -299,5 +375,30 @@ final class ReleaseWorkflowTests: XCTestCase {
         let remainingText = changelog[sectionStart...]
         let sectionEnd = remainingText.range(of: "\n## ")?.lowerBound ?? changelog.endIndex
         return String(changelog[sectionStart..<sectionEnd]).trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private static func runReleaseNotesScript(changelog: String, tag: String) throws -> String {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/bash")
+        process.arguments = ["scripts/extract-release-notes.sh", changelog, tag]
+
+        let output = Pipe()
+        let error = Pipe()
+        process.standardOutput = output
+        process.standardError = error
+
+        try process.run()
+        process.waitUntilExit()
+
+        let stdout = String(data: output.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+        let stderr = String(data: error.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+        guard process.terminationStatus == 0 else {
+            throw NSError(
+                domain: "ReleaseNotesExtractionTests",
+                code: Int(process.terminationStatus),
+                userInfo: [NSLocalizedDescriptionKey: stderr]
+            )
+        }
+        return stdout
     }
 }

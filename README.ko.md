@@ -124,10 +124,16 @@ macOS에 "Apple could not verify VoiceInput" 이 표시되면:
 - Xcode Command Line Tools
 - `Resources/AppIcon.icns` 는 필수 빌드 입력입니다
 
-전체 로컬 게이트 실행:
+PR 및 main push에서 사용하는 로컬 CI 게이트 실행:
 
 ```bash
 make ci
+```
+
+DMG 패키징과 검증을 포함한 로컬 release 게이트 실행:
+
+```bash
+make release-check VERSION=1.6.0 DMG_PATH=/tmp/VoiceInput-test.dmg
 ```
 
 앱 번들 빌드:

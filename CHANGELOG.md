@@ -10,7 +10,12 @@
 - Settings Test early returns：new invalid or unconfigured Test attempts now cancel any previous in-flight Settings test before showing validation or API key status.
 - Clipboard injection ownership：consecutive fast dictations restore the user's original clipboard instead of a previous generated text.
 - Release validation：local CI, `make build`, and DMG verification now require a non-empty bundled app icon, and tag releases fail when matching changelog notes are missing.
-- Documentation：README build-from-source instructions now document `make ci` as the full local gate and `swift test --parallel` as unit-test-only.
+- Documentation：README build-from-source instructions now document `make ci` as the local CI gate and `swift test --parallel` as unit-test-only.
+- Release gate：`make release-check` now packages and verifies the DMG locally, while GitHub release publishing reuses the Makefile artifact target.
+- Retry Insert lifecycle：Recent Results retry insertion is now blocked while dictation is holding, recording, resolving, or injecting.
+- Pasteboard ownership：injection restore ownership is now tied to pasteboard identity as well as change count.
+- Release notes extraction：tag release notes now come from a testable fail-closed script.
+- Manual QA：added a lightweight manual QA log template for real app, Fn, and permission checks without claiming automated coverage.
 
 ---
 

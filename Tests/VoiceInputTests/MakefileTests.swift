@@ -88,6 +88,20 @@ final class MakefileTests: XCTestCase {
         )
     }
 
+    func testReleaseCheckPackagesAndVerifiesDMGArtifact() throws {
+        let makefile = try String(contentsOfFile: "Makefile", encoding: .utf8)
+
+        XCTAssertTrue(makefile.contains("DMG_PATH ?= VoiceInput.dmg"))
+        XCTAssertTrue(makefile.contains("VERSION ?= $(shell /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Info.plist)"))
+        XCTAssertTrue(makefile.contains("package-dmg: build"))
+        XCTAssertTrue(makefile.contains("./scripts/package-dmg.sh $(APP_BUNDLE) $(DMG_PATH) $(APP_NAME)"))
+        XCTAssertTrue(makefile.contains("verify-dmg:"))
+        XCTAssertTrue(makefile.contains("./scripts/verify-dmg.sh $(DMG_PATH) \"$(VERSION)\" $(APP_NAME)"))
+        XCTAssertTrue(makefile.contains("release-artifact: package-dmg verify-dmg"))
+        XCTAssertTrue(makefile.contains("release-check: ci"))
+        XCTAssertTrue(makefile.contains("$(MAKE) release-artifact VERSION=\"$(VERSION)\" DMG_PATH=\"$(DMG_PATH)\""))
+    }
+
     func testVersionBumpFailsFastDuringVersionWrites() throws {
         let makefile = try String(contentsOfFile: "Makefile", encoding: .utf8)
 
