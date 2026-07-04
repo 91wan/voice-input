@@ -79,6 +79,10 @@ final class MakefileTests: XCTestCase {
             "make ci should catch a missing verify-dmg executable bit before tag-only release jobs."
         )
         XCTAssertTrue(
+            makefile.contains("test -x scripts/verify-dmg-layout.sh"),
+            "make ci should catch a missing DMG layout verifier executable bit before tag-only release jobs."
+        )
+        XCTAssertTrue(
             makefile.contains("test -x scripts/extract-release-notes.sh"),
             "make ci should catch a missing release-notes executable bit before tag-only release jobs."
         )

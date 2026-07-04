@@ -41,6 +41,8 @@ test "$(readlink "$MOUNT_DIR/Applications")" = "/Applications"
 test -f "$MOUNT_DIR/.DS_Store"
 test -s "$MOUNT_DIR/VoiceInput.app/Contents/Resources/AppIcon.icns"
 
+./scripts/verify-dmg-layout.sh "$MOUNT_DIR"
+
 SHORT_VERSION=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$MOUNT_DIR/VoiceInput.app/Contents/Info.plist")
 BUNDLE_VERSION=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$MOUNT_DIR/VoiceInput.app/Contents/Info.plist")
 test "$SHORT_VERSION" = "$EXPECTED_VERSION"
