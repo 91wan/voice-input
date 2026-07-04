@@ -133,4 +133,22 @@ final class AppDelegateTests: XCTestCase {
         XCTAssertFalse(timer.isValid)
         XCTAssertEqual(fireCount, 1)
     }
+
+    func testFinishTranscriptionFinishesSpeechEngineResourcesAfterNonEmptyTextBeforeFiltering() throws {
+        let source = try String(contentsOfFile: "Sources/VoiceInput/AppDelegate.swift", encoding: .utf8)
+        let methodStart = try XCTUnwrap(source.range(of: "private func finishTranscription(sessionID: Int)")?.lowerBound)
+        let methodEnd = try XCTUnwrap(source.range(of: "let dictionaryResult = DictionaryFilter.shared.applying(text)", range: methodStart..<source.endIndex)?.upperBound)
+        let methodSource = String(source[methodStart..<methodEnd])
+
+        let claim = try XCTUnwrap(methodSource.range(of: "guard transcriptionSessions.claimCurrent(sessionID) else { return }")?.lowerBound)
+        let trim = try XCTUnwrap(methodSource.range(of: "let text = lastPartialResult.trimmingCharacters(in: .whitespacesAndNewlines)")?.lowerBound)
+        let emptyGuard = try XCTUnwrap(methodSource.range(of: "guard !text.isEmpty else")?.lowerBound)
+        let finish = try XCTUnwrap(methodSource.range(of: "speechEngine.finishAfterResultConsumed()")?.lowerBound)
+        let dictionary = try XCTUnwrap(methodSource.range(of: "let dictionaryResult = DictionaryFilter.shared.applying(text)")?.lowerBound)
+
+        XCTAssertLessThan(claim, trim)
+        XCTAssertLessThan(trim, emptyGuard)
+        XCTAssertLessThan(emptyGuard, finish)
+        XCTAssertLessThan(finish, dictionary)
+    }
 }
