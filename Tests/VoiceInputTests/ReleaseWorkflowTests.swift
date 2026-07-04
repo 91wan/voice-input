@@ -113,29 +113,45 @@ final class ReleaseWorkflowTests: XCTestCase {
         )
     }
 
-    func testReleaseDMGWritesFinderLayout() throws {
+    func testReleaseDMGUsesPolishedFinderLayoutForIssue22() throws {
         let packageScript = try String(contentsOfFile: "scripts/package-dmg.sh", encoding: .utf8)
 
         XCTAssertTrue(
             packageScript.contains(".DS_Store"),
             "The DMG should persist Finder layout metadata instead of relying on default icon view."
         )
-        XCTAssertTrue(
-            packageScript.contains("set icon size of icon view options of container window of dmgFolder to 128"),
-            "The DMG Finder view should use larger 128 point icons."
+        let bounds = try Self.firstIntCaptures(
+            in: packageScript,
+            pattern: #"set bounds of container window of dmgFolder to \{([0-9]+), ([0-9]+), ([0-9]+), ([0-9]+)\}"#
         )
+        let iconSize = try XCTUnwrap(Self.firstIntCapture(
+            in: packageScript,
+            pattern: #"set icon size of icon view options of container window of dmgFolder to ([0-9]+)"#
+        ))
+        let appPosition = try Self.firstIntCaptures(
+            in: packageScript,
+            pattern: #"set position of item "VoiceInput\.app" of dmgFolder to \{([0-9]+), ([0-9]+)\}"#
+        )
+        let applicationsPosition = try Self.firstIntCaptures(
+            in: packageScript,
+            pattern: #"set position of item "Applications" of dmgFolder to \{([0-9]+), ([0-9]+)\}"#
+        )
+
+        XCTAssertEqual(bounds.count, 4, "The DMG Finder window bounds should be explicit.")
+        XCTAssertEqual(appPosition.count, 2, "The app icon position should be explicit.")
+        XCTAssertEqual(applicationsPosition.count, 2, "The Applications shortcut position should be explicit.")
+        guard bounds.count == 4, appPosition.count == 2, applicationsPosition.count == 2 else { return }
+
+        XCTAssertGreaterThan(iconSize, 128, "Issue #22 requires icons visibly larger than the old 128 point layout.")
+        XCTAssertGreaterThanOrEqual(iconSize, 160, "The DMG Finder view should use polished large drag targets.")
+        XCTAssertGreaterThanOrEqual(bounds[2] - bounds[0], 880, "The DMG Finder window should be wide enough for the larger side-by-side icons.")
+        XCTAssertGreaterThanOrEqual(bounds[3] - bounds[1], 500, "The DMG Finder window should be tall enough for the larger icon view.")
         XCTAssertTrue(
             packageScript.contains("set arrangement of icon view options of container window of dmgFolder to not arranged"),
             "Finder should not auto-sort the DMG icons after explicit positioning."
         )
-        XCTAssertTrue(
-            packageScript.contains("set position of item \"VoiceInput.app\" of dmgFolder to {200, 180}"),
-            "VoiceInput.app should be on the left side of the install window."
-        )
-        XCTAssertTrue(
-            packageScript.contains("set position of item \"Applications\" of dmgFolder to {520, 180}"),
-            "Applications should be on the right side of the install window."
-        )
+        XCTAssertLessThan(appPosition[0], applicationsPosition[0], "VoiceInput.app should remain on the left side of the install window.")
+        XCTAssertGreaterThanOrEqual(applicationsPosition[0] - appPosition[0], 360, "The app and Applications icons should be far enough apart to avoid overlap.")
     }
 
     func testVersionMetadataIsConsistentAcrossSourceFiles() throws {
@@ -466,6 +482,28 @@ final class ReleaseWorkflowTests: XCTestCase {
             return nil
         }
         return String(text[captureRange])
+    }
+
+    private static func firstIntCapture(in text: String, pattern: String) throws -> Int? {
+        guard let capture = try firstCapture(in: text, pattern: pattern) else {
+            return nil
+        }
+        return Int(capture)
+    }
+
+    private static func firstIntCaptures(in text: String, pattern: String) throws -> [Int] {
+        let regex = try NSRegularExpression(pattern: pattern)
+        let range = NSRange(text.startIndex..<text.endIndex, in: text)
+        guard let match = regex.firstMatch(in: text, range: range), match.numberOfRanges > 1 else {
+            return []
+        }
+
+        return (1..<match.numberOfRanges).compactMap { index in
+            guard let captureRange = Range(match.range(at: index), in: text) else {
+                return nil
+            }
+            return Int(text[captureRange])
+        }
     }
 
     private static func changelogSection(for tag: String) throws -> String? {

@@ -17,6 +17,7 @@ Use this checklist before a stable public release such as `v1.2.0`.
 - `make build`.
 - Local release gate: `make release-check VERSION=<version> DMG_PATH=/tmp/VoiceInput-test.dmg`.
 - The release gate includes DMG packaging and `./scripts/verify-dmg.sh`.
+- DMG visual check: mounted DMG contains `VoiceInput.app`, `Applications -> /Applications`, and `.DS_Store`; Finder shows the app on the left, Applications on the right, and both icons are large, clear drag targets without launching the app.
 - Version bump gate: `make version-bump VERSION=vX.Y.Z` validates release notes, runs the local release gate before commit/tag, and stages `README.md`, `Info.plist`, and `CHANGELOG.md` for the bump commit.
 - Version bump source gate: only `CHANGELOG.md` may be dirty before `make version-bump`; source/test/script/workflow changes must be committed before `make version-bump`.
 - Version bump branch gate: `make version-bump` must run on the configured release branch, default `main`, and local HEAD must match `origin/main` before metadata mutation.

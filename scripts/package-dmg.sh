@@ -56,11 +56,11 @@ tell application "Finder"
     set current view of container window of dmgFolder to icon view
     set toolbar visible of container window of dmgFolder to false
     set statusbar visible of container window of dmgFolder to false
-    set bounds of container window of dmgFolder to {100, 100, 860, 530}
+    set bounds of container window of dmgFolder to {100, 100, 980, 620}
     set arrangement of icon view options of container window of dmgFolder to not arranged
-    set icon size of icon view options of container window of dmgFolder to 128
-    set position of item "VoiceInput.app" of dmgFolder to {200, 180}
-    set position of item "Applications" of dmgFolder to {520, 180}
+    set icon size of icon view options of container window of dmgFolder to 160
+    set position of item "VoiceInput.app" of dmgFolder to {260, 240}
+    set position of item "Applications" of dmgFolder to {700, 240}
     update dmgFolder without registering applications
     delay 1
     close container window of dmgFolder
