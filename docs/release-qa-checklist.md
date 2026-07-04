@@ -19,6 +19,7 @@ Use this checklist before a stable public release such as `v1.2.0`.
 - The release gate includes DMG packaging and `./scripts/verify-dmg.sh`.
 - Version bump gate: `make version-bump VERSION=vX.Y.Z` validates release notes, runs the local release gate before commit/tag, and stages `README.md`, `Info.plist`, and `CHANGELOG.md` for the bump commit.
 - Version bump source gate: only `CHANGELOG.md` may be dirty before `make version-bump`; source/test/script/workflow changes must be committed before `make version-bump`.
+- Version bump branch gate: `make version-bump` must run on the configured release branch, default `main`, and local HEAD must match `origin/main` before metadata mutation.
 - Version bump tag gate: `make version-bump` checks local and remote tag collisions before creating a tag.
 - `codesign --verify --deep --strict VoiceInput.app`.
 - `spctl -a -vvv -t execute VoiceInput.app` returns rejected for unsigned / not notarized builds.

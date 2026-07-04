@@ -87,6 +87,10 @@ final class MakefileTests: XCTestCase {
             "make ci should catch a missing version-bump source-state preflight executable bit before releases."
         )
         XCTAssertTrue(
+            makefile.contains("test -x scripts/check-version-bump-branch-state.sh"),
+            "make ci should catch a missing version-bump branch-state preflight executable bit before releases."
+        )
+        XCTAssertTrue(
             makefile.contains("test -x scripts/check-version-bump-tag-state.sh"),
             "make ci should catch a missing version-bump tag-state preflight executable bit before releases."
         )
@@ -211,14 +215,42 @@ final class MakefileTests: XCTestCase {
         )
     }
 
+    func testVersionBumpRunsBranchStatePreflightBeforeMetadataMutation() throws {
+        let makefile = try String(contentsOfFile: "Makefile", encoding: .utf8)
+        let branchCheck = "./scripts/check-version-bump-branch-state.sh \"$(RELEASE_BRANCH)\" \"$(REMOTE)\""
+        let metadataMutation = "sed -i '' -e 's/version-v[0-9][0-9a-z._-]*/version-$(VERSION)/g' README.md"
+
+        XCTAssertTrue(
+            makefile.contains("REMOTE ?= origin"),
+            "version-bump should allow release maintainers to configure the remote used for branch and tag checks."
+        )
+        XCTAssertTrue(
+            makefile.contains("RELEASE_BRANCH ?= main"),
+            "version-bump should default to tagging from main unless a release maintainer explicitly configures another branch."
+        )
+        XCTAssertTrue(
+            makefile.contains(branchCheck),
+            "version-bump must verify that local HEAD matches the configured remote release branch before mutating release metadata."
+        )
+        XCTAssertLessThan(
+            try XCTUnwrap(makefile.range(of: branchCheck)?.lowerBound),
+            try XCTUnwrap(makefile.range(of: metadataMutation)?.lowerBound),
+            "branch-state preflight must run before metadata mutation."
+        )
+    }
+
     func testVersionBumpChecksTagStateBeforeMetadataMutation() throws {
         let makefile = try String(contentsOfFile: "Makefile", encoding: .utf8)
-        let tagCheck = "./scripts/check-version-bump-tag-state.sh \"$(VERSION)\" origin"
+        let tagCheck = "./scripts/check-version-bump-tag-state.sh \"$(VERSION)\" \"$(REMOTE)\""
         let metadataMutation = "sed -i '' -e 's/version-v[0-9][0-9a-z._-]*/version-$(VERSION)/g' README.md"
 
         XCTAssertTrue(
             makefile.contains(tagCheck),
             "version-bump must reject local and remote tag collisions before mutating release metadata."
+        )
+        XCTAssertFalse(
+            makefile.contains("./scripts/check-version-bump-tag-state.sh \"$(VERSION)\" origin"),
+            "version-bump must pass $(REMOTE) into the tag-state preflight instead of hard-coding origin."
         )
         XCTAssertLessThan(
             try XCTUnwrap(makefile.range(of: tagCheck)?.lowerBound),
