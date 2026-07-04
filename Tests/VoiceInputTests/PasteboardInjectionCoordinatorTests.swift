@@ -19,7 +19,7 @@ final class PasteboardInjectionCoordinatorTests: XCTestCase {
     }
 
     func testSingleInjectionRestoresOriginalClipboardWhenStillOwned() {
-        let pasteboard = NSPasteboard.withUniqueName()
+        let pasteboard = PasteboardTestSupport.makePasteboard()
         writeString("original", to: pasteboard)
         let coordinator = PasteboardInjectionCoordinator()
 
@@ -32,7 +32,7 @@ final class PasteboardInjectionCoordinatorTests: XCTestCase {
     }
 
     func testUserClipboardChangePreventsRestore() {
-        let pasteboard = NSPasteboard.withUniqueName()
+        let pasteboard = PasteboardTestSupport.makePasteboard()
         writeString("original", to: pasteboard)
         let coordinator = PasteboardInjectionCoordinator()
 
@@ -46,7 +46,7 @@ final class PasteboardInjectionCoordinatorTests: XCTestCase {
     }
 
     func testTwoConsecutiveInjectionsRestoreFirstOriginalClipboard() {
-        let pasteboard = NSPasteboard.withUniqueName()
+        let pasteboard = PasteboardTestSupport.makePasteboard()
         writeString("original", to: pasteboard)
         let coordinator = PasteboardInjectionCoordinator()
 
@@ -66,7 +66,7 @@ final class PasteboardInjectionCoordinatorTests: XCTestCase {
     }
 
     func testTwoConsecutiveInjectionsDoNotRestoreAfterUserClipboardChange() {
-        let pasteboard = NSPasteboard.withUniqueName()
+        let pasteboard = PasteboardTestSupport.makePasteboard()
         writeString("original", to: pasteboard)
         let coordinator = PasteboardInjectionCoordinator()
 
@@ -85,8 +85,8 @@ final class PasteboardInjectionCoordinatorTests: XCTestCase {
     }
 
     func testDifferentPasteboardsWithMatchingChangeCountDoNotReuseOriginalSnapshot() {
-        let firstPasteboard = NSPasteboard.withUniqueName()
-        let secondPasteboard = NSPasteboard.withUniqueName()
+        let firstPasteboard = PasteboardTestSupport.makePasteboard()
+        let secondPasteboard = PasteboardTestSupport.makePasteboard()
         writeString("first original", to: firstPasteboard)
         let coordinator = PasteboardInjectionCoordinator()
 
@@ -104,8 +104,8 @@ final class PasteboardInjectionCoordinatorTests: XCTestCase {
     }
 
     func testRestoreOnDifferentPasteboardDoesNotConsumeOwnership() {
-        let firstPasteboard = NSPasteboard.withUniqueName()
-        let secondPasteboard = NSPasteboard.withUniqueName()
+        let firstPasteboard = PasteboardTestSupport.makePasteboard()
+        let secondPasteboard = PasteboardTestSupport.makePasteboard()
         writeString("first original", to: firstPasteboard)
         let coordinator = PasteboardInjectionCoordinator()
 
@@ -122,8 +122,8 @@ final class PasteboardInjectionCoordinatorTests: XCTestCase {
     }
 
     func testCancelOnDifferentPasteboardDoesNotRestoreOrClearOwnership() {
-        let firstPasteboard = NSPasteboard.withUniqueName()
-        let secondPasteboard = NSPasteboard.withUniqueName()
+        let firstPasteboard = PasteboardTestSupport.makePasteboard()
+        let secondPasteboard = PasteboardTestSupport.makePasteboard()
         writeString("first original", to: firstPasteboard)
         writeString("second original", to: secondPasteboard)
         let coordinator = PasteboardInjectionCoordinator()

@@ -19,7 +19,7 @@ final class TextInjectorTests: XCTestCase {
     }
 
     func testInjectFailsFastWithoutAccessibilityPermission() throws {
-        let pasteboard = NSPasteboard.withUniqueName()
+        let pasteboard = PasteboardTestSupport.makePasteboard()
         pasteboard.clearContents()
 
         let initialItem = NSPasteboardItem()
@@ -53,7 +53,7 @@ final class TextInjectorTests: XCTestCase {
     }
 
     func testInjectTreatsWhitespaceOnlyTextAsEmpty() {
-        let pasteboard = NSPasteboard.withUniqueName()
+        let pasteboard = PasteboardTestSupport.makePasteboard()
         pasteboard.clearContents()
         let initialChangeCount = pasteboard.changeCount
 
@@ -73,7 +73,7 @@ final class TextInjectorTests: XCTestCase {
     }
 
     func testInjectLeavesTextOnClipboardWhenPasteCommandFails() {
-        let pasteboard = NSPasteboard.withUniqueName()
+        let pasteboard = PasteboardTestSupport.makePasteboard()
         pasteboard.clearContents()
 
         let initialItem = NSPasteboardItem()
@@ -100,7 +100,7 @@ final class TextInjectorTests: XCTestCase {
     }
 
     func testPasteboardSnapshotRoundTripsStringAndNonStringData() throws {
-        let pasteboard = NSPasteboard.withUniqueName()
+        let pasteboard = PasteboardTestSupport.makePasteboard()
         let dataType = NSPasteboard.PasteboardType.rtf
         let nonStringData = Data([0x7b, 0x5c, 0x72, 0x74, 0x66, 0x31, 0x20, 0x68, 0x69, 0x7d])
 
