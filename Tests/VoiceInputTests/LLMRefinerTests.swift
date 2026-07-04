@@ -549,6 +549,41 @@ final class LLMRefinerTests: XCTestCase {
         XCTAssertNil(defaults.object(forKey: "llmAPIBaseURL"))
     }
 
+    func testTransientConfigurationRequestDoesNotPollutePersistedSettings() throws {
+        let (refiner, recorder, store, defaults) = try makeCapturingRefiner()
+        defer {
+            try? store.delete()
+            defaults.removePersistentDomain(forName: defaultsSuiteName(defaults))
+        }
+
+        try refiner.updateAPIKey("persisted-key")
+        refiner.apiBaseURL = "https://persisted.example/v1"
+        refiner.model = "persisted-model"
+
+        let configuration = LLMRequestConfiguration(
+            apiBaseURL: "https://transient.example/v1",
+            apiKey: "transient-key",
+            model: "transient-model"
+        )
+
+        refiner.refine("test connection", configuration: configuration, mode: .promptBuilder) { _ in }
+
+        let captured = try XCTUnwrap(recorder.capturedRequests.first)
+        XCTAssertEqual(captured.request.url?.absoluteString, "https://transient.example/v1/chat/completions")
+        XCTAssertEqual(captured.request.value(forHTTPHeaderField: "Authorization"), "Bearer transient-key")
+
+        let body = try Self.requestJSONBody(captured.request)
+        XCTAssertEqual(body["model"] as? String, "transient-model")
+        XCTAssertEqual(body["temperature"] as? Double, LLMRefinementMode.promptBuilder.temperature)
+
+        XCTAssertEqual(refiner.apiBaseURL, "https://persisted.example/v1")
+        XCTAssertEqual(refiner.apiKey, "persisted-key")
+        XCTAssertEqual(refiner.model, "persisted-model")
+        XCTAssertEqual(defaults.string(forKey: "llmAPIBaseURL"), "https://persisted.example/v1")
+        XCTAssertEqual(defaults.string(forKey: "llmModel"), "persisted-model")
+        XCTAssertEqual(try store.read(), "persisted-key")
+    }
+
     func testChatCompletionsURLRequiresHTTPURLWithHost() {
         XCTAssertEqual(
             LLMRefiner.chatCompletionsURL(from: " https://api.openai.com/v1/ ")?.absoluteString,
@@ -576,6 +611,20 @@ final class LLMRefinerTests: XCTestCase {
         XCTAssertNil(LLMRefiner.chatCompletionsURL(from: "not a url"))
         XCTAssertNil(LLMRefiner.chatCompletionsURL(from: "https://api.openai.com/v1?debug=true"))
         XCTAssertNil(LLMRefiner.chatCompletionsURL(from: "https://user:pass@api.openai.com/v1"))
+    }
+
+    private static func requestJSONBody(
+        _ request: URLRequest,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) throws -> [String: Any] {
+        let data = try XCTUnwrap(request.httpBody, "Expected request body", file: file, line: line)
+        return try XCTUnwrap(
+            JSONSerialization.jsonObject(with: data) as? [String: Any],
+            "Expected JSON object body",
+            file: file,
+            line: line
+        )
     }
 
     private static func successData(_ content: String, file: StaticString = #filePath, line: UInt = #line) -> Data {

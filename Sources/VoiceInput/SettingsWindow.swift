@@ -2,11 +2,14 @@ import AppKit
 
 enum SettingsValidationError: LocalizedError, Equatable {
     case invalidAPIBaseURL
+    case emptyAPIKey
 
     var errorDescription: String? {
         switch self {
         case .invalidAPIBaseURL:
             return "Invalid API base URL. Use a full http(s) base URL, for example https://api.openai.com/v1."
+        case .emptyAPIKey:
+            return "API key is empty"
         }
     }
 }
@@ -138,29 +141,28 @@ final class SettingsWindow: NSPanel {
         let generation = testController.beginAttempt()
         testState = .notRun
 
+        let configuration: LLMRequestConfiguration
         do {
-            try applyFields()
-            onSettingsSaved?()
+            configuration = try Self.validatedTestConfiguration(
+                apiBaseURL: apiBaseURLField.stringValue,
+                apiKey: apiKeyField.stringValue,
+                model: modelField.stringValue
+            )
         } catch {
             showStatus(error.localizedDescription, success: false)
             return
         }
 
-        let refiner = LLMRefiner.shared
-        guard refiner.isConfigured else {
-            showStatus("API key is empty", success: false)
-            return
-        }
-
         testState = .testing
-        refreshConfigurationStatus()
+        refreshConfigurationStatus(configuration: configuration)
 
-        let request = refiner.refine("Hello, this is a test.", force: true) { [weak self] result in
+        let refiner = LLMRefiner.shared
+        let request = refiner.refine("Hello, this is a test.", configuration: configuration) { [weak self] result in
             guard let self, self.testController.finishTest(generation: generation) else { return }
             switch result {
             case .success(let text):
                 self.testState = .succeeded(text)
-                self.refreshConfigurationStatus()
+                self.refreshConfigurationStatus(configuration: configuration)
             case .failure(let error):
                 if case LLMRefiner.RefinerError.cancelled = error {
                     self.testState = .notRun
@@ -168,7 +170,7 @@ final class SettingsWindow: NSPanel {
                     return
                 }
                 self.testState = .failed(error.localizedDescription)
-                self.refreshConfigurationStatus()
+                self.refreshConfigurationStatus(configuration: configuration)
             }
         }
         testController.setActiveRequest(request, generation: generation)
@@ -200,12 +202,12 @@ final class SettingsWindow: NSPanel {
         refiner.model = settings.model
     }
 
-    private func refreshConfigurationStatus(prefix: String = "") {
+    private func refreshConfigurationStatus(prefix: String = "", configuration: LLMRequestConfiguration? = nil) {
         let refiner = LLMRefiner.shared
         let status = LLMSettingsStatus.make(
-            isConfigured: refiner.isConfigured,
-            apiBaseURL: refiner.apiBaseURL,
-            model: refiner.model,
+            isConfigured: configuration.map { !$0.apiKey.isEmpty } ?? refiner.isConfigured,
+            apiBaseURL: configuration?.apiBaseURL ?? refiner.apiBaseURL,
+            model: configuration?.model ?? refiner.model,
             mode: refiner.mode,
             testState: testState
         )
@@ -221,6 +223,25 @@ final class SettingsWindow: NSPanel {
         }
 
         return ValidatedSettings(apiBaseURL: normalizedBaseURL, model: normalizedModel)
+    }
+
+    static func validatedTestConfiguration(
+        apiBaseURL: String,
+        apiKey: String,
+        model: String
+    ) throws -> LLMRequestConfiguration {
+        let settings = try validatedSettings(apiBaseURL: apiBaseURL, model: model)
+        let normalizedAPIKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !normalizedAPIKey.isEmpty else {
+            throw SettingsValidationError.emptyAPIKey
+        }
+
+        return LLMRequestConfiguration(
+            apiBaseURL: settings.apiBaseURL.isEmpty ? LLMRefiner.defaultAPIBaseURL : settings.apiBaseURL,
+            apiKey: normalizedAPIKey,
+            model: settings.model.isEmpty ? LLMRefiner.defaultModel : settings.model
+        )
     }
 
     private func showStatus(_ text: String, success: Bool?) {
