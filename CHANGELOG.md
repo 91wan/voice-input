@@ -13,6 +13,7 @@
 - Documentation：README build-from-source instructions now document `make ci` as the local CI gate and `swift test --parallel` as unit-test-only.
 - Release gate：`make release-check` now packages and verifies the DMG locally, while GitHub release publishing reuses the Makefile artifact target.
 - Release gate hardening：`release-artifact` now packages and verifies sequentially under `make -j`, quotes DMG paths, and `make ci` checks release scripts are executable.
+- Release bump hardening：`make version-bump` now reuses the release-notes extractor, includes `CHANGELOG.md` in the bump commit, rejects existing tags, and runs the local release gate before tagging.
 - Retry Insert lifecycle：Recent Results retry insertion is now blocked while dictation is holding, recording, resolving, or injecting.
 - Retry Insert final gate：retry insertion now rechecks dictation availability immediately before delayed insertion and again inside the AppDelegate injection boundary.
 - Pasteboard ownership：injection restore ownership is now tied to pasteboard identity as well as change count.

@@ -157,8 +157,9 @@ swift test --parallel
 ## Release 规则
 
 - 每次发版前必须在 `CHANGELOG.md` 添加对应版本条目，例如 `## [v1.1.0] - YYYY-MM-DD`。
-- 执行 `make version-bump VERSION=v1.1.0` 会更新版本元数据并创建 tag。
+- 执行 `make version-bump VERSION=v1.1.0` 会更新版本元数据、验证 release notes、运行 local release gate、stage `README.md`、`Info.plist` 和 `CHANGELOG.md`，然后创建 tag。
 - 推送 `v*` tag 后，CI 会构建 macOS App、打包 `VoiceInput.dmg`，并从 `CHANGELOG.md` 生成 GitHub Release notes。
+- 稳定公开发布前仍必须执行 `docs/release-qa-checklist.md` 中的 manual QA；`make release-check` 不替代真实 `Fn`、权限、首次启动验证。
 - 大版本应同步更新 README 和产品定位。
 - 小版本也必须有清晰的 GitHub Release notes。
 

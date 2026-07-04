@@ -62,7 +62,7 @@ install: build
 	cp -r $(APP_BUNDLE) /Applications/
 	@echo "✅ Installed to /Applications/$(APP_BUNDLE)"
 
-## version-bump VERSION=v1.x.x: 更新 README 版本号+日期，打 tag，一键触发 CI 发布
+## version-bump VERSION=v1.x.x: 验证 release notes，更新版本元数据，运行 release-check，打 tag
 version-bump:
 	@if [ -z "$(VERSION)" ]; then \
 		echo "❌ 缺少版本号，用法: make version-bump VERSION=v1.x.x"; \
@@ -77,28 +77,21 @@ version-bump:
 		echo "❌ VERSION 格式必须是 v1.2.3"; \
 		exit 1; \
 	}
-	@awk -v tag="$(VERSION)" '\
-		/^## / { \
-			heading = $$0; \
-			sub(/^##[[:space:]]+\[/, "", heading); \
-			sub(/^##[[:space:]]+/, "", heading); \
-			sub(/\].*$$/, "", heading); \
-			sub(/[[:space:]].*$$/, "", heading); \
-			if (heading == tag) { found = 1; exit } \
-		} \
-		END { exit found ? 0 : 1 } \
-	' CHANGELOG.md || { \
-		echo "❌ CHANGELOG.md 缺少 $(VERSION) 条目，请先添加 release notes"; \
-		exit 1; \
-	}
+	@./scripts/extract-release-notes.sh CHANGELOG.md "$(VERSION)" >/dev/null
 	@set -e; \
+	if git rev-parse -q --verify "refs/tags/$(VERSION)" >/dev/null; then \
+		echo "❌ Tag $(VERSION) already exists"; \
+		exit 1; \
+	fi; \
 	VERSION_NO_V=$${VERSION#v}; \
 	echo "🔖 Bumping to $(VERSION)..."; \
 	sed -i '' -e 's/version-v[0-9][0-9a-z._-]*/version-$(VERSION)/g' README.md; \
 	sed -i '' -e 's/date-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/date-$(shell date +%Y-%m-%d)/g' README.md; \
 	/usr/libexec/PlistBuddy -c "Set :CFBundleVersion $$VERSION_NO_V" Info.plist; \
 	/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $$VERSION_NO_V" Info.plist
-	@git add README.md Info.plist
+	@VERSION_NO_V=$${VERSION#v}; \
+	"$${MAKE:-make}" release-check VERSION="$$VERSION_NO_V" DMG_PATH="/tmp/VoiceInput-$(VERSION).dmg"
+	@git add README.md Info.plist CHANGELOG.md
 	@git commit -m "chore: bump version to $(VERSION)"
 	@git tag $(VERSION)
 	@echo "✅ 完成。执行以下命令触发自动构建与发布:"

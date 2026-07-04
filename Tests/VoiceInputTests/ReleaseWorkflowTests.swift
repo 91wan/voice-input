@@ -58,6 +58,10 @@ final class ReleaseWorkflowTests: XCTestCase {
 
             XCTAssertTrue(readme.contains("make ci"), "\(path) should document make ci as the local CI gate.")
             XCTAssertTrue(readme.contains("make release-check"), "\(path) should document make release-check as the local release gate.")
+            XCTAssertTrue(readme.contains("make version-bump"), "\(path) should document the version bump entry point.")
+            XCTAssertTrue(readme.contains("local release gate"), "\(path) should say version-bump runs the local release gate.")
+            XCTAssertTrue(readme.contains("CHANGELOG.md"), "\(path) should document that release notes are part of the version bump.")
+            XCTAssertTrue(readme.localizedCaseInsensitiveContains("manual QA"), "\(path) should document that manual QA is still required for stable releases.")
             XCTAssertFalse(readme.localizedCaseInsensitiveContains("full local gate"), "\(path) should not describe make ci as the full local gate.")
             XCTAssertTrue(readme.contains("Resources/AppIcon.icns"), "\(path) should document the required icon input.")
         }
@@ -209,6 +213,18 @@ final class ReleaseWorkflowTests: XCTestCase {
             checklist.contains("`make release-check VERSION=<version> DMG_PATH=/tmp/VoiceInput-test.dmg`"),
             "The release checklist should name make release-check as the local release gate."
         )
+        XCTAssertTrue(
+            checklist.contains("`make version-bump VERSION=vX.Y.Z`"),
+            "The release checklist should document version-bump as the automated version metadata and tag entry point."
+        )
+        XCTAssertTrue(
+            checklist.contains("runs the local release gate before commit/tag"),
+            "The release checklist should document that version-bump cannot tag before local release verification."
+        )
+        XCTAssertTrue(
+            checklist.contains("stages `README.md`, `Info.plist`, and `CHANGELOG.md`"),
+            "The release checklist should document that changelog notes are included in the bump commit."
+        )
     }
 
     func testPullRequestsToMainRunCIGateBeforeMerge() throws {
@@ -262,6 +278,10 @@ final class ReleaseWorkflowTests: XCTestCase {
             section.contains("Pasteboard test isolation"),
             "Unreleased should document the PR #19 parallel pasteboard fixture stabilization."
         )
+        XCTAssertTrue(
+            section.contains("Release bump hardening"),
+            "Unreleased should document the version-bump release gate hardening."
+        )
         XCTAssertFalse(section.localizedCaseInsensitiveContains("todo"))
     }
 
@@ -283,6 +303,10 @@ final class ReleaseWorkflowTests: XCTestCase {
         XCTAssertTrue(checklist.contains("LLM disabled"))
         XCTAssertTrue(checklist.contains("Developer ID signing and notarization are out of scope"))
         XCTAssertTrue(checklist.contains("docs/manual-qa-log-template.md"))
+        XCTAssertTrue(
+            checklist.contains("does not replace manual QA"),
+            "The release checklist should make clear that automated release-check does not replace real app, permission, and Fn QA."
+        )
     }
 
     func testManualQALogTemplateDocumentsRequiredScenariosWithoutClaimingPass() throws {
