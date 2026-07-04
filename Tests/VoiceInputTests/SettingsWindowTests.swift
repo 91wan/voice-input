@@ -23,6 +23,71 @@ final class SettingsWindowTests: XCTestCase {
         XCTAssertEqual(settings.model, "")
     }
 
+    func testValidatedTestConfigurationUsesTrimmedTransientValues() throws {
+        let configuration = try SettingsWindow.validatedTestConfiguration(
+            apiBaseURL: "  https://transient.example/v1  ",
+            apiKey: "  transient-key  ",
+            model: "  transient-model  "
+        )
+
+        XCTAssertEqual(
+            configuration,
+            LLMRequestConfiguration(
+                apiBaseURL: "https://transient.example/v1",
+                apiKey: "transient-key",
+                model: "transient-model"
+            )
+        )
+    }
+
+    func testValidatedTestConfigurationUsesDefaultsForBlankBaseURLAndModel() throws {
+        let configuration = try SettingsWindow.validatedTestConfiguration(
+            apiBaseURL: "   ",
+            apiKey: " transient-key ",
+            model: "   "
+        )
+
+        XCTAssertEqual(configuration.apiBaseURL, LLMRefiner.defaultAPIBaseURL)
+        XCTAssertEqual(configuration.apiKey, "transient-key")
+        XCTAssertEqual(configuration.model, LLMRefiner.defaultModel)
+    }
+
+    func testValidatedTestConfigurationRejectsEmptyAPIKeyWithoutBuildingRequest() {
+        XCTAssertThrowsError(
+            try SettingsWindow.validatedTestConfiguration(
+                apiBaseURL: "https://api.openai.com/v1",
+                apiKey: "   ",
+                model: "gpt-4o-mini"
+            )
+        ) { error in
+            XCTAssertEqual(error.localizedDescription, "API key is empty")
+        }
+    }
+
+    func testValidatedTestConfigurationRejectsInvalidAPIBaseURL() {
+        XCTAssertThrowsError(
+            try SettingsWindow.validatedTestConfiguration(
+                apiBaseURL: "http://api.example.com/v1",
+                apiKey: "transient-key",
+                model: "gpt-4o-mini"
+            )
+        ) { error in
+            XCTAssertTrue(error.localizedDescription.contains("Invalid API base URL"))
+        }
+    }
+
+    func testSettingsTestMethodDoesNotSaveOrNotifySettingsSaved() throws {
+        let source = try String(contentsOfFile: "Sources/VoiceInput/SettingsWindow.swift", encoding: .utf8)
+        let methodStart = try XCTUnwrap(source.range(of: "@objc private func test()")?.lowerBound)
+        let methodEnd = try XCTUnwrap(source.range(of: "@objc private func save()", range: methodStart..<source.endIndex)?.lowerBound)
+        let methodSource = String(source[methodStart..<methodEnd])
+
+        XCTAssertFalse(methodSource.contains("applyFields()"))
+        XCTAssertFalse(methodSource.contains("onSettingsSaved?()"))
+        XCTAssertTrue(methodSource.contains("validatedTestConfiguration"))
+        XCTAssertTrue(methodSource.contains("configuration: configuration"))
+    }
+
     func testLLMSettingsStatusShowsNotConfiguredWithoutAPIKey() {
         let status = LLMSettingsStatus.make(
             isConfigured: false,

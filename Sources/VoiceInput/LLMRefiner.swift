@@ -79,6 +79,12 @@ enum LLMRefinementMode: String, CaseIterable, Equatable {
     }
 }
 
+struct LLMRequestConfiguration: Equatable {
+    let apiBaseURL: String
+    let apiKey: String
+    let model: String
+}
+
 final class LLMRefiner {
     typealias RequestPerformer = (URLRequest, @escaping (Data?, URLResponse?, Error?) -> Void) -> LLMNetworkTask
 
@@ -154,7 +160,26 @@ final class LLMRefiner {
             return nil
         }
 
-        guard let url = Self.chatCompletionsURL(from: apiBaseURL) else {
+        return refine(
+            text,
+            configuration: LLMRequestConfiguration(
+                apiBaseURL: apiBaseURL,
+                apiKey: apiKey,
+                model: model
+            ),
+            mode: modeOverride,
+            completion: completion
+        )
+    }
+
+    @discardableResult
+    func refine(
+        _ text: String,
+        configuration: LLMRequestConfiguration,
+        mode modeOverride: LLMRefinementMode? = nil,
+        completion: @escaping (Result<String, Error>) -> Void
+    ) -> CancellableRequest? {
+        guard let url = Self.chatCompletionsURL(from: configuration.apiBaseURL) else {
             completion(.failure(RefinerError.invalidURL))
             return nil
         }
@@ -162,13 +187,13 @@ final class LLMRefiner {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("Bearer \(configuration.apiKey)", forHTTPHeaderField: "Authorization")
         request.timeoutInterval = 10
 
         let requestMode = modeOverride ?? mode
-        let body = chatRequestBody(for: text, mode: requestMode)
+        let body = chatRequestBody(for: text, mode: requestMode, model: configuration.model)
 
-        logHandler("Request: \(url.absoluteString) model=\(model) mode=\(requestMode.rawValue)")
+        logHandler("Request: \(url.absoluteString) model=\(configuration.model) mode=\(requestMode.rawValue)")
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
 
         let requestHandle = LLMRefinementRequest(completion: completion) { [weak self] request in
@@ -222,6 +247,10 @@ final class LLMRefiner {
 
     func chatRequestBody(for text: String, mode modeOverride: LLMRefinementMode? = nil) -> [String: Any] {
         let currentMode = modeOverride ?? mode
+        return chatRequestBody(for: text, mode: currentMode, model: model)
+    }
+
+    private func chatRequestBody(for text: String, mode currentMode: LLMRefinementMode, model: String) -> [String: Any] {
         return [
             "model": model,
             "messages": [
