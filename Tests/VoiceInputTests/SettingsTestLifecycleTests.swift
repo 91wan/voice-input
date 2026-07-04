@@ -58,4 +58,28 @@ final class SettingsTestLifecycleTests: XCTestCase {
         XCTAssertEqual(settingsRequest.cancelCount, 1)
         XCTAssertEqual(dictationRequest.cancelCount, 0)
     }
+
+    func testNewAttemptBeforeValidationCancelsActiveRequest() {
+        let oldRequest = StubRequest()
+        let controller = LLMSettingsTestController()
+
+        let oldGeneration = controller.beginTest(request: oldRequest)
+        let newGeneration = controller.beginAttempt()
+
+        XCTAssertEqual(oldRequest.cancelCount, 1)
+        XCTAssertTrue(controller.isIdle)
+        XCTAssertFalse(controller.finishTest(generation: oldGeneration))
+        XCTAssertEqual(newGeneration, oldGeneration + 1)
+    }
+
+    func testNewAttemptBeforeEmptyAPIKeyBranchCancelsActiveRequest() {
+        let oldRequest = StubRequest()
+        let controller = LLMSettingsTestController()
+
+        _ = controller.beginTest(request: oldRequest)
+        _ = controller.beginAttempt()
+
+        XCTAssertEqual(oldRequest.cancelCount, 1)
+        XCTAssertTrue(controller.isIdle)
+    }
 }

@@ -145,6 +145,15 @@ final class OverlayPanel: NSPanel {
         updateText("Refining...")
     }
 
+    func showTransient(text: String, duration: TimeInterval) {
+        show(text: text)
+        let generation = presentationGeneration
+        DispatchQueue.main.asyncAfter(deadline: .now() + duration) { [weak self] in
+            guard let self, self.presentationGeneration == generation else { return }
+            self.dismiss()
+        }
+    }
+
     func dismiss() {
         presentationGeneration += 1
         let generation = presentationGeneration

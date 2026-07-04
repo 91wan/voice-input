@@ -79,7 +79,8 @@ jobs:
             ' CHANGELOG.md)
           fi
           if [ -z "$NOTES" ]; then
-            NOTES="Release ${TAG}"
+            echo "::error::CHANGELOG.md missing release notes for ${TAG}"
+            exit 1
           fi
           echo "notes<<EOF" >> $GITHUB_OUTPUT
           echo "$NOTES"     >> $GITHUB_OUTPUT

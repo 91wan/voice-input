@@ -58,3 +58,9 @@ enum DictationPhaseAction: Equatable {
     case finish
     case reset
 }
+
+enum BusyDictationHintPolicy {
+    static func shouldShowTransient(phase: DictationPhase, isOverlayVisible: Bool) -> Bool {
+        !phase.isIdle && !isOverlayVisible
+    }
+}

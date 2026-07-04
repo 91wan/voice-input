@@ -7,17 +7,17 @@ APP_ICON := $(APP_BUNDLE)/Contents/Resources/AppIcon.icns
 
 build:
 	@set -e; \
+	test -s "$(APP_ICON_SOURCE)" || { \
+		echo "❌ Missing or empty $(APP_ICON_SOURCE)"; \
+		exit 1; \
+	}; \
 	swift build -c release; \
 	BUILD_DIR=$$(swift build -c release --show-bin-path); \
 	mkdir -p $(APP_BUNDLE)/Contents/MacOS; \
 	mkdir -p $(APP_BUNDLE)/Contents/Resources; \
 	cp "$$BUILD_DIR/$(APP_NAME)" $(APP_BUNDLE)/Contents/MacOS/; \
 	cp Info.plist $(APP_BUNDLE)/Contents/; \
-	if [ -f "$(APP_ICON_SOURCE)" ]; then \
-		cp $(APP_ICON_SOURCE) $(APP_ICON); \
-	else \
-		echo "⚠️  Missing $(APP_ICON_SOURCE); app will build without a custom icon."; \
-	fi; \
+	cp "$(APP_ICON_SOURCE)" "$(APP_ICON)"; \
 	codesign --force --sign - $(APP_BUNDLE)
 	@echo "\n✅ Built $(APP_BUNDLE)"
 

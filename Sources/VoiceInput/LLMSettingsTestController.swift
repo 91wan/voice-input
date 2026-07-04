@@ -8,9 +8,15 @@ final class LLMSettingsTestController {
 
     @discardableResult
     func beginTest(request: CancellableRequest? = nil) -> Int {
+        let generation = beginAttempt()
+        activeTestRequest = request
+        return generation
+    }
+
+    @discardableResult
+    func beginAttempt() -> Int {
         cancelActiveRequestOnly()
         generation += 1
-        activeTestRequest = request
         return generation
     }
 

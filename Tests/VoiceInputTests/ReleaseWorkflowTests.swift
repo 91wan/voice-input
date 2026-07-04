@@ -30,6 +30,42 @@ final class ReleaseWorkflowTests: XCTestCase {
         )
     }
 
+    func testReleaseNotesMissingForTagFailsClosed() throws {
+        let workflow = try String(contentsOfFile: ".github/workflows/release.yml", encoding: .utf8)
+
+        XCTAssertFalse(
+            workflow.contains("NOTES=\"Release ${TAG}\""),
+            "Release workflow must not publish placeholder release notes when changelog notes are missing."
+        )
+        XCTAssertTrue(
+            workflow.contains("::error::CHANGELOG.md missing release notes for ${TAG}"),
+            "Release workflow should emit an actionable changelog error."
+        )
+        XCTAssertTrue(
+            workflow.contains("exit 1"),
+            "Release workflow should fail closed instead of publishing empty notes."
+        )
+    }
+
+    func testReadmesDocumentMakeCIAsLocalGate() throws {
+        let readmePaths = [
+            "README.md",
+            "README.zh-CN.md",
+            "README.ja.md",
+            "README.ko.md",
+        ]
+
+        for path in readmePaths {
+            let readme = try String(contentsOfFile: path, encoding: .utf8)
+
+            XCTAssertTrue(readme.contains("make ci"), "\(path) should document make ci as the full local gate.")
+            XCTAssertTrue(readme.contains("Resources/AppIcon.icns"), "\(path) should document the required icon input.")
+        }
+
+        let englishReadme = try String(contentsOfFile: "README.md", encoding: .utf8)
+        XCTAssertTrue(englishReadme.contains("Run unit tests only:"))
+    }
+
     func testWorkflowUsesNode24CompatibleActions() throws {
         let workflow = try String(contentsOfFile: ".github/workflows/release.yml", encoding: .utf8)
 
