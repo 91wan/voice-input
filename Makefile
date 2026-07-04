@@ -29,6 +29,8 @@ ci:
 	test -x scripts/package-dmg.sh; \
 	test -x scripts/verify-dmg.sh; \
 	test -x scripts/extract-release-notes.sh; \
+	test -x scripts/check-version-bump-source-state.sh; \
+	test -x scripts/check-version-bump-tag-state.sh; \
 	swift test --parallel; \
 	swift build -Xswiftc -warnings-as-errors; \
 	$(MAKE) build
@@ -77,12 +79,10 @@ version-bump:
 		echo "❌ VERSION 格式必须是 v1.2.3"; \
 		exit 1; \
 	}
+	@./scripts/check-version-bump-source-state.sh pre
+	@./scripts/check-version-bump-tag-state.sh "$(VERSION)" origin
 	@./scripts/extract-release-notes.sh CHANGELOG.md "$(VERSION)" >/dev/null
 	@set -e; \
-	if git rev-parse -q --verify "refs/tags/$(VERSION)" >/dev/null; then \
-		echo "❌ Tag $(VERSION) already exists"; \
-		exit 1; \
-	fi; \
 	VERSION_NO_V=$${VERSION#v}; \
 	echo "🔖 Bumping to $(VERSION)..."; \
 	sed -i '' -e 's/version-v[0-9][0-9a-z._-]*/version-$(VERSION)/g' README.md; \
@@ -91,6 +91,7 @@ version-bump:
 	/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $$VERSION_NO_V" Info.plist
 	@VERSION_NO_V=$${VERSION#v}; \
 	"$${MAKE:-make}" release-check VERSION="$$VERSION_NO_V" DMG_PATH="/tmp/VoiceInput-$(VERSION).dmg"
+	@./scripts/check-version-bump-source-state.sh post
 	@git add README.md Info.plist CHANGELOG.md
 	@git commit -m "chore: bump version to $(VERSION)"
 	@git tag $(VERSION)

@@ -158,6 +158,8 @@ swift test --parallel
 
 - 릴리스 전에 `CHANGELOG.md`에 해당 버전 항목을 추가합니다. 예: `## [v1.1.0] - YYYY-MM-DD`
 - `make version-bump VERSION=v1.1.0` 로 버전 메타데이터를 업데이트하고 release notes를 검증하며 local release gate를 실행한 뒤 `README.md`, `Info.plist`, `CHANGELOG.md`를 stage하고 tag를 생성합니다.
+- `make version-bump` 전에는 only `CHANGELOG.md` may be dirty 입니다. 모든 source/test/script/workflow changes must be committed first 입니다.
+- `make version-bump`는 tag 생성 전에 local and remote tag collisions를 확인합니다.
 - `v*` tag를 push하면 CI가 macOS 앱을 빌드하고 `VoiceInput.dmg`를 패키징하며, `CHANGELOG.md`에서 GitHub Release notes를 생성합니다.
 - 안정적인 공개 릴리스 전에는 `docs/release-qa-checklist.md`의 manual QA가 필요합니다. `make release-check`는 실제 Fn, 권한, 첫 실행 QA를 대체하지 않습니다.
 - 메이저 릴리스는 README와 제품 포지셔닝을 함께 업데이트해야 합니다.

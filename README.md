@@ -164,6 +164,8 @@ swift test --parallel
 
 - Add a matching `CHANGELOG.md` entry before every release, for example `## [v1.1.0] - YYYY-MM-DD`.
 - Run `make version-bump VERSION=v1.1.0` to update version metadata, validate release notes, run the local release gate, stage `README.md`, `Info.plist`, and `CHANGELOG.md`, and create the tag.
+- Before `make version-bump`, only `CHANGELOG.md` may be dirty. All source/test/script/workflow changes must be committed first.
+- `make version-bump` checks local and remote tag collisions before creating a tag.
 - Pushing a `v*` tag builds the macOS app, packages `VoiceInput.dmg`, and publishes GitHub Release notes from `CHANGELOG.md`.
 - Before a stable public release, run the manual QA coverage in `docs/release-qa-checklist.md`; `make release-check` does not replace real Fn, permission, or first-launch QA.
 - Major releases should update the README and product positioning.

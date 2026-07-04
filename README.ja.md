@@ -158,6 +158,8 @@ swift test --parallel
 
 - リリース前に `CHANGELOG.md` に対応するバージョン項目を追加します。例: `## [v1.1.0] - YYYY-MM-DD`
 - `make version-bump VERSION=v1.1.0` でバージョン情報を更新し、release notes を検証し、local release gate を実行し、`README.md`、`Info.plist`、`CHANGELOG.md` を stage してから tag を作成します。
+- `make version-bump` の前は only `CHANGELOG.md` may be dirty です。すべての source/test/script/workflow changes must be committed first です。
+- `make version-bump` は tag 作成前に local and remote tag collisions を確認します。
 - `v*` tag を push すると、CI が macOS アプリをビルドし、`VoiceInput.dmg` を作成し、`CHANGELOG.md` から GitHub Release notes を生成します。
 - 安定した公開リリース前には `docs/release-qa-checklist.md` の manual QA が必要です。`make release-check` は実際の Fn、権限、初回起動 QA の代替ではありません。
 - メジャーリリースでは README と製品説明を更新します。

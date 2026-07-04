@@ -83,6 +83,14 @@ final class MakefileTests: XCTestCase {
             "make ci should catch a missing release-notes executable bit before tag-only release jobs."
         )
         XCTAssertTrue(
+            makefile.contains("test -x scripts/check-version-bump-source-state.sh"),
+            "make ci should catch a missing version-bump source-state preflight executable bit before releases."
+        )
+        XCTAssertTrue(
+            makefile.contains("test -x scripts/check-version-bump-tag-state.sh"),
+            "make ci should catch a missing version-bump tag-state preflight executable bit before releases."
+        )
+        XCTAssertTrue(
             makefile.contains("ci:\n\t@set -e; \\"),
             "Makefile should expose a single ci target for local and GitHub verification."
         )
@@ -187,6 +195,42 @@ final class MakefileTests: XCTestCase {
         )
     }
 
+    func testVersionBumpRunsSourceStatePreflightBeforeMetadataMutation() throws {
+        let makefile = try String(contentsOfFile: "Makefile", encoding: .utf8)
+        let preflight = "./scripts/check-version-bump-source-state.sh pre"
+        let metadataMutation = "sed -i '' -e 's/version-v[0-9][0-9a-z._-]*/version-$(VERSION)/g' README.md"
+
+        XCTAssertTrue(
+            makefile.contains(preflight),
+            "version-bump must verify that only CHANGELOG.md is dirty before it mutates README or Info.plist."
+        )
+        XCTAssertLessThan(
+            try XCTUnwrap(makefile.range(of: preflight)?.lowerBound),
+            try XCTUnwrap(makefile.range(of: metadataMutation)?.lowerBound),
+            "source-state preflight must run before metadata mutation."
+        )
+    }
+
+    func testVersionBumpChecksTagStateBeforeMetadataMutation() throws {
+        let makefile = try String(contentsOfFile: "Makefile", encoding: .utf8)
+        let tagCheck = "./scripts/check-version-bump-tag-state.sh \"$(VERSION)\" origin"
+        let metadataMutation = "sed -i '' -e 's/version-v[0-9][0-9a-z._-]*/version-$(VERSION)/g' README.md"
+
+        XCTAssertTrue(
+            makefile.contains(tagCheck),
+            "version-bump must reject local and remote tag collisions before mutating release metadata."
+        )
+        XCTAssertLessThan(
+            try XCTUnwrap(makefile.range(of: tagCheck)?.lowerBound),
+            try XCTUnwrap(makefile.range(of: metadataMutation)?.lowerBound),
+            "tag-state preflight must run before metadata mutation."
+        )
+        XCTAssertFalse(
+            makefile.contains("git rev-parse -q --verify \"refs/tags/$(VERSION)\" >/dev/null"),
+            "tag collision checks should live in the executable tag-state preflight instead of growing inline Makefile shell."
+        )
+    }
+
     func testVersionBumpDoesNotRewriteCommandNameInReadme() throws {
         let makefile = try String(contentsOfFile: "Makefile", encoding: .utf8)
 
@@ -232,6 +276,7 @@ final class MakefileTests: XCTestCase {
     func testVersionBumpRunsReleaseCheckBeforeCommitAndTag() throws {
         let makefile = try String(contentsOfFile: "Makefile", encoding: .utf8)
         let releaseCheck = "\"$${MAKE:-make}\" release-check VERSION=\"$$VERSION_NO_V\" DMG_PATH=\"/tmp/VoiceInput-$(VERSION).dmg\""
+        let postCheck = "./scripts/check-version-bump-source-state.sh post"
         let commit = "git commit -m \"chore: bump version to $(VERSION)\""
         let tag = "git tag $(VERSION)"
 
@@ -252,6 +297,15 @@ final class MakefileTests: XCTestCase {
             try XCTUnwrap(makefile.range(of: commit)?.lowerBound),
             "release-check must run before git commit so failing verification cannot create a bump commit."
         )
+        XCTAssertTrue(
+            makefile.contains(postCheck),
+            "version-bump must verify that release-check left only release metadata files dirty before staging the commit."
+        )
+        XCTAssertLessThan(
+            try XCTUnwrap(makefile.range(of: postCheck)?.lowerBound),
+            try XCTUnwrap(makefile.range(of: "git add README.md Info.plist CHANGELOG.md")?.lowerBound),
+            "post release-check source-state validation must run before git add."
+        )
         XCTAssertLessThan(
             try XCTUnwrap(makefile.range(of: releaseCheck)?.lowerBound),
             try XCTUnwrap(makefile.range(of: tag)?.lowerBound),
@@ -260,19 +314,23 @@ final class MakefileTests: XCTestCase {
     }
 
     func testVersionBumpRejectsExistingLocalTag() throws {
-        let makefile = try String(contentsOfFile: "Makefile", encoding: .utf8)
+        let tagScript = try String(contentsOfFile: "scripts/check-version-bump-tag-state.sh", encoding: .utf8)
 
         XCTAssertTrue(
-            makefile.contains("git rev-parse -q --verify \"refs/tags/$(VERSION)\" >/dev/null"),
+            tagScript.contains("git rev-parse -q --verify \"refs/tags/${VERSION}\" >/dev/null"),
             "version-bump must check for an existing local tag before modifying release metadata."
         )
         XCTAssertTrue(
-            makefile.contains("Tag $(VERSION) already exists"),
+            tagScript.contains("Tag ${VERSION} already exists locally"),
             "version-bump should fail with a clear tag collision message."
         )
         XCTAssertFalse(
-            makefile.contains("git rev-parse -q --verify \"refs/tags/$(VERSION)\" >/dev/null &&"),
+            tagScript.contains("git rev-parse -q --verify \"refs/tags/${VERSION}\" >/dev/null &&"),
             "version-bump should not use a tag check form that can hide unrelated shell errors behind `|| true`."
+        )
+        XCTAssertTrue(
+            tagScript.contains("git ls-remote --exit-code --tags \"${REMOTE}\" \"refs/tags/${VERSION}\""),
+            "version-bump must fail closed when the remote already has the release tag."
         )
     }
 }
