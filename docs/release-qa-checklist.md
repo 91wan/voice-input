@@ -17,7 +17,8 @@ Use this checklist before a stable public release such as `v1.2.0`.
 - `make build`.
 - Local release gate: `make release-check VERSION=<version> DMG_PATH=/tmp/VoiceInput-test.dmg`.
 - The release gate includes DMG packaging and `./scripts/verify-dmg.sh`.
-- DMG visual check: mounted DMG contains `VoiceInput.app`, `Applications -> /Applications`, and `.DS_Store`; Finder shows the app on the left, Applications on the right, and both icons are large, clear drag targets without launching the app.
+- Automated DMG layout gate: `make release-check` mounts the DMG and verifies Finder layout values: icon size, bounds, app position, and Applications position.
+- DMG artifact check: mounted DMG contains `VoiceInput.app`, `Applications -> /Applications`, `.DS_Store`, and a non-empty app icon without launching the app.
 - Version bump gate: `make version-bump VERSION=vX.Y.Z` validates release notes, runs the local release gate before commit/tag, and stages `README.md`, `Info.plist`, and `CHANGELOG.md` for the bump commit.
 - Version bump source gate: only `CHANGELOG.md` may be dirty before `make version-bump`; source/test/script/workflow changes must be committed before `make version-bump`.
 - Version bump branch gate: `make version-bump` must run on the configured release branch, default `main`, and local HEAD must match `origin/main` before metadata mutation.
@@ -33,6 +34,8 @@ These checks require launching the app and interacting with macOS permissions, s
 Automated `make release-check` does not replace manual QA for real app launch, permission recovery, `Fn`, or `Option + Fn` behavior.
 
 Record manual QA evidence in `docs/manual-qa-log-template.md`. Do not treat the template itself as passed QA.
+
+Optional human visual confirmation can be recorded in `docs/manual-qa-log-template.md`. A screenshot is useful evidence, but the automated DMG layout gate is the required release artifact check.
 
 ## Installation And First Launch
 

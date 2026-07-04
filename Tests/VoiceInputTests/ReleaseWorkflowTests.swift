@@ -202,6 +202,7 @@ final class ReleaseWorkflowTests: XCTestCase {
     func testReleaseWorkflowValidatesUnsignedDMGArtifactBeforePublishing() throws {
         let workflow = try String(contentsOfFile: ".github/workflows/release.yml", encoding: .utf8)
         let verifier = try String(contentsOfFile: "scripts/verify-dmg.sh", encoding: .utf8)
+        let layoutVerifier = try String(contentsOfFile: "scripts/verify-dmg-layout.sh", encoding: .utf8)
 
         XCTAssertTrue(workflow.contains("make release-artifact VERSION=\"$VERSION\" DMG_PATH=VoiceInput.dmg"))
         XCTAssertFalse(workflow.contains("./scripts/verify-dmg.sh VoiceInput.dmg \"$VERSION\" VoiceInput"))
@@ -213,6 +214,14 @@ final class ReleaseWorkflowTests: XCTestCase {
         XCTAssertTrue(verifier.contains("codesign --verify --deep --strict"))
         XCTAssertTrue(verifier.contains("spctl -a -vvv -t execute"))
         XCTAssertTrue(verifier.contains("grep -qi \"rejected\""))
+        XCTAssertTrue(verifier.contains("./scripts/verify-dmg-layout.sh \"$MOUNT_DIR\""))
+        XCTAssertTrue(layoutVerifier.contains("MIN_ICON_SIZE=160"))
+        XCTAssertTrue(layoutVerifier.contains("MIN_HORIZONTAL_GAP=360"))
+        XCTAssertTrue(layoutVerifier.contains("VoiceInput.app"))
+        XCTAssertTrue(layoutVerifier.contains("Applications"))
+        XCTAssertTrue(layoutVerifier.contains("icon size"))
+        XCTAssertTrue(layoutVerifier.contains("bounds"))
+        XCTAssertTrue(layoutVerifier.contains("position of item"))
     }
 
     func testReleaseWorkflowUsesMakeCIGate() throws {
@@ -258,6 +267,10 @@ final class ReleaseWorkflowTests: XCTestCase {
         XCTAssertTrue(
             checklist.contains("checks local and remote tag collisions"),
             "The release checklist should document local and remote tag collision checks."
+        )
+        XCTAssertTrue(
+            checklist.contains("verifies Finder layout values: icon size, bounds, app position, and Applications position"),
+            "The release checklist should document automated Finder layout verification as a release artifact gate."
         )
         XCTAssertTrue(
             checklist.contains("Version bump branch gate"),
@@ -327,6 +340,10 @@ final class ReleaseWorkflowTests: XCTestCase {
         XCTAssertTrue(
             section.contains("Release branch invariant"),
             "Unreleased should document the version-bump release branch invariant."
+        )
+        XCTAssertTrue(
+            section.contains("DMG layout verification"),
+            "Unreleased should document the release artifact Finder layout verifier."
         )
         XCTAssertFalse(section.localizedCaseInsensitiveContains("todo"))
     }

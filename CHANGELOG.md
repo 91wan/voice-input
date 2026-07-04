@@ -17,6 +17,7 @@
 - Release tree invariant：`make version-bump` now requires a clean source/test/script/workflow tree, allows only pre-existing `CHANGELOG.md` release-note edits, checks local and remote tag collisions, and verifies only release metadata is dirty before tagging.
 - Release branch invariant：`make version-bump` now requires the local release branch to match the configured remote branch before metadata mutation or tag creation.
 - DMG install polish：Finder install window now uses larger app / Applications icons and adjusted positions so drag-to-install is more obvious.
+- DMG layout verification：release gate now reads the mounted DMG Finder layout and fails if icon size, window bounds, or app / Applications positions regress.
 - Retry Insert lifecycle：Recent Results retry insertion is now blocked while dictation is holding, recording, resolving, or injecting.
 - Retry Insert final gate：retry insertion now rechecks dictation availability immediately before delayed insertion and again inside the AppDelegate injection boundary.
 - Pasteboard ownership：injection restore ownership is now tied to pasteboard identity as well as change count.

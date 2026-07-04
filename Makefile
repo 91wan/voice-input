@@ -30,6 +30,7 @@ ci:
 	test -s "$(APP_ICON_SOURCE)"; \
 	test -x scripts/package-dmg.sh; \
 	test -x scripts/verify-dmg.sh; \
+	test -x scripts/verify-dmg-layout.sh; \
 	test -x scripts/extract-release-notes.sh; \
 	test -x scripts/check-version-bump-source-state.sh; \
 	test -x scripts/check-version-bump-branch-state.sh; \
