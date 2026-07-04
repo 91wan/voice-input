@@ -222,6 +222,12 @@ final class SpeechEngine {
         recognitionRequest?.endAudio()
     }
 
+    func finishAfterResultConsumed() {
+        recognitionSessions.invalidate()
+        finalResultSessionID = nil
+        cleanup()
+    }
+
     func cancel() {
         recognitionSessions.invalidate()
         finalResultSessionID = nil

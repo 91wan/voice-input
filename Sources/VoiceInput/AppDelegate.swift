@@ -241,6 +241,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             return
         }
 
+        speechEngine.finishAfterResultConsumed()
+
         let dictionaryResult = DictionaryFilter.shared.applying(text)
         let filtered = dictionaryResult.text
         updateDictionaryStatusMenuItem()
