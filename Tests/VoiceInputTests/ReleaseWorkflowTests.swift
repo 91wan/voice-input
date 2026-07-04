@@ -65,6 +65,9 @@ final class ReleaseWorkflowTests: XCTestCase {
             XCTAssertTrue(readme.contains("only `CHANGELOG.md`"), "\(path) should document that only CHANGELOG.md may be dirty before version-bump.")
             XCTAssertTrue(readme.contains("source/test/script/workflow"), "\(path) should require source, test, script, and workflow changes to be committed before version-bump.")
             XCTAssertTrue(readme.contains("local and remote tag collisions"), "\(path) should document local and remote tag collision checks.")
+            XCTAssertTrue(readme.contains("configured release branch"), "\(path) should document the configured release branch requirement.")
+            XCTAssertTrue(readme.contains("origin/main"), "\(path) should document that local HEAD must match origin/main by default.")
+            XCTAssertTrue(readme.contains("REMOTE=upstream RELEASE_BRANCH=main"), "\(path) should document custom remote and branch version-bump usage.")
             XCTAssertFalse(readme.localizedCaseInsensitiveContains("full local gate"), "\(path) should not describe make ci as the full local gate.")
             XCTAssertTrue(readme.contains("Resources/AppIcon.icns"), "\(path) should document the required icon input.")
         }
@@ -240,6 +243,14 @@ final class ReleaseWorkflowTests: XCTestCase {
             checklist.contains("checks local and remote tag collisions"),
             "The release checklist should document local and remote tag collision checks."
         )
+        XCTAssertTrue(
+            checklist.contains("Version bump branch gate"),
+            "The release checklist should document the release branch preflight."
+        )
+        XCTAssertTrue(
+            checklist.contains("local HEAD must match `origin/main` before metadata mutation"),
+            "The release checklist should document the default remote branch invariant."
+        )
     }
 
     func testPullRequestsToMainRunCIGateBeforeMerge() throws {
@@ -296,6 +307,10 @@ final class ReleaseWorkflowTests: XCTestCase {
         XCTAssertTrue(
             section.contains("Release bump hardening"),
             "Unreleased should document the version-bump release gate hardening."
+        )
+        XCTAssertTrue(
+            section.contains("Release branch invariant"),
+            "Unreleased should document the version-bump release branch invariant."
         )
         XCTAssertFalse(section.localizedCaseInsensitiveContains("todo"))
     }

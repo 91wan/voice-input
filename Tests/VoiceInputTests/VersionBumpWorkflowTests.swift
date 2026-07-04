@@ -103,6 +103,121 @@ final class VersionBumpWorkflowTests: XCTestCase {
         XCTAssertTrue(result.combinedOutput.contains("Tests/VoiceInputTests/MakefileTests.swift"))
     }
 
+    func testVersionBumpBranchStateAllowsMainMatchingOriginMain() throws {
+        let repo = try makeTemporaryRepo()
+        let remote = try makeBareRemote()
+        try publishReleaseBranch("main", from: repo, to: remote, remoteName: "origin")
+
+        let result = runScript("scripts/check-version-bump-branch-state.sh", ["main", "origin"], in: repo)
+
+        XCTAssertEqual(result.status, 0, result.combinedOutput)
+    }
+
+    func testVersionBumpBranchStateRejectsFeatureBranch() throws {
+        let repo = try makeTemporaryRepo()
+        let remote = try makeBareRemote()
+        try publishReleaseBranch("main", from: repo, to: remote, remoteName: "origin")
+        try runGit(["checkout", "-b", "feature/foo"], in: repo).checkSuccess()
+
+        let result = runScript("scripts/check-version-bump-branch-state.sh", ["main", "origin"], in: repo)
+
+        XCTAssertNotEqual(result.status, 0)
+        XCTAssertTrue(result.combinedOutput.contains("current branch is feature/foo"))
+        XCTAssertTrue(result.combinedOutput.contains("must run on main"))
+    }
+
+    func testVersionBumpBranchStateRejectsDetachedHead() throws {
+        let repo = try makeTemporaryRepo()
+        let remote = try makeBareRemote()
+        try publishReleaseBranch("main", from: repo, to: remote, remoteName: "origin")
+        try runGit(["checkout", "--detach", "HEAD"], in: repo).checkSuccess()
+
+        let result = runScript("scripts/check-version-bump-branch-state.sh", ["main", "origin"], in: repo)
+
+        XCTAssertNotEqual(result.status, 0)
+        XCTAssertTrue(result.combinedOutput.contains("detached HEAD"))
+    }
+
+    func testVersionBumpBranchStateRejectsLocalMainBehindOriginMain() throws {
+        let repo = try makeTemporaryRepo()
+        let remote = try makeBareRemote()
+        try publishReleaseBranch("main", from: repo, to: remote, remoteName: "origin")
+        let initialHead = try runGit(["rev-parse", "HEAD"], in: repo).checkedStdout()
+        try append("CHANGELOG.md", "\n- Remote-only release note.\n", in: repo)
+        try runGit(["add", "CHANGELOG.md"], in: repo).checkSuccess()
+        try runGit(["commit", "-m", "remote update"], in: repo).checkSuccess()
+        try runGit(["push", "origin", "HEAD:refs/heads/main"], in: repo).checkSuccess()
+        try runGit(["reset", "--hard", initialHead], in: repo).checkSuccess()
+
+        let result = runScript("scripts/check-version-bump-branch-state.sh", ["main", "origin"], in: repo)
+
+        XCTAssertNotEqual(result.status, 0)
+        XCTAssertTrue(result.combinedOutput.contains("Local main is not identical to origin/main"))
+        XCTAssertTrue(result.combinedOutput.contains("Sync main with origin/main"))
+    }
+
+    func testVersionBumpBranchStateRejectsLocalMainAheadOfOriginMain() throws {
+        let repo = try makeTemporaryRepo()
+        let remote = try makeBareRemote()
+        try publishReleaseBranch("main", from: repo, to: remote, remoteName: "origin")
+        try append("CHANGELOG.md", "\n- Local-only release note.\n", in: repo)
+        try runGit(["add", "CHANGELOG.md"], in: repo).checkSuccess()
+        try runGit(["commit", "-m", "local update"], in: repo).checkSuccess()
+
+        let result = runScript("scripts/check-version-bump-branch-state.sh", ["main", "origin"], in: repo)
+
+        XCTAssertNotEqual(result.status, 0)
+        XCTAssertTrue(result.combinedOutput.contains("Local main is not identical to origin/main"))
+    }
+
+    func testVersionBumpBranchStateRejectsDivergedLocalAndRemoteMain() throws {
+        let repo = try makeTemporaryRepo()
+        let remote = try makeBareRemote()
+        try publishReleaseBranch("main", from: repo, to: remote, remoteName: "origin")
+        try commitInRemoteClone(remote, branch: "main", path: "README.md", contents: "\nRemote divergent change.\n")
+        try append("CHANGELOG.md", "\n- Local divergent change.\n", in: repo)
+        try runGit(["add", "CHANGELOG.md"], in: repo).checkSuccess()
+        try runGit(["commit", "-m", "local divergent update"], in: repo).checkSuccess()
+
+        let result = runScript("scripts/check-version-bump-branch-state.sh", ["main", "origin"], in: repo)
+
+        XCTAssertNotEqual(result.status, 0)
+        XCTAssertTrue(result.combinedOutput.contains("Local main is not identical to origin/main"))
+    }
+
+    func testVersionBumpBranchStateRejectsMissingRemoteBranch() throws {
+        let repo = try makeTemporaryRepo()
+        let remote = try makeBareRemote()
+        try runGit(["branch", "-M", "main"], in: repo).checkSuccess()
+        try runGit(["remote", "add", "origin", remote.path], in: repo).checkSuccess()
+
+        let result = runScript("scripts/check-version-bump-branch-state.sh", ["main", "origin"], in: repo)
+
+        XCTAssertNotEqual(result.status, 0)
+        XCTAssertTrue(result.combinedOutput.contains("Unable to fetch origin/main"))
+    }
+
+    func testVersionBumpBranchStateRejectsInaccessibleRemote() throws {
+        let repo = try makeTemporaryRepo()
+        try runGit(["branch", "-M", "main"], in: repo).checkSuccess()
+        try runGit(["remote", "add", "origin", "/tmp/voiceinput-missing-\(UUID().uuidString).git"], in: repo).checkSuccess()
+
+        let result = runScript("scripts/check-version-bump-branch-state.sh", ["main", "origin"], in: repo)
+
+        XCTAssertNotEqual(result.status, 0)
+        XCTAssertTrue(result.combinedOutput.contains("Unable to fetch origin/main"))
+    }
+
+    func testVersionBumpBranchStateAllowsConfiguredReleaseBranchAndRemote() throws {
+        let repo = try makeTemporaryRepo()
+        let remote = try makeBareRemote()
+        try publishReleaseBranch("release/1.7", from: repo, to: remote, remoteName: "upstream")
+
+        let result = runScript("scripts/check-version-bump-branch-state.sh", ["release/1.7", "upstream"], in: repo)
+
+        XCTAssertEqual(result.status, 0, result.combinedOutput)
+    }
+
     private func makeTemporaryRepo() throws -> URL {
         let repo = fileManager.temporaryDirectory
             .appendingPathComponent("voiceinput-version-bump-\(UUID().uuidString)", isDirectory: true)
@@ -120,6 +235,25 @@ final class VersionBumpWorkflowTests: XCTestCase {
         try runGit(["add", "."], in: repo).checkSuccess()
         try runGit(["commit", "-m", "initial"], in: repo).checkSuccess()
         return repo
+    }
+
+    private func publishReleaseBranch(_ branch: String, from repo: URL, to remote: URL, remoteName: String) throws {
+        try runGit(["branch", "-M", branch], in: repo).checkSuccess()
+        try runGit(["remote", "add", remoteName, remote.path], in: repo).checkSuccess()
+        try runGit(["push", remoteName, "HEAD:refs/heads/\(branch)"], in: repo).checkSuccess()
+    }
+
+    private func commitInRemoteClone(_ remote: URL, branch: String, path: String, contents: String) throws {
+        let clone = fileManager.temporaryDirectory
+            .appendingPathComponent("voiceinput-version-bump-clone-\(UUID().uuidString)", isDirectory: true)
+        try run("/usr/bin/env", ["git", "clone", "--branch", branch, remote.path, clone.path], in: fileManager.temporaryDirectory)
+            .checkSuccess()
+        try runGit(["config", "user.name", "VoiceInput Test"], in: clone).checkSuccess()
+        try runGit(["config", "user.email", "voiceinput-test@example.invalid"], in: clone).checkSuccess()
+        try append(path, contents, in: clone)
+        try runGit(["add", path], in: clone).checkSuccess()
+        try runGit(["commit", "-m", "remote divergent update"], in: clone).checkSuccess()
+        try runGit(["push", "origin", "HEAD:refs/heads/\(branch)"], in: clone).checkSuccess()
     }
 
     private func makeBareRemote() throws -> URL {
@@ -192,5 +326,10 @@ private struct CommandResult {
 
     func checkSuccess(file: StaticString = #filePath, line: UInt = #line) throws {
         XCTAssertEqual(status, 0, combinedOutput, file: file, line: line)
+    }
+
+    func checkedStdout(file: StaticString = #filePath, line: UInt = #line) throws -> String {
+        XCTAssertEqual(status, 0, combinedOutput, file: file, line: line)
+        return stdout.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }

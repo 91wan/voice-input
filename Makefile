@@ -4,6 +4,8 @@ APP_ICON_SOURCE := Resources/AppIcon.icns
 APP_ICON := $(APP_BUNDLE)/Contents/Resources/AppIcon.icns
 DMG_PATH ?= VoiceInput.dmg
 VERSION ?= $(shell /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Info.plist)
+REMOTE ?= origin
+RELEASE_BRANCH ?= main
 
 .PHONY: build clean install run ci package-dmg verify-dmg release-artifact release-check
 
@@ -30,6 +32,7 @@ ci:
 	test -x scripts/verify-dmg.sh; \
 	test -x scripts/extract-release-notes.sh; \
 	test -x scripts/check-version-bump-source-state.sh; \
+	test -x scripts/check-version-bump-branch-state.sh; \
 	test -x scripts/check-version-bump-tag-state.sh; \
 	swift test --parallel; \
 	swift build -Xswiftc -warnings-as-errors; \
@@ -80,7 +83,8 @@ version-bump:
 		exit 1; \
 	}
 	@./scripts/check-version-bump-source-state.sh pre
-	@./scripts/check-version-bump-tag-state.sh "$(VERSION)" origin
+	@./scripts/check-version-bump-branch-state.sh "$(RELEASE_BRANCH)" "$(REMOTE)"
+	@./scripts/check-version-bump-tag-state.sh "$(VERSION)" "$(REMOTE)"
 	@./scripts/extract-release-notes.sh CHANGELOG.md "$(VERSION)" >/dev/null
 	@set -e; \
 	VERSION_NO_V=$${VERSION#v}; \
