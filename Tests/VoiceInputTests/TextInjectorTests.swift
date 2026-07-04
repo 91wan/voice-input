@@ -95,6 +95,64 @@ final class TextInjectorTests: XCTestCase {
         )
     }
 
+    func testDictationBusyFailureDoesNotClaimClipboardOrPasteCommand() {
+        let message = TextInjectionFailure.dictationBusy.localizedDescription
+
+        XCTAssertTrue(message.contains("Finish the current dictation before retrying insertion."))
+        XCTAssertFalse(message.localizedCaseInsensitiveContains("clipboard"))
+        XCTAssertFalse(message.localizedCaseInsensitiveContains("copied"))
+        XCTAssertFalse(message.localizedCaseInsensitiveContains("paste command sent"))
+    }
+
+    func testPasteCommandFailureThenUserClipboardChangeMakesNextRestoreUseNewBaseline() {
+        let pasteboard = PasteboardTestSupport.makePasteboard()
+        pasteboard.clearContents()
+        writeString("original", to: pasteboard)
+
+        var shouldPasteSucceed = false
+        let injector = TextInjector(
+            pasteboard: pasteboard,
+            inputSourceRestoreDelay: 0,
+            pasteboardRestoreDelay: 0,
+            isProcessTrusted: { true },
+            postPasteCommandHandler: { shouldPasteSucceed }
+        )
+
+        XCTAssertEqual(injector.inject("failed generated"), .failure(.pasteCommandFailed))
+        XCTAssertEqual(pasteboard.string(forType: .string), "failed generated")
+
+        writeString("user copied", to: pasteboard)
+        shouldPasteSucceed = true
+        XCTAssertEqual(injector.inject("second generated"), .success)
+        RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+
+        XCTAssertEqual(pasteboard.string(forType: .string), "user copied")
+    }
+
+    func testPasteCommandFailureWithoutUserClipboardChangeMakesNextRestoreUseOriginalBaseline() {
+        let pasteboard = PasteboardTestSupport.makePasteboard()
+        pasteboard.clearContents()
+        writeString("original", to: pasteboard)
+
+        var shouldPasteSucceed = false
+        let injector = TextInjector(
+            pasteboard: pasteboard,
+            inputSourceRestoreDelay: 0,
+            pasteboardRestoreDelay: 0,
+            isProcessTrusted: { true },
+            postPasteCommandHandler: { shouldPasteSucceed }
+        )
+
+        XCTAssertEqual(injector.inject("failed generated"), .failure(.pasteCommandFailed))
+        XCTAssertEqual(pasteboard.string(forType: .string), "failed generated")
+
+        shouldPasteSucceed = true
+        XCTAssertEqual(injector.inject("second generated"), .success)
+        RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+
+        XCTAssertEqual(pasteboard.string(forType: .string), "original")
+    }
+
     func testDefaultPasteboardRestoreDelayAllowsSlowPasteConsumers() {
         XCTAssertEqual(TextInjector.defaultPasteboardRestoreDelay, 1.5)
     }
@@ -130,5 +188,12 @@ final class TextInjectorTests: XCTestCase {
     func testShouldRestorePasteboardOnlyWhileClipboardIsStillOwnedByInjection() {
         XCTAssertTrue(TextInjector.shouldRestorePasteboard(currentChangeCount: 12, injectedChangeCount: 12))
         XCTAssertFalse(TextInjector.shouldRestorePasteboard(currentChangeCount: 13, injectedChangeCount: 12))
+    }
+
+    private func writeString(_ value: String, to pasteboard: NSPasteboard) {
+        pasteboard.clearContents()
+        let item = NSPasteboardItem()
+        item.setString(value, forType: .string)
+        assertWrite(item, to: pasteboard)
     }
 }

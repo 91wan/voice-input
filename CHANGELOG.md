@@ -12,10 +12,17 @@
 - Release validation：local CI, `make build`, and DMG verification now require a non-empty bundled app icon, and tag releases fail when matching changelog notes are missing.
 - Documentation：README build-from-source instructions now document `make ci` as the local CI gate and `swift test --parallel` as unit-test-only.
 - Release gate：`make release-check` now packages and verifies the DMG locally, while GitHub release publishing reuses the Makefile artifact target.
+- Release gate hardening：`release-artifact` now packages and verifies sequentially under `make -j`, quotes DMG paths, and `make ci` checks release scripts are executable.
 - Retry Insert lifecycle：Recent Results retry insertion is now blocked while dictation is holding, recording, resolving, or injecting.
+- Retry Insert final gate：retry insertion now rechecks dictation availability immediately before delayed insertion and again inside the AppDelegate injection boundary.
 - Pasteboard ownership：injection restore ownership is now tied to pasteboard identity as well as change count.
+- Pasteboard failure contract：paste-command failures intentionally leave generated text on the clipboard, while the next successful injection restores to the correct original or user-updated baseline.
 - Release notes extraction：tag release notes now come from a testable fail-closed script.
+- Release notes cleanup：extracted public release notes now drop trailing Markdown separator lines before publishing.
 - Manual QA：added a lightweight manual QA log template for real app, Fn, and permission checks without claiming automated coverage.
+
+### 工程
+- Pasteboard test isolation：pasteboard-related XCTest fixtures now use explicit unique pasteboard names to avoid `swift test --parallel` runner-specific collisions.
 
 ---
 

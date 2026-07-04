@@ -7,6 +7,7 @@ enum TextInjectionFailure: LocalizedError, Equatable {
     case accessibilityPermissionMissing
     case pasteboardWriteFailed
     case pasteCommandFailed
+    case dictationBusy
 
     var errorDescription: String? {
         switch self {
@@ -26,6 +27,8 @@ enum TextInjectionFailure: LocalizedError, Equatable {
             return "Paste failed. VoiceInput couldn't write to the clipboard."
         case .pasteCommandFailed:
             return "Paste failed. Text was copied to the clipboard."
+        case .dictationBusy:
+            return RetryInsertPolicy.busyMessage
         }
     }
 

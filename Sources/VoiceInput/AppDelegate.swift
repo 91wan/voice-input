@@ -96,7 +96,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 completion(.failure(.pasteCommandFailed))
                 return
             }
-            let injectionResult = self.textInjector.inject(selectedResult.finalText)
+            let injectionResult = Self.retryInsertResult(
+                finalText: selectedResult.finalText,
+                phase: self.dictationPhase
+            ) { text in
+                self.textInjector.inject(text)
+            }
             self.recordRetryInjectionResult(injectionResult, for: selectedResult)
             completion(injectionResult)
         }
@@ -784,6 +789,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     static func retryInsertAvailability(phase: DictationPhase) -> RetryInsertAvailability {
         RetryInsertPolicy.availability(phase: phase)
+    }
+
+    static func retryInsertResult(
+        finalText: String,
+        phase: DictationPhase,
+        inject: (String) -> TextInjectionResult
+    ) -> TextInjectionResult {
+        switch retryInsertAvailability(phase: phase) {
+        case .allowed:
+            return inject(finalText)
+        case .busy:
+            return .failure(.dictationBusy)
+        }
     }
 
     static func dictationWorkflowStatus() -> DictationWorkflowStatus {

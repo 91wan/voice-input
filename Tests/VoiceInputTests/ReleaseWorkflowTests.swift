@@ -258,6 +258,10 @@ final class ReleaseWorkflowTests: XCTestCase {
             section.contains("- "),
             "Unreleased should capture post-release changes before the next version bump."
         )
+        XCTAssertTrue(
+            section.contains("Pasteboard test isolation"),
+            "Unreleased should document the PR #19 parallel pasteboard fixture stabilization."
+        )
         XCTAssertFalse(section.localizedCaseInsensitiveContains("todo"))
     }
 
@@ -347,6 +351,51 @@ final class ReleaseWorkflowTests: XCTestCase {
         """
         let url = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("voiceinput-empty-release-notes-\(UUID().uuidString).md")
+        try fixture.write(to: url, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        XCTAssertThrowsError(try Self.runReleaseNotesScript(changelog: url.path, tag: "v1.0.0"))
+    }
+
+    func testReleaseNotesExtractionStripsTrailingSeparator() throws {
+        let fixture = """
+        # Changelog
+
+        ## [v1.0.0] - 2026-01-01
+
+        - Public note.
+
+        ---
+
+        ## [v0.9.0] - 2025-12-31
+
+        - Previous release.
+        """
+        let url = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("voiceinput-separator-release-notes-\(UUID().uuidString).md")
+        try fixture.write(to: url, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        XCTAssertEqual(
+            try Self.runReleaseNotesScript(changelog: url.path, tag: "v1.0.0").trimmingCharacters(in: .whitespacesAndNewlines),
+            "- Public note."
+        )
+    }
+
+    func testReleaseNotesExtractionFailsWhenSectionOnlyHasSeparator() throws {
+        let fixture = """
+        # Changelog
+
+        ## [v1.0.0] - 2026-01-01
+
+        ---
+
+        ## [v0.9.0] - 2025-12-31
+
+        - Previous release.
+        """
+        let url = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("voiceinput-separator-only-release-notes-\(UUID().uuidString).md")
         try fixture.write(to: url, atomically: true, encoding: .utf8)
         defer { try? FileManager.default.removeItem(at: url) }
 
