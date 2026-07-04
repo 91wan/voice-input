@@ -100,6 +100,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             self.recordRetryInjectionResult(injectionResult, for: selectedResult)
             completion(injectionResult)
         }
+        lastResultWindow.onCanRetryInsert = { [weak self] in
+            Self.retryInsertAvailability(phase: self?.dictationPhase ?? .idle)
+        }
         lastResultWindow.onSaveDictionaryRule = { [weak self] source, replacement in
             var dict = DictionaryFilter.shared.userMap
             dict[source] = replacement
@@ -777,6 +780,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             isLLMEnabled: true,
             isLLMConfigured: true
         ).promptBuilderShortcutTitle
+    }
+
+    static func retryInsertAvailability(phase: DictationPhase) -> RetryInsertAvailability {
+        RetryInsertPolicy.availability(phase: phase)
     }
 
     static func dictationWorkflowStatus() -> DictationWorkflowStatus {

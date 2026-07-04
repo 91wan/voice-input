@@ -2,8 +2,10 @@ APP_NAME := VoiceInput
 APP_BUNDLE := $(APP_NAME).app
 APP_ICON_SOURCE := Resources/AppIcon.icns
 APP_ICON := $(APP_BUNDLE)/Contents/Resources/AppIcon.icns
+DMG_PATH ?= VoiceInput.dmg
+VERSION ?= $(shell /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Info.plist)
 
-.PHONY: build clean install run ci
+.PHONY: build clean install run ci package-dmg verify-dmg release-artifact release-check
 
 build:
 	@set -e; \
@@ -27,6 +29,18 @@ ci:
 	swift test --parallel; \
 	swift build -Xswiftc -warnings-as-errors; \
 	$(MAKE) build
+
+package-dmg: build
+	./scripts/package-dmg.sh $(APP_BUNDLE) $(DMG_PATH) $(APP_NAME)
+
+verify-dmg:
+	@test -n "$(VERSION)" || { echo "❌ Missing VERSION"; exit 1; }
+	./scripts/verify-dmg.sh $(DMG_PATH) "$(VERSION)" $(APP_NAME)
+
+release-artifact: package-dmg verify-dmg
+
+release-check: ci
+	$(MAKE) release-artifact VERSION="$(VERSION)" DMG_PATH="$(DMG_PATH)"
 
 run: build
 	-pkill -x $(APP_NAME) 2>/dev/null || true

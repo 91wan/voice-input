@@ -124,10 +124,16 @@ Dictionary 窗口包含 **Test Phrase** 输入框。输入一句示例文本后�
 - Xcode Command Line Tools
 - `Resources/AppIcon.icns` 是必需的构建输入
 
-运行完整本地门禁：
+运行 PR 和 main push 使用的本地 CI 门禁：
 
 ```bash
 make ci
+```
+
+运行本地 release 门禁，包括 DMG 打包和验证：
+
+```bash
+make release-check VERSION=1.6.0 DMG_PATH=/tmp/VoiceInput-test.dmg
 ```
 
 构建 App bundle：

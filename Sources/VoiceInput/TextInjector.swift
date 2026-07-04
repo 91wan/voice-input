@@ -77,6 +77,7 @@ struct PasteboardSnapshot {
 
 final class PasteboardInjectionCoordinator {
     private struct Ownership {
+        let pasteboardName: NSPasteboard.Name
         let originalSnapshot: PasteboardSnapshot
         var latestInjectedChangeCount: Int?
         var generation: Int
@@ -88,6 +89,7 @@ final class PasteboardInjectionCoordinator {
     func prepareInjection(on pasteboard: NSPasteboard) -> Int {
         let originalSnapshot: PasteboardSnapshot
         if let currentOwnership = ownership,
+           currentOwnership.pasteboardName == pasteboard.name,
            currentOwnership.latestInjectedChangeCount == pasteboard.changeCount {
             originalSnapshot = currentOwnership.originalSnapshot
         } else {
@@ -96,6 +98,7 @@ final class PasteboardInjectionCoordinator {
 
         nextGeneration += 1
         ownership = Ownership(
+            pasteboardName: pasteboard.name,
             originalSnapshot: originalSnapshot,
             latestInjectedChangeCount: nil,
             generation: nextGeneration
@@ -111,6 +114,7 @@ final class PasteboardInjectionCoordinator {
     func restoreIfStillOwned(on pasteboard: NSPasteboard, generation: Int) {
         guard let currentOwnership = ownership else { return }
         guard currentOwnership.generation == generation else { return }
+        guard currentOwnership.pasteboardName == pasteboard.name else { return }
         guard currentOwnership.latestInjectedChangeCount == pasteboard.changeCount else {
             ownership = nil
             return
@@ -122,7 +126,8 @@ final class PasteboardInjectionCoordinator {
 
     func cancelInjection(on pasteboard: NSPasteboard, generation: Int, restoreOriginal: Bool) {
         guard let currentOwnership = ownership,
-              currentOwnership.generation == generation
+              currentOwnership.generation == generation,
+              currentOwnership.pasteboardName == pasteboard.name
         else { return }
 
         if restoreOriginal {

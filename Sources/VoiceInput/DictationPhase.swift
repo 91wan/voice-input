@@ -64,3 +64,36 @@ enum BusyDictationHintPolicy {
         !phase.isIdle && !isOverlayVisible
     }
 }
+
+enum RetryInsertAvailability: Equatable {
+    case allowed
+    case busy(String)
+}
+
+enum RetryInsertPolicy {
+    static let busyMessage = "Finish the current dictation before retrying insertion."
+
+    static func availability(phase: DictationPhase) -> RetryInsertAvailability {
+        phase.isIdle ? .allowed : .busy(busyMessage)
+    }
+}
+
+enum RetryInsertPresentationPlan: Equatable {
+    case proceed
+    case missingTargetApplication
+    case showBusyStatus(String)
+}
+
+enum RetryInsertPresentationPolicy {
+    static func plan(
+        availability: RetryInsertAvailability,
+        hasTargetApplication: Bool
+    ) -> RetryInsertPresentationPlan {
+        switch availability {
+        case .allowed:
+            return hasTargetApplication ? .proceed : .missingTargetApplication
+        case .busy(let message):
+            return .showBusyStatus(message)
+        }
+    }
+}

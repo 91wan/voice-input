@@ -11,12 +11,12 @@ Use this checklist before a stable public release such as `v1.2.0`.
 
 ## Automated Release Gate
 
-- `make ci` runs the local CI gate used by GitHub Actions on pull requests and main/tag pushes.
+- PR/main gate: `make ci` runs the local CI gate used by GitHub Actions on pull requests and main/tag pushes.
 - `swift test --parallel`.
 - `swift build -Xswiftc -warnings-as-errors`.
 - `make build`.
-- `./scripts/package-dmg.sh VoiceInput.app /tmp/VoiceInput-test.dmg VoiceInput`.
-- `./scripts/verify-dmg.sh /tmp/VoiceInput-test.dmg <version> VoiceInput`.
+- Local release gate: `make release-check VERSION=<version> DMG_PATH=/tmp/VoiceInput-test.dmg`.
+- The release gate includes DMG packaging and `./scripts/verify-dmg.sh`.
 - `codesign --verify --deep --strict VoiceInput.app`.
 - `spctl -a -vvv -t execute VoiceInput.app` returns rejected for unsigned / not notarized builds.
 - Release workflow verifies the published DMG layout before creating the GitHub Release.
@@ -24,6 +24,8 @@ Use this checklist before a stable public release such as `v1.2.0`.
 ## Manual Permission And Fn QA
 
 These checks require launching the app and interacting with macOS permissions, so they stay outside automated CI unless explicitly re-authorized.
+
+Record manual QA evidence in `docs/manual-qa-log-template.md`. Do not treat the template itself as passed QA.
 
 ## Installation And First Launch
 
