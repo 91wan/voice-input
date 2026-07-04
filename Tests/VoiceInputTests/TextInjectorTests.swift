@@ -99,17 +99,19 @@ final class TextInjectorTests: XCTestCase {
         XCTAssertEqual(TextInjector.defaultPasteboardRestoreDelay, 1.5)
     }
 
-    func testPasteboardSnapshotRoundTripsStringAndCustomData() throws {
+    func testPasteboardSnapshotRoundTripsStringAndNonStringData() throws {
         let pasteboard = NSPasteboard.withUniqueName()
-        let customType = NSPasteboard.PasteboardType("com.voiceinput.test")
-        let customData = Data([0x01, 0x02, 0x03, 0x04])
+        let dataType = NSPasteboard.PasteboardType.rtf
+        let nonStringData = Data([0x7b, 0x5c, 0x72, 0x74, 0x66, 0x31, 0x20, 0x68, 0x69, 0x7d])
 
         let item = NSPasteboardItem()
         item.setString("hello", forType: .string)
-        item.setData(customData, forType: customType)
+        item.setData(nonStringData, forType: dataType)
 
         pasteboard.clearContents()
         assertWrite(item, to: pasteboard)
+        let writtenItem = try XCTUnwrap(pasteboard.pasteboardItems?.first)
+        XCTAssertEqual(writtenItem.data(forType: dataType), nonStringData)
 
         let snapshot = PasteboardSnapshot.capture(from: pasteboard)
 
@@ -122,7 +124,7 @@ final class TextInjectorTests: XCTestCase {
 
         let restoredItem = try XCTUnwrap(pasteboard.pasteboardItems?.first)
         XCTAssertEqual(restoredItem.string(forType: .string), "hello")
-        XCTAssertEqual(restoredItem.data(forType: customType), customData)
+        XCTAssertEqual(restoredItem.data(forType: dataType), nonStringData)
     }
 
     func testShouldRestorePasteboardOnlyWhileClipboardIsStillOwnedByInjection() {
