@@ -62,6 +62,9 @@ final class ReleaseWorkflowTests: XCTestCase {
             XCTAssertTrue(readme.contains("local release gate"), "\(path) should say version-bump runs the local release gate.")
             XCTAssertTrue(readme.contains("CHANGELOG.md"), "\(path) should document that release notes are part of the version bump.")
             XCTAssertTrue(readme.localizedCaseInsensitiveContains("manual QA"), "\(path) should document that manual QA is still required for stable releases.")
+            XCTAssertTrue(readme.contains("only `CHANGELOG.md`"), "\(path) should document that only CHANGELOG.md may be dirty before version-bump.")
+            XCTAssertTrue(readme.contains("source/test/script/workflow"), "\(path) should require source, test, script, and workflow changes to be committed before version-bump.")
+            XCTAssertTrue(readme.contains("local and remote tag collisions"), "\(path) should document local and remote tag collision checks.")
             XCTAssertFalse(readme.localizedCaseInsensitiveContains("full local gate"), "\(path) should not describe make ci as the full local gate.")
             XCTAssertTrue(readme.contains("Resources/AppIcon.icns"), "\(path) should document the required icon input.")
         }
@@ -224,6 +227,18 @@ final class ReleaseWorkflowTests: XCTestCase {
         XCTAssertTrue(
             checklist.contains("stages `README.md`, `Info.plist`, and `CHANGELOG.md`"),
             "The release checklist should document that changelog notes are included in the bump commit."
+        )
+        XCTAssertTrue(
+            checklist.contains("only `CHANGELOG.md` may be dirty before `make version-bump`"),
+            "The release checklist should document the exact pre-version-bump dirty tree invariant."
+        )
+        XCTAssertTrue(
+            checklist.contains("source/test/script/workflow changes must be committed before `make version-bump`"),
+            "The release checklist should require code and release infrastructure changes to be committed before version bumping."
+        )
+        XCTAssertTrue(
+            checklist.contains("checks local and remote tag collisions"),
+            "The release checklist should document local and remote tag collision checks."
         )
     }
 
