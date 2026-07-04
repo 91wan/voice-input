@@ -17,6 +17,7 @@ Use this checklist before a stable public release such as `v1.2.0`.
 - `make build`.
 - Local release gate: `make release-check VERSION=<version> DMG_PATH=/tmp/VoiceInput-test.dmg`.
 - The release gate includes DMG packaging and `./scripts/verify-dmg.sh`.
+- Version bump gate: `make version-bump VERSION=vX.Y.Z` validates release notes, runs the local release gate before commit/tag, and stages `README.md`, `Info.plist`, and `CHANGELOG.md` for the bump commit.
 - `codesign --verify --deep --strict VoiceInput.app`.
 - `spctl -a -vvv -t execute VoiceInput.app` returns rejected for unsigned / not notarized builds.
 - Release workflow verifies the published DMG layout before creating the GitHub Release.
@@ -24,6 +25,8 @@ Use this checklist before a stable public release such as `v1.2.0`.
 ## Manual Permission And Fn QA
 
 These checks require launching the app and interacting with macOS permissions, so they stay outside automated CI unless explicitly re-authorized.
+
+Automated `make release-check` does not replace manual QA for real app launch, permission recovery, `Fn`, or `Option + Fn` behavior.
 
 Record manual QA evidence in `docs/manual-qa-log-template.md`. Do not treat the template itself as passed QA.
 

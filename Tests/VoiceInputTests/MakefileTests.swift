@@ -133,10 +133,18 @@ final class MakefileTests: XCTestCase {
 
     func testVersionBumpFailsFastDuringVersionWrites() throws {
         let makefile = try String(contentsOfFile: "Makefile", encoding: .utf8)
+        let setE = "\t@set -e; \\"
+        let versionAssignment = "VERSION_NO_V=$${VERSION#v}; \\"
 
         XCTAssertTrue(
-            makefile.contains("\t@set -e; \\\n\tVERSION_NO_V=$${VERSION#v}; \\"),
+            makefile.contains(setE),
             "version-bump must stop on the first failed README or plist update so it never commits or tags a partial release bump."
+        )
+        XCTAssertTrue(makefile.contains(versionAssignment))
+        XCTAssertLessThan(
+            try XCTUnwrap(makefile.range(of: setE)?.lowerBound),
+            try XCTUnwrap(makefile.range(of: versionAssignment)?.lowerBound),
+            "version-bump should enable set -e before mutating release metadata."
         )
     }
 
@@ -166,12 +174,16 @@ final class MakefileTests: XCTestCase {
         let makefile = try String(contentsOfFile: "Makefile", encoding: .utf8)
 
         XCTAssertTrue(
-            makefile.contains("awk -v tag=\"$(VERSION)\""),
-            "version-bump must verify CHANGELOG.md has notes for the exact version before creating a tag."
+            makefile.contains("./scripts/extract-release-notes.sh CHANGELOG.md \"$(VERSION)\" >/dev/null"),
+            "version-bump must reuse the same release-notes extractor as the GitHub Release workflow before creating a tag."
         )
-        XCTAssertTrue(
+        XCTAssertFalse(
+            makefile.contains("awk -v tag=\"$(VERSION)\""),
+            "version-bump must not keep a second inline awk changelog parser that can drift from the release workflow."
+        )
+        XCTAssertFalse(
             makefile.contains("CHANGELOG.md 缺少 $(VERSION) 条目"),
-            "version-bump should fail with an actionable message when patch or minor release notes are missing."
+            "version-bump should rely on the shared release-notes extractor for missing or empty changelog sections."
         )
     }
 
@@ -191,6 +203,10 @@ final class MakefileTests: XCTestCase {
     func testVersionBumpDoesNotEditGeneratedAppBundle() throws {
         let makefile = try String(contentsOfFile: "Makefile", encoding: .utf8)
 
+        XCTAssertTrue(
+            makefile.contains("git add README.md Info.plist CHANGELOG.md"),
+            "version-bump must stage the changelog entry with the README and source Info.plist so the tag commit contains release notes."
+        )
         XCTAssertFalse(
             makefile.contains("VoiceInput.app/Contents/Info.plist"),
             "version-bump must only update source metadata; generated app bundle plists are build artifacts."
@@ -198,6 +214,65 @@ final class MakefileTests: XCTestCase {
         XCTAssertFalse(
             makefile.contains("git add README.md Info.plist VoiceInput.app"),
             "version-bump must not stage generated app bundle files."
+        )
+        XCTAssertFalse(
+            makefile.contains("git add README.md Info.plist CHANGELOG.md VoiceInput.app"),
+            "version-bump must not stage generated app bundle files with the source release metadata."
+        )
+        XCTAssertFalse(
+            makefile.contains("git add README.md Info.plist CHANGELOG.md VoiceInput.dmg"),
+            "version-bump must not stage generated DMG artifacts."
+        )
+        XCTAssertFalse(
+            makefile.contains("git add README.md Info.plist CHANGELOG.md .build"),
+            "version-bump must not stage SwiftPM build artifacts."
+        )
+    }
+
+    func testVersionBumpRunsReleaseCheckBeforeCommitAndTag() throws {
+        let makefile = try String(contentsOfFile: "Makefile", encoding: .utf8)
+        let releaseCheck = "\"$${MAKE:-make}\" release-check VERSION=\"$$VERSION_NO_V\" DMG_PATH=\"/tmp/VoiceInput-$(VERSION).dmg\""
+        let commit = "git commit -m \"chore: bump version to $(VERSION)\""
+        let tag = "git tag $(VERSION)"
+
+        XCTAssertTrue(
+            makefile.contains(releaseCheck),
+            "version-bump must run the full local release gate after metadata is updated and before creating a release tag."
+        )
+        XCTAssertFalse(
+            makefile.contains("$(MAKE) release-check VERSION=\"$$VERSION_NO_V\" DMG_PATH=\"/tmp/VoiceInput-$(VERSION).dmg\""),
+            "version-bump must not put direct $(MAKE) release-check in a recipe line with metadata writes, because `make -n` executes recursive make lines."
+        )
+        XCTAssertFalse(
+            makefile.contains("MAKE_CMD=\"$(MAKE)\""),
+            "version-bump must not hide $(MAKE) in a shell assignment, because make still treats that recipe line as recursive during `make -n`."
+        )
+        XCTAssertLessThan(
+            try XCTUnwrap(makefile.range(of: releaseCheck)?.lowerBound),
+            try XCTUnwrap(makefile.range(of: commit)?.lowerBound),
+            "release-check must run before git commit so failing verification cannot create a bump commit."
+        )
+        XCTAssertLessThan(
+            try XCTUnwrap(makefile.range(of: releaseCheck)?.lowerBound),
+            try XCTUnwrap(makefile.range(of: tag)?.lowerBound),
+            "release-check must run before git tag so failing verification cannot create a release tag."
+        )
+    }
+
+    func testVersionBumpRejectsExistingLocalTag() throws {
+        let makefile = try String(contentsOfFile: "Makefile", encoding: .utf8)
+
+        XCTAssertTrue(
+            makefile.contains("git rev-parse -q --verify \"refs/tags/$(VERSION)\" >/dev/null"),
+            "version-bump must check for an existing local tag before modifying release metadata."
+        )
+        XCTAssertTrue(
+            makefile.contains("Tag $(VERSION) already exists"),
+            "version-bump should fail with a clear tag collision message."
+        )
+        XCTAssertFalse(
+            makefile.contains("git rev-parse -q --verify \"refs/tags/$(VERSION)\" >/dev/null &&"),
+            "version-bump should not use a tag check form that can hide unrelated shell errors behind `|| true`."
         )
     }
 }

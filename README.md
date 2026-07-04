@@ -163,9 +163,9 @@ swift test --parallel
 ## Release Policy
 
 - Add a matching `CHANGELOG.md` entry before every release, for example `## [v1.1.0] - YYYY-MM-DD`.
-- Run `make version-bump VERSION=v1.1.0` to update version metadata and create the tag.
+- Run `make version-bump VERSION=v1.1.0` to update version metadata, validate release notes, run the local release gate, stage `README.md`, `Info.plist`, and `CHANGELOG.md`, and create the tag.
 - Pushing a `v*` tag builds the macOS app, packages `VoiceInput.dmg`, and publishes GitHub Release notes from `CHANGELOG.md`.
-- Before a stable public release, run the manual coverage in `docs/release-qa-checklist.md`.
+- Before a stable public release, run the manual QA coverage in `docs/release-qa-checklist.md`; `make release-check` does not replace real Fn, permission, or first-launch QA.
 - Major releases should update the README and product positioning.
 - Patch and minor releases should still have clear GitHub Release notes.
 
