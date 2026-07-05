@@ -32,7 +32,7 @@ final class SettingsWindowTests: XCTestCase {
 
         XCTAssertEqual(
             configuration,
-            LLMRequestConfiguration(
+            try LLMRequestConfiguration.validated(
                 apiBaseURL: "https://transient.example/v1",
                 apiKey: "transient-key",
                 model: "transient-model"
@@ -74,6 +74,17 @@ final class SettingsWindowTests: XCTestCase {
         ) { error in
             XCTAssertTrue(error.localizedDescription.contains("Invalid API base URL"))
         }
+    }
+
+    func testSettingsWindowValidatedTestConfigurationDelegatesToCoreValueObject() throws {
+        let source = try String(contentsOfFile: "Sources/VoiceInput/SettingsWindow.swift", encoding: .utf8)
+        let method = try Self.methodBody(named: "static func validatedTestConfiguration(", in: source)
+
+        XCTAssertTrue(method.contains("LLMRequestConfiguration.validated("))
+        XCTAssertFalse(method.contains("trimmingCharacters"))
+        XCTAssertFalse(method.contains("LLMRequestConfiguration("))
+        XCTAssertFalse(method.contains("LLMRefiner.defaultAPIBaseURL"))
+        XCTAssertFalse(method.contains("LLMRefiner.defaultModel"))
     }
 
     func testSettingsTestMethodDoesNotSaveOrNotifySettingsSaved() throws {

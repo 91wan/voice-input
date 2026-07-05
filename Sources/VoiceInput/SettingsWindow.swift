@@ -2,14 +2,11 @@ import AppKit
 
 enum SettingsValidationError: LocalizedError, Equatable {
     case invalidAPIBaseURL
-    case emptyAPIKey
 
     var errorDescription: String? {
         switch self {
         case .invalidAPIBaseURL:
             return "Invalid API base URL. Use a full http(s) base URL, for example https://api.openai.com/v1."
-        case .emptyAPIKey:
-            return "API key is empty"
         }
     }
 }
@@ -250,17 +247,10 @@ final class SettingsWindow: NSPanel, NSTextFieldDelegate {
         apiKey: String,
         model: String
     ) throws -> LLMRequestConfiguration {
-        let settings = try validatedSettings(apiBaseURL: apiBaseURL, model: model)
-        let normalizedAPIKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        guard !normalizedAPIKey.isEmpty else {
-            throw SettingsValidationError.emptyAPIKey
-        }
-
-        return LLMRequestConfiguration(
-            apiBaseURL: settings.apiBaseURL.isEmpty ? LLMRefiner.defaultAPIBaseURL : settings.apiBaseURL,
-            apiKey: normalizedAPIKey,
-            model: settings.model.isEmpty ? LLMRefiner.defaultModel : settings.model
+        try LLMRequestConfiguration.validated(
+            apiBaseURL: apiBaseURL,
+            apiKey: apiKey,
+            model: model
         )
     }
 

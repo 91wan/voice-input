@@ -149,6 +149,64 @@ final class LLMRefinerTests: XCTestCase {
         XCTAssertNil(defaults.object(forKey: "llmModel"))
     }
 
+    func testLLMRequestConfigurationValidatedTrimsValues() throws {
+        let configuration = try LLMRequestConfiguration.validated(
+            apiBaseURL: "  https://transient.example/v1  ",
+            apiKey: "  transient-key  ",
+            model: "  transient-model  "
+        )
+
+        XCTAssertEqual(configuration.apiBaseURL, "https://transient.example/v1")
+        XCTAssertEqual(configuration.apiKey, "transient-key")
+        XCTAssertEqual(configuration.model, "transient-model")
+    }
+
+    func testLLMRequestConfigurationValidatedUsesDefaultsForBlankBaseURLAndModel() throws {
+        let configuration = try LLMRequestConfiguration.validated(
+            apiBaseURL: "   ",
+            apiKey: " transient-key ",
+            model: "   "
+        )
+
+        XCTAssertEqual(configuration.apiBaseURL, LLMRefiner.defaultAPIBaseURL)
+        XCTAssertEqual(configuration.apiKey, "transient-key")
+        XCTAssertEqual(configuration.model, LLMRefiner.defaultModel)
+    }
+
+    func testLLMRequestConfigurationValidatedRejectsEmptyAPIKey() {
+        XCTAssertThrowsError(
+            try LLMRequestConfiguration.validated(
+                apiBaseURL: "https://api.openai.com/v1",
+                apiKey: "   ",
+                model: "gpt-4o-mini"
+            )
+        ) { error in
+            XCTAssertEqual(error.localizedDescription, "API key is empty")
+        }
+    }
+
+    func testLLMRequestConfigurationValidatedRejectsInvalidAPIBaseURL() {
+        XCTAssertThrowsError(
+            try LLMRequestConfiguration.validated(
+                apiBaseURL: "http://api.example.com/v1",
+                apiKey: "transient-key",
+                model: "gpt-4o-mini"
+            )
+        ) { error in
+            XCTAssertTrue(error.localizedDescription.contains("Invalid API base URL"))
+        }
+    }
+
+    func testLLMRequestConfigurationCannotUsePublicMemberwiseInitializer() throws {
+        let source = try String(contentsOfFile: "Sources/VoiceInput/LLMRefiner.swift", encoding: .utf8)
+        let structStart = try XCTUnwrap(source.range(of: "struct LLMRequestConfiguration")?.lowerBound)
+        let structEnd = try XCTUnwrap(source.range(of: "final class LLMRefiner", range: structStart..<source.endIndex)?.lowerBound)
+        let structSource = String(source[structStart..<structEnd])
+
+        XCTAssertTrue(structSource.contains("private init(apiBaseURL: String, apiKey: String, model: String)"))
+        XCTAssertTrue(structSource.contains("static func validated("))
+    }
+
     func testRefinementModeDefaultsToPreciseAndClearsInvalidPersistedValue() throws {
         let suiteName = "LLMRefinerTests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
@@ -290,6 +348,7 @@ final class LLMRefinerTests: XCTestCase {
                 return task
             }
         )
+        try refiner.updateAPIKey("test-key")
 
         let expectation = expectation(description: "cancel delivered")
         refiner.refine("filtered text", force: true) { result in
@@ -330,6 +389,7 @@ final class LLMRefinerTests: XCTestCase {
                 return task
             }
         )
+        try refiner.updateAPIKey("test-key")
 
         let dictationExpectation = expectation(description: "dictation completes")
         let settingsExpectation = expectation(description: "settings completes")
@@ -560,7 +620,7 @@ final class LLMRefinerTests: XCTestCase {
         refiner.apiBaseURL = "https://persisted.example/v1"
         refiner.model = "persisted-model"
 
-        let configuration = LLMRequestConfiguration(
+        let configuration = try LLMRequestConfiguration.validated(
             apiBaseURL: "https://transient.example/v1",
             apiKey: "transient-key",
             model: "transient-model"
@@ -582,6 +642,49 @@ final class LLMRefinerTests: XCTestCase {
         XCTAssertEqual(defaults.string(forKey: "llmAPIBaseURL"), "https://persisted.example/v1")
         XCTAssertEqual(defaults.string(forKey: "llmModel"), "persisted-model")
         XCTAssertEqual(try store.read(), "persisted-key")
+    }
+
+    func testInvalidTransientConfigurationDoesNotCreateRequestOrPollutePersistedSettings() throws {
+        let suiteName = "LLMRefinerTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defaults.removePersistentDomain(forName: suiteName)
+        let store = KeychainStore(
+            service: "app.voiceinput.VoiceInput.tests.\(UUID().uuidString)",
+            account: "llm-api-key"
+        )
+        let recorder = RequestRecorder()
+        defer {
+            try? store.delete()
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        let refiner = LLMRefiner(
+            userDefaults: defaults,
+            apiKeyStore: store,
+            logHandler: { _ in },
+            requestPerformer: recorder.perform
+        )
+
+        let expectation = expectation(description: "validation error delivered")
+        let request = refiner.refine("test connection", force: true) { result in
+            switch result {
+            case .success(let text):
+                XCTFail("Expected validation failure, got \(text)")
+            case .failure(let error):
+                XCTAssertEqual(error.localizedDescription, "API key is empty")
+            }
+            expectation.fulfill()
+        }
+
+        XCTAssertNil(request)
+        XCTAssertTrue(recorder.capturedRequests.isEmpty)
+        XCTAssertEqual(refiner.apiKey, "")
+        XCTAssertEqual(refiner.apiBaseURL, LLMRefiner.defaultAPIBaseURL)
+        XCTAssertEqual(refiner.model, LLMRefiner.defaultModel)
+        XCTAssertNil(defaults.object(forKey: "llmAPIBaseURL"))
+        XCTAssertNil(defaults.object(forKey: "llmModel"))
+        XCTAssertNil(try store.read())
+        wait(for: [expectation], timeout: 1)
     }
 
     func testChatCompletionsURLRequiresHTTPURLWithHost() {
@@ -702,6 +805,7 @@ final class LLMRefinerTests: XCTestCase {
             logHandler: { _ in },
             requestPerformer: recorder.perform
         )
+        try refiner.updateAPIKey("test-key")
         return (refiner, recorder, store, defaults)
     }
 
