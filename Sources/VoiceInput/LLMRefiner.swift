@@ -83,6 +83,55 @@ struct LLMRequestConfiguration: Equatable {
     let apiBaseURL: String
     let apiKey: String
     let model: String
+
+    private init(apiBaseURL: String, apiKey: String, model: String) {
+        self.apiBaseURL = apiBaseURL
+        self.apiKey = apiKey
+        self.model = model
+    }
+
+    static func validated(
+        apiBaseURL: String,
+        apiKey: String,
+        model: String
+    ) throws -> LLMRequestConfiguration {
+        let normalizedAPIBaseURL = apiBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalizedAPIKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalizedModel = model.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !normalizedAPIKey.isEmpty else {
+            throw ValidationError.emptyAPIKey
+        }
+
+        let requestAPIBaseURL: String
+        if normalizedAPIBaseURL.isEmpty {
+            requestAPIBaseURL = LLMRefiner.defaultAPIBaseURL
+        } else if LLMRefiner.chatCompletionsURL(from: normalizedAPIBaseURL) != nil {
+            requestAPIBaseURL = normalizedAPIBaseURL
+        } else {
+            throw ValidationError.invalidAPIBaseURL
+        }
+
+        return LLMRequestConfiguration(
+            apiBaseURL: requestAPIBaseURL,
+            apiKey: normalizedAPIKey,
+            model: normalizedModel.isEmpty ? LLMRefiner.defaultModel : normalizedModel
+        )
+    }
+
+    enum ValidationError: LocalizedError, Equatable {
+        case invalidAPIBaseURL
+        case emptyAPIKey
+
+        var errorDescription: String? {
+            switch self {
+            case .invalidAPIBaseURL:
+                return "Invalid API base URL. Use a full http(s) base URL, for example https://api.openai.com/v1."
+            case .emptyAPIKey:
+                return "API key is empty"
+            }
+        }
+    }
 }
 
 final class LLMRefiner {
@@ -160,13 +209,21 @@ final class LLMRefiner {
             return nil
         }
 
-        return refine(
-            text,
-            configuration: LLMRequestConfiguration(
+        let configuration: LLMRequestConfiguration
+        do {
+            configuration = try LLMRequestConfiguration.validated(
                 apiBaseURL: apiBaseURL,
                 apiKey: apiKey,
                 model: model
-            ),
+            )
+        } catch {
+            completion(.failure(error))
+            return nil
+        }
+
+        return refine(
+            text,
+            configuration: configuration,
             mode: modeOverride,
             completion: completion
         )
