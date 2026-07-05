@@ -79,81 +79,12 @@ enum LLMRefinementMode: String, CaseIterable, Equatable {
     }
 }
 
-struct LLMRequestConfiguration: CustomStringConvertible, CustomDebugStringConvertible {
-    let apiBaseURL: String
-    let model: String
-    private let apiKey: String
-
-    var hasAPIKey: Bool { !apiKey.isEmpty }
-
-    var description: String { redactedDescription }
-
-    var debugDescription: String { redactedDescription }
-
-    private var redactedDescription: String {
-        "LLMRequestConfiguration(apiBaseURL: \(apiBaseURL), model: \(model), apiKey: [redacted])"
-    }
-
-    private init(apiBaseURL: String, apiKey: String, model: String) {
-        self.apiBaseURL = apiBaseURL
-        self.apiKey = apiKey
-        self.model = model
-    }
-
-    static func validated(
-        apiBaseURL: String,
-        apiKey: String,
-        model: String
-    ) throws -> LLMRequestConfiguration {
-        let normalizedAPIBaseURL = apiBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
-        let normalizedAPIKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
-        let normalizedModel = model.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        guard !normalizedAPIKey.isEmpty else {
-            throw ValidationError.emptyAPIKey
-        }
-
-        let requestAPIBaseURL: String
-        if normalizedAPIBaseURL.isEmpty {
-            requestAPIBaseURL = LLMRefiner.defaultAPIBaseURL
-        } else if LLMRefiner.chatCompletionsURL(from: normalizedAPIBaseURL) != nil {
-            requestAPIBaseURL = normalizedAPIBaseURL
-        } else {
-            throw ValidationError.invalidAPIBaseURL
-        }
-
-        return LLMRequestConfiguration(
-            apiBaseURL: requestAPIBaseURL,
-            apiKey: normalizedAPIKey,
-            model: normalizedModel.isEmpty ? LLMRefiner.defaultModel : normalizedModel
-        )
-    }
-
-    func applyAuthorization(to request: inout URLRequest) {
-        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-    }
-
-    enum ValidationError: LocalizedError, Equatable {
-        case invalidAPIBaseURL
-        case emptyAPIKey
-
-        var errorDescription: String? {
-            switch self {
-            case .invalidAPIBaseURL:
-                return "Invalid API base URL. Use a full http(s) base URL, for example https://api.openai.com/v1."
-            case .emptyAPIKey:
-                return "API key is empty"
-            }
-        }
-    }
-}
-
 final class LLMRefiner {
     typealias RequestPerformer = (URLRequest, @escaping (Data?, URLResponse?, Error?) -> Void) -> LLMNetworkTask
 
     static let shared = LLMRefiner()
-    static let defaultAPIBaseURL = "https://api.openai.com/v1"
-    static let defaultModel = "gpt-4o-mini"
+    static let defaultAPIBaseURL = LLMRequestConfiguration.defaultAPIBaseURL
+    static let defaultModel = LLMRequestConfiguration.defaultModel
 
     private let userDefaults: UserDefaults
     private let apiKeyStore: KeychainStore
@@ -440,42 +371,7 @@ final class LLMRefiner {
     }
 
     static func chatCompletionsURL(from baseURLString: String) -> URL? {
-        var normalized = baseURLString.trimmingCharacters(in: .whitespacesAndNewlines)
-        while normalized.hasSuffix("/") {
-            normalized.removeLast()
-        }
-
-        guard
-            var components = URLComponents(string: normalized),
-            let scheme = components.scheme?.lowercased(),
-            scheme == "http" || scheme == "https",
-            let host = components.host,
-            !host.isEmpty,
-            scheme == "https" || isLoopbackHost(host),
-            components.user == nil,
-            components.password == nil,
-            components.query == nil,
-            components.fragment == nil
-        else {
-            return nil
-        }
-
-        var path = components.percentEncodedPath
-        while path.hasSuffix("/") {
-            path.removeLast()
-        }
-        let endpointPath = "/chat/completions"
-        if path.lowercased().hasSuffix(endpointPath) {
-            components.percentEncodedPath = path
-        } else {
-            components.percentEncodedPath = "\(path)\(endpointPath)"
-        }
-        return components.url
-    }
-
-    private static func isLoopbackHost(_ host: String) -> Bool {
-        let normalizedHost = host.trimmingCharacters(in: CharacterSet(charactersIn: "[]")).lowercased()
-        return normalizedHost == "localhost" || normalizedHost == "127.0.0.1" || normalizedHost == "::1"
+        LLMRequestConfiguration.chatCompletionsURL(from: baseURLString)
     }
 
     private static func apiErrorMessage(from data: Data) -> String? {
