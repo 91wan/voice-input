@@ -209,7 +209,8 @@ final class SettingsWindow: NSPanel {
             apiBaseURL: configuration?.apiBaseURL ?? refiner.apiBaseURL,
             model: configuration?.model ?? refiner.model,
             mode: refiner.mode,
-            testState: testState
+            testState: testState,
+            isTransientConfiguration: configuration != nil
         )
         showStatus(prefix + status.displayText, success: status.isReady ? true : nil)
     }

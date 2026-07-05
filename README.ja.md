@@ -67,6 +67,8 @@ Dictionary ウィンドウには **Test Phrase** 入力があります。サン�
 - API キーは macOS Keychain に保存されます。
 - API Base URL とモデル名が空の場合はデフォルト値に戻ります。
 - 設定画面は `Not configured`、`Ready`、`Test failed` の状態を表示します。
+- `Test` は現在の Settings 入力欄だけを使って 1 回のテストリクエストを送信します。API key、API Base URL、model は保存しません。
+- `Save` をクリックしたときだけ API key を Keychain に保存し、API Base URL / model の既定値を保存します。
 - API キー未設定でも、通常の `Fn` 入力は Apple Speech と DictionaryFilter で動作し、余計な LLM エラーを出しません。
 - **Precise Dictation** は発話に近い形を維持します。
 - **Prompt Builder** は音声メモを ChatGPT、Claude、Cursor などに渡しやすい構造化プロンプトへ整えます。

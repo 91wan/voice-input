@@ -69,6 +69,8 @@ Open **Menu Bar -> LLM Refinement -> Settings** to configure an OpenAI-compatibl
 - API keys are stored in macOS Keychain.
 - Blank API Base URL and model values fall back to defaults.
 - Settings shows the current state: `Not configured`, `Ready`, or `Test failed`.
+- `Test` uses the current Settings fields for one request only. It does not save the API key, API Base URL, or model.
+- Click `Save` to persist the API key to Keychain and store the API Base URL / model defaults.
 - If no API key is configured, normal `Fn` dictation still uses Apple Speech and DictionaryFilter without extra LLM failure noise.
 - **Precise Dictation** keeps the text close to what you said.
 - **Prompt Builder** rewrites rough speech into a structured prompt for ChatGPT, Claude, Cursor, or similar tools.

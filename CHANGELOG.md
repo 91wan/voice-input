@@ -8,6 +8,7 @@
 - Busy overlay lifecycle：busy `Fn` rejections no longer overwrite or dismiss an active dictation overlay, and transient hints only dismiss their own presentation.
 - Settings Test lifecycle：repeated Test runs and window close/save now cancel only the active Settings test request without touching dictation refinement.
 - Settings Test early returns：new invalid or unconfigured Test attempts now cancel any previous in-flight Settings test before showing validation or API key status.
+- LLM Settings Test：Test now clearly uses unsaved one-shot settings, while Save remains the only persistence action for API key, base URL, and model.
 - Clipboard injection ownership：consecutive fast dictations restore the user's original clipboard instead of a previous generated text.
 - Release validation：local CI, `make build`, and DMG verification now require a non-empty bundled app icon, and tag releases fail when matching changelog notes are missing.
 - Documentation：README build-from-source instructions now document `make ci` as the local CI gate and `swift test --parallel` as unit-test-only.
