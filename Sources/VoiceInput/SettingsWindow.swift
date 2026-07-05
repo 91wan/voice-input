@@ -136,15 +136,19 @@ final class SettingsWindow: NSPanel, NSTextFieldDelegate {
     }
 
     func controlTextDidChange(_ obj: Notification) {
-        guard !isLoadingSettings else { return }
-        markSettingsDraftChanged()
+        guard let outcome = LLMSettingsDraftChangePolicy.outcome(isLoadingSettings: isLoadingSettings) else {
+            return
+        }
+        applyDraftChange(outcome)
     }
 
-    private func markSettingsDraftChanged() {
+    private func applyDraftChange(_ outcome: LLMSettingsDraftChangeOutcome) {
         statusGeneration += 1
-        testController.cancelActiveTest()
-        testState = .notRun
-        showStatus("Unsaved changes. Test uses current fields once; Save persists them.", success: nil)
+        if outcome.shouldCancelActiveTest {
+            testController.cancelActiveTest()
+        }
+        testState = outcome.testState
+        showStatus(outcome.message, success: outcome.success)
     }
 
     override func close() {

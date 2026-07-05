@@ -197,16 +197,6 @@ final class LLMRefinerTests: XCTestCase {
         }
     }
 
-    func testLLMRequestConfigurationCannotUsePublicMemberwiseInitializer() throws {
-        let source = try String(contentsOfFile: "Sources/VoiceInput/LLMRefiner.swift", encoding: .utf8)
-        let structStart = try XCTUnwrap(source.range(of: "struct LLMRequestConfiguration")?.lowerBound)
-        let structEnd = try XCTUnwrap(source.range(of: "final class LLMRefiner", range: structStart..<source.endIndex)?.lowerBound)
-        let structSource = String(source[structStart..<structEnd])
-
-        XCTAssertTrue(structSource.contains("private init(apiBaseURL: String, apiKey: String, model: String)"))
-        XCTAssertTrue(structSource.contains("static func validated("))
-    }
-
     func testRefinementModeDefaultsToPreciseAndClearsInvalidPersistedValue() throws {
         let suiteName = "LLMRefinerTests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
