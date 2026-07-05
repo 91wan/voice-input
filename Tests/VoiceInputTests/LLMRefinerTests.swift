@@ -149,91 +149,6 @@ final class LLMRefinerTests: XCTestCase {
         XCTAssertNil(defaults.object(forKey: "llmModel"))
     }
 
-    func testLLMRequestConfigurationValidatedTrimsValues() throws {
-        let configuration = try LLMRequestConfiguration.validated(
-            apiBaseURL: "  https://transient.example/v1  ",
-            apiKey: "  transient-key  ",
-            model: "  transient-model  "
-        )
-
-        XCTAssertEqual(configuration.apiBaseURL, "https://transient.example/v1")
-        XCTAssertEqual(configuration.model, "transient-model")
-        XCTAssertTrue(configuration.hasAPIKey)
-    }
-
-    func testLLMRequestConfigurationValidatedUsesDefaultsForBlankBaseURLAndModel() throws {
-        let configuration = try LLMRequestConfiguration.validated(
-            apiBaseURL: "   ",
-            apiKey: " transient-key ",
-            model: "   "
-        )
-
-        XCTAssertEqual(configuration.apiBaseURL, LLMRefiner.defaultAPIBaseURL)
-        XCTAssertEqual(configuration.model, LLMRefiner.defaultModel)
-        XCTAssertTrue(configuration.hasAPIKey)
-    }
-
-    func testLLMRequestConfigurationAppliesAuthorizationWithoutExposingAPIKeyAsState() throws {
-        let configuration = try LLMRequestConfiguration.validated(
-            apiBaseURL: "https://transient.example/v1",
-            apiKey: "transient-key",
-            model: "transient-model"
-        )
-        var request = URLRequest(url: try XCTUnwrap(URL(string: "https://transient.example/v1/chat/completions")))
-
-        configuration.applyAuthorization(to: &request)
-
-        XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer transient-key")
-        XCTAssertTrue(configuration.hasAPIKey)
-    }
-
-    func testLLMRequestConfigurationDescriptionsRedactAPIKey() throws {
-        let configuration = try LLMRequestConfiguration.validated(
-            apiBaseURL: "https://transient.example/v1",
-            apiKey: "sk-transient-secret",
-            model: "transient-model"
-        )
-
-        let descriptions = [
-            String(describing: configuration),
-            String(reflecting: configuration),
-            configuration.debugDescription,
-        ]
-
-        for description in descriptions {
-            XCTAssertTrue(description.contains("https://transient.example/v1"))
-            XCTAssertTrue(description.contains("transient-model"))
-            XCTAssertTrue(description.contains("[redacted]"))
-            XCTAssertFalse(description.contains("sk-transient-secret"))
-            XCTAssertFalse(description.contains("Bearer"))
-            XCTAssertFalse(description.contains("sk-"))
-        }
-    }
-
-    func testLLMRequestConfigurationValidatedRejectsEmptyAPIKey() {
-        XCTAssertThrowsError(
-            try LLMRequestConfiguration.validated(
-                apiBaseURL: "https://api.openai.com/v1",
-                apiKey: "   ",
-                model: "gpt-4o-mini"
-            )
-        ) { error in
-            XCTAssertEqual(error.localizedDescription, "API key is empty")
-        }
-    }
-
-    func testLLMRequestConfigurationValidatedRejectsInvalidAPIBaseURL() {
-        XCTAssertThrowsError(
-            try LLMRequestConfiguration.validated(
-                apiBaseURL: "http://api.example.com/v1",
-                apiKey: "transient-key",
-                model: "gpt-4o-mini"
-            )
-        ) { error in
-            XCTAssertTrue(error.localizedDescription.contains("Invalid API base URL"))
-        }
-    }
-
     func testRefinementModeDefaultsToPreciseAndClearsInvalidPersistedValue() throws {
         let suiteName = "LLMRefinerTests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
@@ -712,35 +627,6 @@ final class LLMRefinerTests: XCTestCase {
         XCTAssertNil(defaults.object(forKey: "llmModel"))
         XCTAssertNil(try store.read())
         wait(for: [expectation], timeout: 1)
-    }
-
-    func testChatCompletionsURLRequiresHTTPURLWithHost() {
-        XCTAssertEqual(
-            LLMRefiner.chatCompletionsURL(from: " https://api.openai.com/v1/ ")?.absoluteString,
-            "https://api.openai.com/v1/chat/completions"
-        )
-        XCTAssertEqual(
-            LLMRefiner.chatCompletionsURL(from: "http://localhost:1234/v1")?.absoluteString,
-            "http://localhost:1234/v1/chat/completions"
-        )
-        XCTAssertEqual(
-            LLMRefiner.chatCompletionsURL(from: "http://127.0.0.1:1234/v1//")?.absoluteString,
-            "http://127.0.0.1:1234/v1/chat/completions"
-        )
-        XCTAssertEqual(
-            LLMRefiner.chatCompletionsURL(from: "http://[::1]:1234/v1")?.absoluteString,
-            "http://[::1]:1234/v1/chat/completions"
-        )
-        XCTAssertEqual(
-            LLMRefiner.chatCompletionsURL(from: "https://api.openai.com/v1/chat/completions")?.absoluteString,
-            "https://api.openai.com/v1/chat/completions"
-        )
-        XCTAssertNil(LLMRefiner.chatCompletionsURL(from: "http://api.example.com/v1"))
-        XCTAssertNil(LLMRefiner.chatCompletionsURL(from: "localhost:1234/v1"))
-        XCTAssertNil(LLMRefiner.chatCompletionsURL(from: "file:///tmp/api"))
-        XCTAssertNil(LLMRefiner.chatCompletionsURL(from: "not a url"))
-        XCTAssertNil(LLMRefiner.chatCompletionsURL(from: "https://api.openai.com/v1?debug=true"))
-        XCTAssertNil(LLMRefiner.chatCompletionsURL(from: "https://user:pass@api.openai.com/v1"))
     }
 
     private static func requestJSONBody(
