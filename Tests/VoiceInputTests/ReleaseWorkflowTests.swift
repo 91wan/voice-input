@@ -83,24 +83,32 @@ final class ReleaseWorkflowTests: XCTestCase {
                 "does not save the API key, API Base URL, or model",
                 "`Save` to persist the API key to Keychain",
                 "store the API Base URL / model defaults",
+                "Editing fields after a test clears the test result",
+                "run `Test` again to verify the current fields",
             ],
             "README.zh-CN.md": [
                 "`Test` 只用当前输入框内容发起一次测试请求",
                 "不会保存 API key、API Base URL 或 model",
                 "只有点击 `Save` 才会把 API key 写入 Keychain",
                 "保存 API Base URL / model 默认值",
+                "测试后继续编辑字段会清除测试结果",
+                "重新点击 `Test` 验证当前输入",
             ],
             "README.ja.md": [
                 "`Test` は現在の Settings 入力欄だけを使って 1 回のテストリクエストを送信",
                 "API key、API Base URL、model は保存しません",
                 "`Save` をクリックしたときだけ API key を Keychain に保存",
                 "API Base URL / model の既定値",
+                "テスト後にフィールドを編集するとテスト結果はクリアされます",
+                "現在の入力欄を確認するにはもう一度 `Test` を実行",
             ],
             "README.ko.md": [
                 "`Test`는 현재 Settings 입력값만 사용해 한 번의 테스트 요청을 보냅니다",
                 "API key, API Base URL, model을 저장하지 않습니다",
                 "`Save`를 클릭해야 API key를 Keychain에 저장",
                 "API Base URL / model 기본값",
+                "테스트 후 필드를 편집하면 테스트 결과가 지워집니다",
+                "현재 입력값을 확인하려면 `Test`를 다시 실행",
             ],
         ]
 
@@ -392,6 +400,14 @@ final class ReleaseWorkflowTests: XCTestCase {
         XCTAssertTrue(
             section.contains("Save remains the only persistence action"),
             "Unreleased should document Save as the only persistence action."
+        )
+        XCTAssertTrue(
+            section.contains("LLM Settings Test freshness"),
+            "Unreleased should document stale Settings Test result clearing."
+        )
+        XCTAssertTrue(
+            section.contains("clears stale test results"),
+            "Unreleased should say editing fields clears stale test results."
         )
         XCTAssertFalse(section.localizedCaseInsensitiveContains("todo"))
     }

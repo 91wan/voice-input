@@ -14,7 +14,7 @@ enum SettingsValidationError: LocalizedError, Equatable {
     }
 }
 
-final class SettingsWindow: NSPanel {
+final class SettingsWindow: NSPanel, NSTextFieldDelegate {
     struct ValidatedSettings: Equatable {
         let apiBaseURL: String
         let model: String
@@ -25,6 +25,7 @@ final class SettingsWindow: NSPanel {
     private let modelField = NSTextField()
     private let statusLabel = NSTextField(labelWithString: "")
     private let defaultStatusText = "API key is stored in your macOS Keychain."
+    private var isLoadingSettings = false
     private var statusGeneration = 0
     private let testController = LLMSettingsTestController()
     private var testState: LLMSettingsTestState = .notRun
@@ -50,6 +51,9 @@ final class SettingsWindow: NSPanel {
         apiBaseURLField.placeholderString = "https://api.openai.com/v1"
         apiKeyField.placeholderString = "sk-..."
         modelField.placeholderString = "gpt-4o-mini"
+        apiBaseURLField.delegate = self
+        apiKeyField.delegate = self
+        modelField.delegate = self
 
         let labels = ["API Base URL:", "API Key:", "Model:"].map { text -> NSTextField in
             let label = NSTextField(labelWithString: text)
@@ -108,6 +112,9 @@ final class SettingsWindow: NSPanel {
     }
 
     private func loadSettings() {
+        isLoadingSettings = true
+        defer { isLoadingSettings = false }
+
         let refiner = LLMRefiner.shared
         apiBaseURLField.stringValue = refiner.apiBaseURL
         apiKeyField.stringValue = refiner.apiKey
@@ -129,6 +136,18 @@ final class SettingsWindow: NSPanel {
         if focusAPIKey {
             makeFirstResponder(apiKeyField)
         }
+    }
+
+    func controlTextDidChange(_ obj: Notification) {
+        guard !isLoadingSettings else { return }
+        markSettingsDraftChanged()
+    }
+
+    private func markSettingsDraftChanged() {
+        statusGeneration += 1
+        testController.cancelActiveTest()
+        testState = .notRun
+        showStatus("Unsaved changes. Test uses current fields once; Save persists them.", success: nil)
     }
 
     override func close() {

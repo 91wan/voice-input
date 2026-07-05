@@ -82,4 +82,16 @@ final class SettingsTestLifecycleTests: XCTestCase {
         XCTAssertEqual(oldRequest.cancelCount, 1)
         XCTAssertTrue(controller.isIdle)
     }
+
+    func testFieldEditCancellationInvalidatesInFlightCompletion() {
+        let request = StubRequest()
+        let controller = LLMSettingsTestController()
+
+        let generation = controller.beginTest(request: request)
+        controller.cancelActiveTest()
+
+        XCTAssertEqual(request.cancelCount, 1)
+        XCTAssertTrue(controller.isIdle)
+        XCTAssertFalse(controller.finishTest(generation: generation))
+    }
 }
