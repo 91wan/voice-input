@@ -363,95 +363,7 @@ final class LLMRefinerTests: XCTestCase {
         wait(for: [dictationExpectation, settingsExpectation], timeout: 1)
     }
 
-    func testHTTP401ErrorIncludesStatusAndMessageWithoutLeakingAuthorization() throws {
-        let (refiner, recorder, store, defaults) = try makeCapturingRefiner()
-        defer {
-            try? store.delete()
-            defaults.removePersistentDomain(forName: defaultsSuiteName(defaults))
-        }
-        try refiner.updateAPIKey("sk-test-secret")
-
-        let expectation = expectation(description: "401 delivered")
-        refiner.refine("filtered text", force: true) { result in
-            guard case .failure(let error) = result else {
-                return XCTFail("Expected HTTP failure, got \(result)")
-            }
-            let message = error.localizedDescription
-            XCTAssertTrue(message.contains("401 Unauthorized"))
-            XCTAssertTrue(message.contains("Invalid API key"))
-            XCTAssertTrue(message.contains("check API key"))
-            XCTAssertFalse(message.contains("sk-test-secret"))
-            XCTAssertFalse(message.contains("Bearer"))
-            expectation.fulfill()
-        }
-
-        let captured = try XCTUnwrap(recorder.capturedRequests.first)
-        captured.completion(
-            Self.errorData(message: "Invalid API key"),
-            Self.httpResponse(for: captured, statusCode: 401),
-            nil
-        )
-
-        wait(for: [expectation], timeout: 1)
-    }
-
-    func testHTTP404ErrorSuggestsModelOrBaseURL() throws {
-        let (refiner, recorder, store, defaults) = try makeCapturingRefiner()
-        defer {
-            try? store.delete()
-            defaults.removePersistentDomain(forName: defaultsSuiteName(defaults))
-        }
-
-        let expectation = expectation(description: "404 delivered")
-        refiner.refine("filtered text", force: true) { result in
-            guard case .failure(let error) = result else {
-                return XCTFail("Expected HTTP failure, got \(result)")
-            }
-            let message = error.localizedDescription
-            XCTAssertTrue(message.contains("404 Not Found"))
-            XCTAssertTrue(message.contains("check model or API base URL"))
-            expectation.fulfill()
-        }
-
-        let captured = try XCTUnwrap(recorder.capturedRequests.first)
-        captured.completion(
-            Self.errorData(message: "model not found"),
-            Self.httpResponse(for: captured, statusCode: 404),
-            nil
-        )
-
-        wait(for: [expectation], timeout: 1)
-    }
-
-    func testHTTP429ErrorSuggestsRetryLater() throws {
-        let (refiner, recorder, store, defaults) = try makeCapturingRefiner()
-        defer {
-            try? store.delete()
-            defaults.removePersistentDomain(forName: defaultsSuiteName(defaults))
-        }
-
-        let expectation = expectation(description: "429 delivered")
-        refiner.refine("filtered text", force: true) { result in
-            guard case .failure(let error) = result else {
-                return XCTFail("Expected HTTP failure, got \(result)")
-            }
-            let message = error.localizedDescription
-            XCTAssertTrue(message.contains("429 Rate Limited"))
-            XCTAssertTrue(message.contains("try later"))
-            expectation.fulfill()
-        }
-
-        let captured = try XCTUnwrap(recorder.capturedRequests.first)
-        captured.completion(
-            Self.errorData(message: "too many requests"),
-            Self.httpResponse(for: captured, statusCode: 429),
-            nil
-        )
-
-        wait(for: [expectation], timeout: 1)
-    }
-
-    func testMalformedSuccessBodyReportsInvalidResponse() throws {
+    func testParserFailurePropagatesThroughRefiner() throws {
         let (refiner, recorder, store, defaults) = try makeCapturingRefiner()
         defer {
             try? store.delete()
@@ -477,7 +389,7 @@ final class LLMRefinerTests: XCTestCase {
         wait(for: [expectation], timeout: 1)
     }
 
-    func testSuccessResponseReturnsTrimmedContent() throws {
+    func testParserSuccessPropagatesThroughRefiner() throws {
         let (refiner, recorder, store, defaults) = try makeCapturingRefiner()
         defer {
             try? store.delete()
@@ -659,20 +571,6 @@ final class LLMRefinerTests: XCTestCase {
             XCTFail("Failed to encode test response JSON: \(error)", file: file, line: line)
             return Data()
         }
-    }
-
-    private static func errorData(message: String, file: StaticString = #filePath, line: UInt = #line) -> Data {
-        jsonData(
-            [
-                "error": [
-                    "message": message,
-                    "type": "invalid_request_error",
-                    "code": "test_error",
-                ],
-            ],
-            file: file,
-            line: line
-        )
     }
 
     private static func jsonData(
