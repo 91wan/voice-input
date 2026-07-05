@@ -76,6 +76,42 @@ final class ReleaseWorkflowTests: XCTestCase {
         XCTAssertTrue(englishReadme.contains("Run unit tests only:"))
     }
 
+    func testReadmesDocumentSettingsTestDoesNotPersistLLMConfig() throws {
+        let expectationsByPath = [
+            "README.md": [
+                "`Test` uses the current Settings fields for one request only",
+                "does not save the API key, API Base URL, or model",
+                "`Save` to persist the API key to Keychain",
+                "store the API Base URL / model defaults",
+            ],
+            "README.zh-CN.md": [
+                "`Test` 只用当前输入框内容发起一次测试请求",
+                "不会保存 API key、API Base URL 或 model",
+                "只有点击 `Save` 才会把 API key 写入 Keychain",
+                "保存 API Base URL / model 默认值",
+            ],
+            "README.ja.md": [
+                "`Test` は現在の Settings 入力欄だけを使って 1 回のテストリクエストを送信",
+                "API key、API Base URL、model は保存しません",
+                "`Save` をクリックしたときだけ API key を Keychain に保存",
+                "API Base URL / model の既定値",
+            ],
+            "README.ko.md": [
+                "`Test`는 현재 Settings 입력값만 사용해 한 번의 테스트 요청을 보냅니다",
+                "API key, API Base URL, model을 저장하지 않습니다",
+                "`Save`를 클릭해야 API key를 Keychain에 저장",
+                "API Base URL / model 기본값",
+            ],
+        ]
+
+        for (path, expectedSnippets) in expectationsByPath {
+            let readme = try String(contentsOfFile: path, encoding: .utf8)
+            for snippet in expectedSnippets {
+                XCTAssertTrue(readme.contains(snippet), "\(path) should document: \(snippet)")
+            }
+        }
+    }
+
     func testWorkflowUsesNode24CompatibleActions() throws {
         let workflow = try String(contentsOfFile: ".github/workflows/release.yml", encoding: .utf8)
 
@@ -344,6 +380,18 @@ final class ReleaseWorkflowTests: XCTestCase {
         XCTAssertTrue(
             section.contains("DMG layout verification"),
             "Unreleased should document the release artifact Finder layout verifier."
+        )
+        XCTAssertTrue(
+            section.contains("LLM Settings Test"),
+            "Unreleased should document the Settings Test user-facing contract."
+        )
+        XCTAssertTrue(
+            section.localizedCaseInsensitiveContains("unsaved one-shot settings"),
+            "Unreleased should say Settings Test uses unsaved one-shot settings."
+        )
+        XCTAssertTrue(
+            section.contains("Save remains the only persistence action"),
+            "Unreleased should document Save as the only persistence action."
         )
         XCTAssertFalse(section.localizedCaseInsensitiveContains("todo"))
     }
