@@ -69,6 +69,7 @@ Dictionary 창에는 **Test Phrase** 입력이 포함됩니다. 예시 문장을
 - 설정 창은 `Not configured`, `Ready`, `Test failed` 상태를 표시합니다.
 - `Test`는 현재 Settings 입력값만 사용해 한 번의 테스트 요청을 보냅니다. API key, API Base URL, model을 저장하지 않습니다.
 - `Save`를 클릭해야 API key를 Keychain에 저장하고 API Base URL / model 기본값을 저장합니다.
+- 테스트 후 필드를 편집하면 테스트 결과가 지워집니다. 현재 입력값을 확인하려면 `Test`를 다시 실행하거나 `Save`로 저장합니다.
 - API 키가 없어도 일반 `Fn` 입력은 Apple Speech와 DictionaryFilter로 계속 동작하며, 불필요한 LLM 실패 소음을 만들지 않습니다.
 - **Precise Dictation** 은 말한 내용에 가까운 결과를 유지합니다.
 - **Prompt Builder** 는 음성 메모를 ChatGPT, Claude, Cursor 등에 넣기 좋은 구조화된 프롬프트로 정리합니다.
