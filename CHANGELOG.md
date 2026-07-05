@@ -29,6 +29,7 @@
 - Manual QA：added a lightweight manual QA log template for real app, Fn, and permission checks without claiming automated coverage.
 
 ### 工程
+- LLM config secrecy：tightened `LLMRequestConfiguration` as a secret-bearing value object with redacted descriptions and request-scoped Authorization handling.
 - Test architecture：removed fragile source-string assertions against production Swift files and added a guard so behavior tests do not regress into implementation-text checks.
 - Pasteboard test isolation：pasteboard-related XCTest fixtures now use explicit unique pasteboard names to avoid `swift test --parallel` runner-specific collisions.
 

@@ -225,7 +225,7 @@ final class SettingsWindow: NSPanel, NSTextFieldDelegate {
     private func refreshConfigurationStatus(prefix: String = "", configuration: LLMRequestConfiguration? = nil) {
         let refiner = LLMRefiner.shared
         let status = LLMSettingsStatus.make(
-            isConfigured: configuration.map { !$0.apiKey.isEmpty } ?? refiner.isConfigured,
+            isConfigured: configuration?.hasAPIKey ?? refiner.isConfigured,
             apiBaseURL: configuration?.apiBaseURL ?? refiner.apiBaseURL,
             model: configuration?.model ?? refiner.model,
             mode: refiner.mode,
