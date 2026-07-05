@@ -157,8 +157,8 @@ final class LLMRefinerTests: XCTestCase {
         )
 
         XCTAssertEqual(configuration.apiBaseURL, "https://transient.example/v1")
-        XCTAssertEqual(configuration.apiKey, "transient-key")
         XCTAssertEqual(configuration.model, "transient-model")
+        XCTAssertTrue(configuration.hasAPIKey)
     }
 
     func testLLMRequestConfigurationValidatedUsesDefaultsForBlankBaseURLAndModel() throws {
@@ -169,8 +169,45 @@ final class LLMRefinerTests: XCTestCase {
         )
 
         XCTAssertEqual(configuration.apiBaseURL, LLMRefiner.defaultAPIBaseURL)
-        XCTAssertEqual(configuration.apiKey, "transient-key")
         XCTAssertEqual(configuration.model, LLMRefiner.defaultModel)
+        XCTAssertTrue(configuration.hasAPIKey)
+    }
+
+    func testLLMRequestConfigurationAppliesAuthorizationWithoutExposingAPIKeyAsState() throws {
+        let configuration = try LLMRequestConfiguration.validated(
+            apiBaseURL: "https://transient.example/v1",
+            apiKey: "transient-key",
+            model: "transient-model"
+        )
+        var request = URLRequest(url: try XCTUnwrap(URL(string: "https://transient.example/v1/chat/completions")))
+
+        configuration.applyAuthorization(to: &request)
+
+        XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer transient-key")
+        XCTAssertTrue(configuration.hasAPIKey)
+    }
+
+    func testLLMRequestConfigurationDescriptionsRedactAPIKey() throws {
+        let configuration = try LLMRequestConfiguration.validated(
+            apiBaseURL: "https://transient.example/v1",
+            apiKey: "sk-transient-secret",
+            model: "transient-model"
+        )
+
+        let descriptions = [
+            String(describing: configuration),
+            String(reflecting: configuration),
+            configuration.debugDescription,
+        ]
+
+        for description in descriptions {
+            XCTAssertTrue(description.contains("https://transient.example/v1"))
+            XCTAssertTrue(description.contains("transient-model"))
+            XCTAssertTrue(description.contains("[redacted]"))
+            XCTAssertFalse(description.contains("sk-transient-secret"))
+            XCTAssertFalse(description.contains("Bearer"))
+            XCTAssertFalse(description.contains("sk-"))
+        }
     }
 
     func testLLMRequestConfigurationValidatedRejectsEmptyAPIKey() {

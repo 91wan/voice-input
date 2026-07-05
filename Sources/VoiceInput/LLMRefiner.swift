@@ -79,10 +79,20 @@ enum LLMRefinementMode: String, CaseIterable, Equatable {
     }
 }
 
-struct LLMRequestConfiguration: Equatable {
+struct LLMRequestConfiguration: CustomStringConvertible, CustomDebugStringConvertible {
     let apiBaseURL: String
-    let apiKey: String
     let model: String
+    private let apiKey: String
+
+    var hasAPIKey: Bool { !apiKey.isEmpty }
+
+    var description: String { redactedDescription }
+
+    var debugDescription: String { redactedDescription }
+
+    private var redactedDescription: String {
+        "LLMRequestConfiguration(apiBaseURL: \(apiBaseURL), model: \(model), apiKey: [redacted])"
+    }
 
     private init(apiBaseURL: String, apiKey: String, model: String) {
         self.apiBaseURL = apiBaseURL
@@ -117,6 +127,10 @@ struct LLMRequestConfiguration: Equatable {
             apiKey: normalizedAPIKey,
             model: normalizedModel.isEmpty ? LLMRefiner.defaultModel : normalizedModel
         )
+    }
+
+    func applyAuthorization(to request: inout URLRequest) {
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
     }
 
     enum ValidationError: LocalizedError, Equatable {
@@ -244,7 +258,7 @@ final class LLMRefiner {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("Bearer \(configuration.apiKey)", forHTTPHeaderField: "Authorization")
+        configuration.applyAuthorization(to: &request)
         request.timeoutInterval = 10
 
         let requestMode = modeOverride ?? mode
