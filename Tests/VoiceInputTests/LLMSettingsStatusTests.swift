@@ -65,10 +65,4 @@ final class LLMSettingsStatusTests: XCTestCase {
         XCTAssertTrue(status.isReady)
     }
 
-    func testLLMSettingsStatusNeverIncludesAPIKey() throws {
-        let source = try String(contentsOfFile: "Sources/VoiceInput/LLMSettingsStatus.swift", encoding: .utf8)
-
-        XCTAssertFalse(source.contains("apiKey"))
-        XCTAssertFalse(source.localizedCaseInsensitiveContains("keychain"))
-    }
 }

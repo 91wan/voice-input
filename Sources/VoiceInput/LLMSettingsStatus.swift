@@ -7,6 +7,26 @@ enum LLMSettingsTestState: Equatable {
     case failed(String)
 }
 
+struct LLMSettingsDraftChangeOutcome: Equatable {
+    let shouldCancelActiveTest: Bool
+    let testState: LLMSettingsTestState
+    let message: String
+    let success: Bool?
+}
+
+enum LLMSettingsDraftChangePolicy {
+    static func outcome(isLoadingSettings: Bool) -> LLMSettingsDraftChangeOutcome? {
+        guard !isLoadingSettings else { return nil }
+
+        return LLMSettingsDraftChangeOutcome(
+            shouldCancelActiveTest: true,
+            testState: .notRun,
+            message: "Unsaved changes. Test uses current fields once; Save persists them.",
+            success: nil
+        )
+    }
+}
+
 struct LLMSettingsStatus: Equatable {
     let displayText: String
     let isReady: Bool
