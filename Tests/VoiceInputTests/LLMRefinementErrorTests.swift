@@ -39,4 +39,37 @@ final class LLMRefinementErrorTests: XCTestCase {
             XCTAssertEqual(error.logSummary, expectedSummary)
         }
     }
+
+    func testSafeLogSummaryUsesStableBucketForHTTPProviderMessage() {
+        let error = LLMRefinementError.httpStatus(
+            401,
+            "Provider echoed Bearer secret-token sk-live-secret"
+        )
+
+        let summary = LLMRefinementError.safeLogSummary(for: error)
+
+        XCTAssertEqual(summary, "http_status=401 hint=check_api_key")
+        XCTAssertFalse(summary.contains("Provider echoed"))
+        XCTAssertFalse(summary.contains("Bearer"))
+        XCTAssertFalse(summary.contains("sk-"))
+    }
+
+    func testSafeLogSummaryDoesNotExposeUnknownErrorLocalizedDescription() {
+        let error = NSError(domain: "VoiceInputTests", code: 42, userInfo: [
+            NSLocalizedDescriptionKey: "secret detail sk-live-secret",
+        ])
+
+        let summary = LLMRefinementError.safeLogSummary(for: error)
+
+        XCTAssertEqual(summary, "unknown_error")
+        XCTAssertFalse(summary.contains("secret detail"))
+        XCTAssertFalse(summary.contains("sk-"))
+    }
+
+    func testSafeLogSummaryBucketsConfigurationValidation() {
+        XCTAssertEqual(
+            LLMRefinementError.safeLogSummary(for: LLMRequestConfiguration.ValidationError.emptyAPIKey),
+            "configuration_validation"
+        )
+    }
 }

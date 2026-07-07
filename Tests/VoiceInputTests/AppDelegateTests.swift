@@ -120,6 +120,39 @@ final class AppDelegateTests: XCTestCase {
         )
     }
 
+    func testLLMFailureLogSummaryUsesSafeProviderBucket() {
+        let error = LLMRefinementError.httpStatus(
+            401,
+            "Provider echoed Bearer secret-token sk-live-secret"
+        )
+
+        let summary = AppDelegate.llmFailureLogSummary(for: error)
+
+        XCTAssertEqual(summary, "http_status=401 hint=check_api_key")
+        XCTAssertFalse(summary.contains("Provider echoed"))
+        XCTAssertFalse(summary.contains("Bearer"))
+        XCTAssertFalse(summary.contains("sk-"))
+    }
+
+    func testLLMFailureLogSummaryDoesNotExposeUnknownLocalizedDescription() {
+        let error = NSError(domain: "VoiceInputTests", code: 43, userInfo: [
+            NSLocalizedDescriptionKey: "unknown secret detail sk-live-secret",
+        ])
+
+        let summary = AppDelegate.llmFailureLogSummary(for: error)
+
+        XCTAssertEqual(summary, "unknown_error")
+        XCTAssertFalse(summary.contains("unknown secret detail"))
+        XCTAssertFalse(summary.contains("sk-"))
+    }
+
+    func testTextInjectionFailureLogSummaryUsesStableBucket() {
+        let summary = AppDelegate.textInjectionFailureLogSummary(for: .accessibilityPermissionMissing)
+
+        XCTAssertEqual(summary, "accessibility_permission_missing")
+        XCTAssertFalse(summary.contains(TextInjectionFailure.accessibilityPermissionMissing.localizedDescription))
+    }
+
     func testScheduledOneShotTimerFiresOnce() {
         let expectation = expectation(description: "timer fired")
         var fireCount = 0
