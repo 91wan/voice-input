@@ -7,8 +7,7 @@ final class LLMAPIResponseParserTests: XCTestCase {
         let result = LLMAPIResponseParser.parse(
             data: Self.successData("  refined text\n"),
             response: Self.httpResponse(statusCode: 200),
-            error: nil,
-            originalText: "filtered text"
+            error: nil
         )
 
         XCTAssertEqual(try result.get(), "refined text")
@@ -18,8 +17,7 @@ final class LLMAPIResponseParserTests: XCTestCase {
         let result = LLMAPIResponseParser.parse(
             data: Self.jsonData(["choices": []]),
             response: Self.httpResponse(statusCode: 200),
-            error: nil,
-            originalText: "filtered text"
+            error: nil
         )
 
         XCTAssertEqual(result.failure, .invalidResponse)
@@ -29,8 +27,7 @@ final class LLMAPIResponseParserTests: XCTestCase {
         let result = LLMAPIResponseParser.parse(
             data: nil,
             response: Self.httpResponse(statusCode: 200),
-            error: nil,
-            originalText: "filtered text"
+            error: nil
         )
 
         XCTAssertEqual(result.failure, .invalidResponse)
@@ -40,8 +37,7 @@ final class LLMAPIResponseParserTests: XCTestCase {
         let result = LLMAPIResponseParser.parse(
             data: nil,
             response: nil,
-            error: URLError(.cancelled),
-            originalText: "filtered text"
+            error: URLError(.cancelled)
         )
 
         XCTAssertEqual(result.failure, .cancelled)
@@ -53,8 +49,7 @@ final class LLMAPIResponseParserTests: XCTestCase {
             response: nil,
             error: NSError(domain: "VoiceInputTests", code: 42, userInfo: [
                 NSLocalizedDescriptionKey: "connection dropped",
-            ]),
-            originalText: "filtered text"
+            ])
         )
 
         XCTAssertEqual(result.failure, .transport("connection dropped"))
@@ -66,8 +61,7 @@ final class LLMAPIResponseParserTests: XCTestCase {
             response: nil,
             error: NSError(domain: "VoiceInputTests", code: 43, userInfo: [
                 NSLocalizedDescriptionKey: "Bearer secret-token failed for sk-live-secret",
-            ]),
-            originalText: "filtered text"
+            ])
         )
 
         let error = try XCTUnwrap(result.failure)
@@ -82,8 +76,7 @@ final class LLMAPIResponseParserTests: XCTestCase {
         let result = LLMAPIResponseParser.parse(
             data: Self.errorData(message: "Invalid API key"),
             response: Self.httpResponse(statusCode: 401),
-            error: nil,
-            originalText: "filtered text"
+            error: nil
         )
 
         let error = try XCTUnwrap(result.failure)
@@ -97,8 +90,7 @@ final class LLMAPIResponseParserTests: XCTestCase {
         let result = LLMAPIResponseParser.parse(
             data: Self.errorData(message: "model not found"),
             response: Self.httpResponse(statusCode: 404),
-            error: nil,
-            originalText: "filtered text"
+            error: nil
         )
 
         let error = try XCTUnwrap(result.failure)
@@ -111,8 +103,7 @@ final class LLMAPIResponseParserTests: XCTestCase {
         let result = LLMAPIResponseParser.parse(
             data: Self.errorData(message: "too many requests"),
             response: Self.httpResponse(statusCode: 429),
-            error: nil,
-            originalText: "filtered text"
+            error: nil
         )
 
         let error = try XCTUnwrap(result.failure)
@@ -125,8 +116,7 @@ final class LLMAPIResponseParserTests: XCTestCase {
         let result = LLMAPIResponseParser.parse(
             data: Self.errorData(message: "upstream unavailable"),
             response: Self.httpResponse(statusCode: 503),
-            error: nil,
-            originalText: "filtered text"
+            error: nil
         )
 
         let error = try XCTUnwrap(result.failure)
@@ -139,8 +129,7 @@ final class LLMAPIResponseParserTests: XCTestCase {
         let result = LLMAPIResponseParser.parse(
             data: Self.errorData(message: "Bearer secret-token failed for sk-live-secret"),
             response: Self.httpResponse(statusCode: 401),
-            error: nil,
-            originalText: "filtered text"
+            error: nil
         )
 
         let error = try XCTUnwrap(result.failure)

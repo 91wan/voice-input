@@ -208,8 +208,7 @@ final class LLMRefiner {
             switch LLMAPIResponseParser.parse(
                 data: data,
                 response: response,
-                error: error,
-                originalText: text
+                error: error
             ) {
             case .success(let refined):
                 self.logHandler(
@@ -217,7 +216,7 @@ final class LLMRefiner {
                 )
                 requestHandle.complete(.success(refined))
             case .failure(let error):
-                self.logHandler("LLM response failed: \(error.localizedDescription)")
+                self.logHandler("LLM response failed: \(error.logSummary)")
                 requestHandle.complete(.failure(error))
             }
         }

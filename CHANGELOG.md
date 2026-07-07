@@ -29,6 +29,7 @@
 - Manual QA：added a lightweight manual QA log template for real app, Fn, and permission checks without claiming automated coverage.
 
 ### 工程
+- LLM failure logging：LLM request failures now write safe error summaries to disk logs instead of user-facing provider messages, and the response parser no longer accepts unused input text.
 - LLM response parsing：moved OpenAI-compatible response parsing and HTTP error classification into a pure parser, keeping `LLMRefiner` focused on request lifecycle and persisted settings.
 - LLM module hygiene：moved LLM request configuration into its own secret-bearing value object file and kept refiner tests focused on behavior instead of implementation text.
 - LLM config secrecy：tightened `LLMRequestConfiguration` as a secret-bearing value object with redacted descriptions and request-scoped Authorization handling.

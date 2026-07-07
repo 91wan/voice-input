@@ -389,6 +389,64 @@ final class LLMRefinerTests: XCTestCase {
         wait(for: [expectation], timeout: 1)
     }
 
+    func testHTTPFailureLogsSafeSummaryButReturnsUserFacingError() throws {
+        let suiteName = "LLMRefinerTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defaults.removePersistentDomain(forName: suiteName)
+        defaults.set(suiteName, forKey: "testSuiteName")
+        let store = KeychainStore(
+            service: "app.voiceinput.VoiceInput.tests.\(UUID().uuidString)",
+            account: "llm-api-key"
+        )
+        let recorder = RequestRecorder()
+        var logs: [String] = []
+        defer {
+            try? store.delete()
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        let refiner = LLMRefiner(
+            userDefaults: defaults,
+            apiKeyStore: store,
+            logHandler: { logs.append($0) },
+            requestPerformer: recorder.perform
+        )
+        try refiner.updateAPIKey("test-key")
+
+        let providerMessage = "Provider echoed quota detail Bearer secret-token sk-live-secret"
+        let expectation = expectation(description: "HTTP failure delivered")
+        refiner.refine("filtered text", force: true) { result in
+            guard case .failure(let error) = result else {
+                return XCTFail("Expected HTTP failure, got \(result)")
+            }
+            XCTAssertTrue(error.localizedDescription.contains("401 Unauthorized"))
+            XCTAssertTrue(error.localizedDescription.contains("Provider echoed quota detail"))
+            XCTAssertTrue(error.localizedDescription.contains("check API key"))
+            expectation.fulfill()
+        }
+
+        let captured = try XCTUnwrap(recorder.capturedRequests.first)
+        captured.completion(
+            Self.jsonData([
+                "error": [
+                    "message": providerMessage,
+                    "type": "invalid_request_error",
+                    "code": "test_error",
+                ],
+            ]),
+            Self.httpResponse(for: captured, statusCode: 401),
+            nil
+        )
+
+        wait(for: [expectation], timeout: 1)
+        let joinedLogs = logs.joined(separator: "\n")
+        XCTAssertTrue(joinedLogs.contains("LLM response failed: http_status=401 hint=check_api_key"))
+        XCTAssertFalse(joinedLogs.contains("Provider echoed quota detail"))
+        XCTAssertFalse(joinedLogs.contains("Bearer"))
+        XCTAssertFalse(joinedLogs.contains("sk-live-secret"))
+        XCTAssertFalse(joinedLogs.contains("sk-"))
+    }
+
     func testParserSuccessPropagatesThroughRefiner() throws {
         let (refiner, recorder, store, defaults) = try makeCapturingRefiner()
         defer {

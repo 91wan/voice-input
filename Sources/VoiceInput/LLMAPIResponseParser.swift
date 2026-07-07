@@ -4,8 +4,7 @@ struct LLMAPIResponseParser {
     static func parse(
         data: Data?,
         response: URLResponse?,
-        error: Error?,
-        originalText _: String
+        error: Error?
     ) -> Result<String, LLMRefinementError> {
         if let error {
             if (error as? URLError)?.code == .cancelled {

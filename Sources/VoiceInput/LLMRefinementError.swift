@@ -22,6 +22,21 @@ enum LLMRefinementError: LocalizedError, Equatable {
         }
     }
 
+    var logSummary: String {
+        switch self {
+        case .invalidURL:
+            return "invalid_url"
+        case .transport:
+            return "transport"
+        case .httpStatus(let statusCode, _):
+            return Self.httpStatusLogSummary(statusCode)
+        case .invalidResponse:
+            return "invalid_response"
+        case .cancelled:
+            return "cancelled"
+        }
+    }
+
     private static func httpStatusDescription(statusCode: Int, message: String?) -> String {
         var parts = ["\(statusCode) \(statusTitle(statusCode))"]
         if let message, !message.isEmpty {
@@ -63,6 +78,21 @@ enum LLMRefinementError: LocalizedError, Equatable {
             return "try later or check the API provider status"
         default:
             return nil
+        }
+    }
+
+    private static func httpStatusLogSummary(_ statusCode: Int) -> String {
+        switch statusCode {
+        case 401, 403:
+            return "http_status=\(statusCode) hint=check_api_key"
+        case 404:
+            return "http_status=404 hint=check_model_or_api_base_url"
+        case 429:
+            return "http_status=429 hint=try_later"
+        case 500...599:
+            return "http_status=\(statusCode) hint=provider_status"
+        default:
+            return "http_status=\(statusCode)"
         }
     }
 }
