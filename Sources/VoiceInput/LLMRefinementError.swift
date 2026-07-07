@@ -37,6 +37,18 @@ enum LLMRefinementError: LocalizedError, Equatable {
         }
     }
 
+    static func safeLogSummary(for error: Error) -> String {
+        if let refinementError = error as? LLMRefinementError {
+            return refinementError.logSummary
+        }
+
+        if error is LLMRequestConfiguration.ValidationError {
+            return "configuration_validation"
+        }
+
+        return "unknown_error"
+    }
+
     private static func httpStatusDescription(statusCode: Int, message: String?) -> String {
         var parts = ["\(statusCode) \(statusTitle(statusCode))"]
         if let message, !message.isEmpty {

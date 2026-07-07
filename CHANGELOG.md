@@ -29,6 +29,8 @@
 - Manual QA：added a lightweight manual QA log template for real app, Fn, and permission checks without claiming automated coverage.
 
 ### 工程
+- LLM failure logging：App-level LLM fallback logs now use the same safe summary buckets as the refiner log path, avoiding provider-message leakage into system logs.
+- App logging hygiene：Text injection failure system logs now use stable buckets while keeping user-facing overlay recovery text unchanged.
 - LLM failure logging：LLM request failures now write safe error summaries to disk logs instead of user-facing provider messages, and the response parser no longer accepts unused input text.
 - LLM response parsing：moved OpenAI-compatible response parsing and HTTP error classification into a pure parser, keeping `LLMRefiner` focused on request lifecycle and persisted settings.
 - LLM module hygiene：moved LLM request configuration into its own secret-bearing value object file and kept refiner tests focused on behavior instead of implementation text.
