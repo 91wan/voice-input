@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### 变更
+- App icon：replace the bundled VoiceInput app icon with the selected D light Liquid Glass design.
 - PR CI gate：pull requests targeting `main` now run `make ci` before merge, while release publishing keeps write permission scoped to the tag release job.
 - Dictation lifecycle：new `Fn` presses are rejected while the previous dictation is resolving or injecting, preventing silent result loss.
 - Busy overlay lifecycle：busy `Fn` rejections no longer overwrite or dismiss an active dictation overlay, and transient hints only dismiss their own presentation.
