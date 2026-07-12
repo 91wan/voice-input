@@ -1,6 +1,7 @@
 APP_NAME := VoiceInput
 APP_BUNDLE := $(APP_NAME).app
 APP_ICON_SOURCE := Resources/AppIcon.icns
+APP_ICON_MASTER := Resources/AppIcon-master.png
 APP_ICON := $(APP_BUNDLE)/Contents/Resources/AppIcon.icns
 DMG_PATH ?= VoiceInput.dmg
 VERSION ?= $(shell /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Info.plist)
@@ -28,6 +29,9 @@ build:
 ci:
 	@set -e; \
 	test -s "$(APP_ICON_SOURCE)"; \
+	test -s "$(APP_ICON_MASTER)"; \
+	test -x scripts/verify-app-icon.sh; \
+	./scripts/verify-app-icon.sh "$(APP_ICON_SOURCE)" "$(APP_ICON_MASTER)"; \
 	test -x scripts/package-dmg.sh; \
 	test -x scripts/verify-dmg.sh; \
 	test -x scripts/verify-dmg-layout.sh; \

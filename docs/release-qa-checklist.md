@@ -15,6 +15,7 @@ Use this checklist before a stable public release such as `v1.2.0`.
 - `swift test --parallel`.
 - `swift build -Xswiftc -warnings-as-errors`.
 - `make build`.
+- App icon asset gate: `iconutil` extraction/round-trip succeeds and all required icon representations have the expected pixel dimensions.
 - Local release gate: `make release-check VERSION=<version> DMG_PATH=/tmp/VoiceInput-test.dmg`.
 - The release gate includes DMG packaging and `./scripts/verify-dmg.sh`.
 - Automated DMG layout gate: `make release-check` mounts the DMG and verifies Finder layout values: icon size, bounds, app position, and Applications position.
@@ -36,6 +37,15 @@ Automated `make release-check` does not replace manual QA for real app launch, p
 Record manual QA evidence in `docs/manual-qa-log-template.md`. Do not treat the template itself as passed QA.
 
 Optional human visual confirmation can be recorded in `docs/manual-qa-log-template.md`. A screenshot is useful evidence, but the automated DMG layout gate is the required release artifact check.
+
+Automated icon verification checks file format, dimensions, ICNS parsing, round-trip conversion, and bundle inclusion. It does not replace human review of appearance or small-size readability.
+
+## Manual App Icon QA
+
+- Review the icon at 16, 32, 64, 128, 256, and 512 pixels on both light and dark backgrounds.
+- Confirm the 160pt DMG icon is sharp, centered, and not clipped.
+- Confirm highlights, shadows, and transparent edges do not create light/dark halos.
+- Record visual approval separately from the automated asset gate; neither check replaces the other.
 
 ## Installation And First Launch
 

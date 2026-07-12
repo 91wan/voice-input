@@ -71,6 +71,22 @@ final class MakefileTests: XCTestCase {
             "make ci must fail fast if the declared app icon source is missing or empty."
         )
         XCTAssertTrue(
+            makefile.contains("APP_ICON_MASTER := Resources/AppIcon-master.png"),
+            "The canonical app icon master should have one declared source path."
+        )
+        XCTAssertTrue(
+            makefile.contains("test -s \"$(APP_ICON_MASTER)\""),
+            "make ci must fail fast if the canonical app icon master is missing or empty."
+        )
+        XCTAssertTrue(
+            makefile.contains("test -x scripts/verify-app-icon.sh"),
+            "make ci should require the focused app icon verifier to remain executable."
+        )
+        XCTAssertTrue(
+            makefile.contains("./scripts/verify-app-icon.sh \"$(APP_ICON_SOURCE)\" \"$(APP_ICON_MASTER)\""),
+            "make ci must validate the ICNS container and canonical master before Swift verification."
+        )
+        XCTAssertTrue(
             makefile.contains("test -x scripts/package-dmg.sh"),
             "make ci should catch a missing package-dmg executable bit before tag-only release jobs."
         )
