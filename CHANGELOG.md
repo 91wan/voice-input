@@ -3,7 +3,7 @@
 ## [Unreleased]
 
 ### 变更
-- App icon：replace the bundled VoiceInput app icon with the selected D light Liquid Glass design.
+- App icon：refreshed the bundled VoiceInput icon with the new light glass design.
 - PR CI gate：pull requests targeting `main` now run `make ci` before merge, while release publishing keeps write permission scoped to the tag release job.
 - Dictation lifecycle：new `Fn` presses are rejected while the previous dictation is resolving or injecting, preventing silent result loss.
 - Busy overlay lifecycle：busy `Fn` rejections no longer overwrite or dismiss an active dictation overlay, and transient hints only dismiss their own presentation.
@@ -30,6 +30,7 @@
 - Manual QA：added a lightweight manual QA log template for real app, Fn, and permission checks without claiming automated coverage.
 
 ### 工程
+- App icon validation：CI now verifies the ICNS container, round-trip conversion, and required macOS icon representations.
 - LLM error boundary：request configuration, parsing, cancellation, and completion now use `LLMRefinementError` end to end; validated configurations carry their endpoint URL and domain errors own safe log summaries.
 - App logging hygiene：LLM and text injection failures now own stable safe log buckets while keeping user-facing fallback and recovery text unchanged.
 - LLM response parsing：moved OpenAI-compatible response parsing and HTTP error classification into a pure parser, keeping `LLMRefiner` focused on request lifecycle and persisted settings.
