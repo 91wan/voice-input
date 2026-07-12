@@ -5,15 +5,43 @@ DMG_PATH="${1:-VoiceInput.dmg}"
 EXPECTED_VERSION="${2:-}"
 VOLUME_NAME="${3:-VoiceInput}"
 MOUNT_DIR="${TMPDIR:-/tmp}/voiceinput-dmg-verify-$$"
+SPCTL_OUTPUT="${TMPDIR:-/tmp}/voiceinput-spctl-$$.txt"
 ATTACHED=0
 
-cleanup() {
-    if [ "$ATTACHED" -eq 1 ]; then
-        hdiutil detach "$MOUNT_DIR" >/dev/null 2>&1 || true
+detach_mounted_dmg() {
+    if [ "$ATTACHED" -eq 0 ]; then
+        return 0
     fi
-    rm -rf "$MOUNT_DIR"
+
+    if hdiutil detach "$MOUNT_DIR" >/dev/null 2>&1; then
+        ATTACHED=0
+        return 0
+    fi
+    if hdiutil detach -force "$MOUNT_DIR" >/dev/null 2>&1; then
+        ATTACHED=0
+        return 0
+    fi
+
+    echo "Failed to detach temporary DMG mount: $MOUNT_DIR" >&2
+    return 1
+}
+
+cleanup() {
+    local status=$?
+    trap - EXIT INT TERM HUP
+    if ! detach_mounted_dmg && [ "$status" -eq 0 ]; then
+        status=1
+    fi
+    if [ "$ATTACHED" -eq 0 ]; then
+        rm -rf "$MOUNT_DIR"
+    fi
+    rm -f "$SPCTL_OUTPUT"
+    exit "$status"
 }
 trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+trap 'exit 129' HUP
 
 if [ ! -f "$DMG_PATH" ]; then
     echo "Missing DMG: $DMG_PATH" >&2
@@ -50,7 +78,6 @@ test "$BUNDLE_VERSION" = "$EXPECTED_VERSION"
 
 codesign --verify --deep --strict "$MOUNT_DIR/VoiceInput.app"
 
-SPCTL_OUTPUT="$MOUNT_DIR/../voiceinput-spctl-$$.txt"
 set +e
 spctl -a -vvv -t execute "$MOUNT_DIR/VoiceInput.app" > "$SPCTL_OUTPUT" 2>&1
 SPCTL_STATUS=$?
@@ -60,4 +87,6 @@ test "$SPCTL_STATUS" -ne 0
 grep -qi "rejected" "$SPCTL_OUTPUT"
 rm -f "$SPCTL_OUTPUT"
 
+detach_mounted_dmg
+rm -rf "$MOUNT_DIR"
 echo "Verified $VOLUME_NAME DMG: version=$SHORT_VERSION unsigned_gatekeeper=expected_rejected"

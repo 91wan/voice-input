@@ -83,6 +83,10 @@ final class MakefileTests: XCTestCase {
             "make ci should require the focused app icon verifier to remain executable."
         )
         XCTAssertTrue(
+            makefile.contains("test -x scripts/run-finder-applescript.sh"),
+            "make ci should catch a missing Finder AppleScript helper executable bit before release jobs."
+        )
+        XCTAssertTrue(
             makefile.contains("./scripts/verify-app-icon.sh \"$(APP_ICON_SOURCE)\" \"$(APP_ICON_MASTER)\""),
             "make ci must validate the ICNS container and canonical master before Swift verification."
         )

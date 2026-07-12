@@ -33,6 +33,7 @@ jobs:
   release:
     name: 🚀 Release
     runs-on: macos-15
+    timeout-minutes: 20
     permissions:
       contents: write
     needs: test

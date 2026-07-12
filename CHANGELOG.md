@@ -30,6 +30,7 @@
 - Manual QA：added a lightweight manual QA log template for real app, Fn, and permission checks without claiming automated coverage.
 
 ### 工程
+- DMG Finder automation：Finder layout operations now fail within a bounded timeout and clean up child processes and temporary mounts instead of hanging indefinitely.
 - App icon validation：CI now verifies the ICNS container, round-trip conversion, and required macOS icon representations.
 - LLM error boundary：request configuration, parsing, cancellation, and completion now use `LLMRefinementError` end to end; validated configurations carry their endpoint URL and domain errors own safe log summaries.
 - App logging hygiene：LLM and text injection failures now own stable safe log buckets while keeping user-facing fallback and recovery text unchanged.

@@ -31,6 +31,7 @@ ci:
 	test -s "$(APP_ICON_SOURCE)"; \
 	test -s "$(APP_ICON_MASTER)"; \
 	test -x scripts/verify-app-icon.sh; \
+	test -x scripts/run-finder-applescript.sh; \
 	./scripts/verify-app-icon.sh "$(APP_ICON_SOURCE)" "$(APP_ICON_MASTER)"; \
 	test -x scripts/package-dmg.sh; \
 	test -x scripts/verify-dmg.sh; \
