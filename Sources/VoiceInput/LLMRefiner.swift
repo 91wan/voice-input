@@ -81,11 +81,8 @@ enum LLMRefinementMode: String, CaseIterable, Equatable {
 
 final class LLMRefiner {
     typealias RequestPerformer = (URLRequest, @escaping (Data?, URLResponse?, Error?) -> Void) -> LLMNetworkTask
-    typealias RefinerError = LLMRefinementError
 
     static let shared = LLMRefiner()
-    static let defaultAPIBaseURL = LLMRequestConfiguration.defaultAPIBaseURL
-    static let defaultModel = LLMRequestConfiguration.defaultModel
 
     private let userDefaults: UserDefaults
     private let apiKeyStore: KeychainStore
@@ -115,7 +112,12 @@ final class LLMRefiner {
     }
 
     var model: String {
-        get { normalizedSetting(userDefaults.string(forKey: llmModelDefaultsKey), fallback: Self.defaultModel) }
+        get {
+            normalizedSetting(
+                userDefaults.string(forKey: llmModelDefaultsKey),
+                fallback: LLMRequestConfiguration.defaultModel
+            )
+        }
         set { persistSetting(newValue, key: llmModelDefaultsKey) }
     }
 
@@ -148,31 +150,29 @@ final class LLMRefiner {
         _ text: String,
         mode modeOverride: LLMRefinementMode? = nil,
         force: Bool = false,
-        completion: @escaping (Result<String, Error>) -> Void
+        completion: @escaping (Result<String, LLMRefinementError>) -> Void
     ) -> CancellableRequest? {
         guard force || (isEnabled && isConfigured) else {
             completion(.success(text))
             return nil
         }
 
-        let configuration: LLMRequestConfiguration
-        do {
-            configuration = try LLMRequestConfiguration.validated(
-                apiBaseURL: apiBaseURL,
-                apiKey: apiKey,
-                model: model
+        switch LLMRequestConfiguration.validationResult(
+            apiBaseURL: apiBaseURL,
+            apiKey: apiKey,
+            model: model
+        ) {
+        case .success(let configuration):
+            return refine(
+                text,
+                configuration: configuration,
+                mode: modeOverride,
+                completion: completion
             )
-        } catch {
-            completion(.failure(error))
+        case .failure(let validationError):
+            completion(.failure(.configuration(validationError)))
             return nil
         }
-
-        return refine(
-            text,
-            configuration: configuration,
-            mode: modeOverride,
-            completion: completion
-        )
     }
 
     @discardableResult
@@ -180,12 +180,9 @@ final class LLMRefiner {
         _ text: String,
         configuration: LLMRequestConfiguration,
         mode modeOverride: LLMRefinementMode? = nil,
-        completion: @escaping (Result<String, Error>) -> Void
+        completion: @escaping (Result<String, LLMRefinementError>) -> Void
     ) -> CancellableRequest? {
-        guard let url = Self.chatCompletionsURL(from: configuration.apiBaseURL) else {
-            completion(.failure(RefinerError.invalidURL))
-            return nil
-        }
+        let url = configuration.chatCompletionsURL
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -328,12 +325,12 @@ final class LLMRefiner {
     private func normalizedAPIBaseURLSetting(_ value: String?) -> String {
         guard let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines), !trimmed.isEmpty else {
             userDefaults.removeObject(forKey: llmAPIBaseURLDefaultsKey)
-            return Self.defaultAPIBaseURL
+            return LLMRequestConfiguration.defaultAPIBaseURL
         }
 
-        guard Self.chatCompletionsURL(from: trimmed) != nil else {
+        guard LLMRequestConfiguration.chatCompletionsURL(from: trimmed) != nil else {
             userDefaults.removeObject(forKey: llmAPIBaseURLDefaultsKey)
-            return Self.defaultAPIBaseURL
+            return LLMRequestConfiguration.defaultAPIBaseURL
         }
 
         return trimmed
@@ -341,16 +338,12 @@ final class LLMRefiner {
 
     private func persistAPIBaseURLSetting(_ value: String) {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, Self.chatCompletionsURL(from: trimmed) != nil else {
+        guard !trimmed.isEmpty, LLMRequestConfiguration.chatCompletionsURL(from: trimmed) != nil else {
             userDefaults.removeObject(forKey: llmAPIBaseURLDefaultsKey)
             return
         }
 
         userDefaults.set(trimmed, forKey: llmAPIBaseURLDefaultsKey)
-    }
-
-    static func chatCompletionsURL(from baseURLString: String) -> URL? {
-        LLMRequestConfiguration.chatCompletionsURL(from: baseURLString)
     }
 
     private func addActiveRequest(_ request: LLMRefinementRequest) {
@@ -369,12 +362,12 @@ final class LLMRefiner {
 
 private final class LLMRefinementRequest: CancellableRequest {
     private let lock = NSLock()
-    private var completion: ((Result<String, Error>) -> Void)?
+    private var completion: ((Result<String, LLMRefinementError>) -> Void)?
     private var task: LLMNetworkTask?
     private let cleanup: (LLMRefinementRequest) -> Void
 
     init(
-        completion: @escaping (Result<String, Error>) -> Void,
+        completion: @escaping (Result<String, LLMRefinementError>) -> Void,
         cleanup: @escaping (LLMRefinementRequest) -> Void
     ) {
         self.completion = completion
@@ -399,10 +392,10 @@ private final class LLMRefinementRequest: CancellableRequest {
         lock.unlock()
 
         taskToCancel?.cancel()
-        complete(.failure(LLMRefiner.RefinerError.cancelled))
+        complete(.failure(.cancelled))
     }
 
-    func complete(_ result: Result<String, Error>) {
+    func complete(_ result: Result<String, LLMRefinementError>) {
         lock.lock()
         guard let completion else {
             lock.unlock()

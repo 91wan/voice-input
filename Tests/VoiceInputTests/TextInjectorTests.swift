@@ -3,6 +3,20 @@ import XCTest
 @testable import VoiceInput
 
 final class TextInjectorTests: XCTestCase {
+    func testFailureLogSummariesUseStableBuckets() {
+        let cases: [(TextInjectionFailure, String)] = [
+            (.emptyText, "empty_text"),
+            (.accessibilityPermissionMissing, "accessibility_permission_missing"),
+            (.pasteboardWriteFailed, "pasteboard_write_failed"),
+            (.pasteCommandFailed, "paste_command_failed"),
+            (.dictationBusy, "dictation_busy"),
+        ]
+
+        for (failure, expectedSummary) in cases {
+            XCTAssertEqual(failure.logSummary, expectedSummary)
+        }
+    }
+
     private func assertWrite(
         _ item: NSPasteboardItem,
         to pasteboard: NSPasteboard,

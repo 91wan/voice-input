@@ -290,7 +290,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                         }
                     }
                 case .failure(let error):
-                    NSLog("[LLMRefiner] Refine failed: %@", Self.llmFailureLogSummary(for: error))
+                    NSLog("[LLMRefiner] Refine failed: %@", error.logSummary)
                     let output = TranscriptionResolution.resolve(
                         filteredText: filtered,
                         refinedText: nil
@@ -381,7 +381,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         case .success:
             NSSound(named: .init("Pop"))?.play()
         case .failure(let failure):
-            NSLog("[TextInjector] Inject failed: %@", Self.textInjectionFailureLogSummary(for: failure))
+            NSLog("[TextInjector] Inject failed: %@", failure.logSummary)
             overlayPanel.show(text: failure.localizedDescription)
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
                 guard let self, self.transcriptionSessions.isCurrent(sessionID) else { return }
@@ -787,25 +787,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             isLLMEnabled: true,
             isLLMConfigured: true
         ).promptBuilderShortcutTitle
-    }
-
-    static func llmFailureLogSummary(for error: Error) -> String {
-        LLMRefinementError.safeLogSummary(for: error)
-    }
-
-    static func textInjectionFailureLogSummary(for failure: TextInjectionFailure) -> String {
-        switch failure {
-        case .emptyText:
-            return "empty_text"
-        case .accessibilityPermissionMissing:
-            return "accessibility_permission_missing"
-        case .pasteboardWriteFailed:
-            return "pasteboard_write_failed"
-        case .pasteCommandFailed:
-            return "paste_command_failed"
-        case .dictationBusy:
-            return "dictation_busy"
-        }
     }
 
     static func retryInsertAvailability(phase: DictationPhase) -> RetryInsertAvailability {

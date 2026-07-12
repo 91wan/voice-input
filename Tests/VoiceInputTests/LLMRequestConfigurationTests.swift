@@ -10,8 +10,8 @@ final class LLMRequestConfigurationTests: XCTestCase {
         )
 
         XCTAssertEqual(configuration.apiBaseURL, "https://transient.example/v1")
+        XCTAssertEqual(configuration.chatCompletionsURL.absoluteString, "https://transient.example/v1/chat/completions")
         XCTAssertEqual(configuration.model, "transient-model")
-        XCTAssertTrue(configuration.hasAPIKey)
     }
 
     func testValidatedUsesDefaultsForBlankBaseURLAndModel() throws {
@@ -22,8 +22,11 @@ final class LLMRequestConfigurationTests: XCTestCase {
         )
 
         XCTAssertEqual(configuration.apiBaseURL, LLMRequestConfiguration.defaultAPIBaseURL)
+        XCTAssertEqual(
+            configuration.chatCompletionsURL.absoluteString,
+            "https://api.openai.com/v1/chat/completions"
+        )
         XCTAssertEqual(configuration.model, LLMRequestConfiguration.defaultModel)
-        XCTAssertTrue(configuration.hasAPIKey)
     }
 
     func testValidatedRejectsEmptyAPIKey() {
@@ -38,6 +41,19 @@ final class LLMRequestConfigurationTests: XCTestCase {
         }
     }
 
+    func testValidationResultReturnsTypedEmptyAPIKeyFailure() {
+        let result = LLMRequestConfiguration.validationResult(
+            apiBaseURL: "https://api.openai.com/v1",
+            apiKey: "   ",
+            model: "gpt-4o-mini"
+        )
+
+        guard case .failure(let error) = result else {
+            return XCTFail("Expected empty API key failure")
+        }
+        XCTAssertEqual(error, .emptyAPIKey)
+    }
+
     func testValidatedRejectsInvalidAPIBaseURL() {
         XCTAssertThrowsError(
             try LLMRequestConfiguration.validated(
@@ -48,6 +64,38 @@ final class LLMRequestConfigurationTests: XCTestCase {
         ) { error in
             XCTAssertTrue(error.localizedDescription.contains("Invalid API base URL"))
         }
+    }
+
+    func testValidationResultReturnsTypedInvalidBaseURLFailure() {
+        let result = LLMRequestConfiguration.validationResult(
+            apiBaseURL: "http://api.example.com/v1",
+            apiKey: "transient-key",
+            model: "gpt-4o-mini"
+        )
+
+        guard case .failure(let error) = result else {
+            return XCTFail("Expected invalid base URL failure")
+        }
+        XCTAssertEqual(error, .invalidAPIBaseURL)
+    }
+
+    func testValidatedStoresCustomLoopbackEndpointWithoutDuplicatingPath() throws {
+        let localhost = try LLMRequestConfiguration.validated(
+            apiBaseURL: "http://localhost:1234/v1",
+            apiKey: "transient-key",
+            model: "local-model"
+        )
+        let completeEndpoint = try LLMRequestConfiguration.validated(
+            apiBaseURL: "https://transient.example/v1/chat/completions",
+            apiKey: "transient-key",
+            model: "remote-model"
+        )
+
+        XCTAssertEqual(localhost.chatCompletionsURL.absoluteString, "http://localhost:1234/v1/chat/completions")
+        XCTAssertEqual(
+            completeEndpoint.chatCompletionsURL.absoluteString,
+            "https://transient.example/v1/chat/completions"
+        )
     }
 
     func testAppliesAuthorizationWithoutExposingAPIKeyAsState() throws {
@@ -61,7 +109,6 @@ final class LLMRequestConfigurationTests: XCTestCase {
         configuration.applyAuthorization(to: &request)
 
         XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer transient-key")
-        XCTAssertTrue(configuration.hasAPIKey)
     }
 
     func testDescriptionsRedactAPIKey() throws {

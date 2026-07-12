@@ -143,8 +143,8 @@ final class LLMRefinerTests: XCTestCase {
         refiner.apiBaseURL = "   "
         refiner.model = "  "
 
-        XCTAssertEqual(refiner.apiBaseURL, LLMRefiner.defaultAPIBaseURL)
-        XCTAssertEqual(refiner.model, LLMRefiner.defaultModel)
+        XCTAssertEqual(refiner.apiBaseURL, LLMRequestConfiguration.defaultAPIBaseURL)
+        XCTAssertEqual(refiner.model, LLMRequestConfiguration.defaultModel)
         XCTAssertNil(defaults.object(forKey: "llmAPIBaseURL"))
         XCTAssertNil(defaults.object(forKey: "llmModel"))
     }
@@ -294,7 +294,7 @@ final class LLMRefinerTests: XCTestCase {
 
         let expectation = expectation(description: "cancel delivered")
         refiner.refine("filtered text", force: true) { result in
-            guard case .failure(let error as LLMRefiner.RefinerError) = result else {
+            guard case .failure(let error) = result else {
                 return XCTFail("Expected cancellation error, got \(result)")
             }
             XCTAssertEqual(error, .cancelled)
@@ -372,7 +372,7 @@ final class LLMRefinerTests: XCTestCase {
 
         let expectation = expectation(description: "invalid response delivered")
         refiner.refine("filtered text", force: true) { result in
-            guard case .failure(let error as LLMRefiner.RefinerError) = result else {
+            guard case .failure(let error) = result else {
                 return XCTFail("Expected invalid response, got \(result)")
             }
             XCTAssertEqual(error, .invalidResponse)
@@ -491,7 +491,7 @@ final class LLMRefinerTests: XCTestCase {
             logHandler: { _ in }
         )
 
-        XCTAssertEqual(refiner.apiBaseURL, LLMRefiner.defaultAPIBaseURL)
+        XCTAssertEqual(refiner.apiBaseURL, LLMRequestConfiguration.defaultAPIBaseURL)
         XCTAssertNil(defaults.object(forKey: "llmAPIBaseURL"))
     }
 
@@ -517,7 +517,7 @@ final class LLMRefinerTests: XCTestCase {
 
         refiner.apiBaseURL = "http://api.example.com/v1"
 
-        XCTAssertEqual(refiner.apiBaseURL, LLMRefiner.defaultAPIBaseURL)
+        XCTAssertEqual(refiner.apiBaseURL, LLMRequestConfiguration.defaultAPIBaseURL)
         XCTAssertNil(defaults.object(forKey: "llmAPIBaseURL"))
     }
 
@@ -583,6 +583,7 @@ final class LLMRefinerTests: XCTestCase {
             case .success(let text):
                 XCTFail("Expected validation failure, got \(text)")
             case .failure(let error):
+                XCTAssertEqual(error, .configuration(.emptyAPIKey))
                 XCTAssertEqual(error.localizedDescription, "API key is empty")
             }
             expectation.fulfill()
@@ -591,8 +592,8 @@ final class LLMRefinerTests: XCTestCase {
         XCTAssertNil(request)
         XCTAssertTrue(recorder.capturedRequests.isEmpty)
         XCTAssertEqual(refiner.apiKey, "")
-        XCTAssertEqual(refiner.apiBaseURL, LLMRefiner.defaultAPIBaseURL)
-        XCTAssertEqual(refiner.model, LLMRefiner.defaultModel)
+        XCTAssertEqual(refiner.apiBaseURL, LLMRequestConfiguration.defaultAPIBaseURL)
+        XCTAssertEqual(refiner.model, LLMRequestConfiguration.defaultModel)
         XCTAssertNil(defaults.object(forKey: "llmAPIBaseURL"))
         XCTAssertNil(defaults.object(forKey: "llmModel"))
         XCTAssertNil(try store.read())

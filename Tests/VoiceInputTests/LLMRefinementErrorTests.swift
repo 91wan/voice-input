@@ -25,7 +25,8 @@ final class LLMRefinementErrorTests: XCTestCase {
 
     func testLogSummaryUsesStableSafeBuckets() {
         let cases: [(LLMRefinementError, String)] = [
-            (.invalidURL, "invalid_url"),
+            (.configuration(.emptyAPIKey), "configuration_empty_api_key"),
+            (.configuration(.invalidAPIBaseURL), "configuration_invalid_api_base_url"),
             (.cancelled, "cancelled"),
             (.invalidResponse, "invalid_response"),
             (.transport("connection dropped"), "transport"),
@@ -40,36 +41,22 @@ final class LLMRefinementErrorTests: XCTestCase {
         }
     }
 
-    func testSafeLogSummaryUsesStableBucketForHTTPProviderMessage() {
-        let error = LLMRefinementError.httpStatus(
-            401,
-            "Provider echoed Bearer secret-token sk-live-secret"
-        )
-
-        let summary = LLMRefinementError.safeLogSummary(for: error)
-
-        XCTAssertEqual(summary, "http_status=401 hint=check_api_key")
-        XCTAssertFalse(summary.contains("Provider echoed"))
-        XCTAssertFalse(summary.contains("Bearer"))
-        XCTAssertFalse(summary.contains("sk-"))
-    }
-
-    func testSafeLogSummaryDoesNotExposeUnknownErrorLocalizedDescription() {
-        let error = NSError(domain: "VoiceInputTests", code: 42, userInfo: [
-            NSLocalizedDescriptionKey: "secret detail sk-live-secret",
-        ])
-
-        let summary = LLMRefinementError.safeLogSummary(for: error)
-
-        XCTAssertEqual(summary, "unknown_error")
-        XCTAssertFalse(summary.contains("secret detail"))
-        XCTAssertFalse(summary.contains("sk-"))
-    }
-
-    func testSafeLogSummaryBucketsConfigurationValidation() {
+    func testConfigurationErrorsDelegateUserFacingDescriptions() {
         XCTAssertEqual(
-            LLMRefinementError.safeLogSummary(for: LLMRequestConfiguration.ValidationError.emptyAPIKey),
-            "configuration_validation"
+            LLMRefinementError.configuration(.emptyAPIKey).localizedDescription,
+            LLMRequestConfiguration.ValidationError.emptyAPIKey.localizedDescription
         )
+        XCTAssertEqual(
+            LLMRefinementError.configuration(.invalidAPIBaseURL).localizedDescription,
+            LLMRequestConfiguration.ValidationError.invalidAPIBaseURL.localizedDescription
+        )
+    }
+
+    func testTransportLogSummaryDoesNotExposeSystemMessage() {
+        let error = LLMRefinementError.transport("connection failed sk-live-secret")
+
+        XCTAssertEqual(error.logSummary, "transport")
+        XCTAssertFalse(error.logSummary.contains("connection failed"))
+        XCTAssertFalse(error.logSummary.contains("sk-"))
     }
 }
