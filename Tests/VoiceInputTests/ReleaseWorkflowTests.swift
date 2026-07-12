@@ -198,6 +198,31 @@ final class ReleaseWorkflowTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(applicationsPosition[0] - appPosition[0], 360, "The app and Applications icons should be far enough apart to avoid overlap.")
     }
 
+    func testFinderDMGAutomationIsBoundedWithoutChangingLayoutContract() throws {
+        let workflow = try String(contentsOfFile: ".github/workflows/release.yml", encoding: .utf8)
+        let packageScript = try String(contentsOfFile: "scripts/package-dmg.sh", encoding: .utf8)
+        let verifier = try String(contentsOfFile: "scripts/verify-dmg.sh", encoding: .utf8)
+        let layoutVerifier = try String(contentsOfFile: "scripts/verify-dmg-layout.sh", encoding: .utf8)
+        let helperCall = "$SCRIPT_DIR/run-finder-applescript.sh"
+
+        XCTAssertTrue(packageScript.contains(helperCall))
+        XCTAssertTrue(layoutVerifier.contains(helperCall))
+        XCTAssertFalse(packageScript.contains("osascript <<"))
+        XCTAssertFalse(layoutVerifier.contains("osascript <<"))
+        XCTAssertTrue(packageScript.contains("{100, 100, 980, 620}"))
+        XCTAssertTrue(packageScript.contains("icon size of icon view options of container window of dmgFolder to 160"))
+        XCTAssertTrue(packageScript.contains("{260, 240}"))
+        XCTAssertTrue(packageScript.contains("{700, 240}"))
+        XCTAssertTrue(packageScript.contains("not arranged"))
+        XCTAssertTrue(packageScript.contains("test -f \"$MOUNT_DIR/.DS_Store\""))
+        XCTAssertTrue(packageScript.contains("hdiutil detach \"$MOUNT_DIR\""))
+        XCTAssertTrue(packageScript.contains("hdiutil detach -force \"$MOUNT_DIR\""))
+        XCTAssertTrue(verifier.contains("hdiutil detach \"$MOUNT_DIR\""))
+        XCTAssertTrue(verifier.contains("hdiutil detach -force \"$MOUNT_DIR\""))
+        XCTAssertTrue(workflow.contains("release:\n    name: 🚀 Release\n    runs-on: macos-15\n    timeout-minutes: 20"))
+        XCTAssertTrue(workflow.contains("make release-artifact VERSION=\"$VERSION\" DMG_PATH=VoiceInput.dmg"))
+    }
+
     func testVersionMetadataIsConsistentAcrossSourceFiles() throws {
         let englishReadme = try String(contentsOfFile: "README.md", encoding: .utf8)
         let readmeVersion = try XCTUnwrap(Self.firstCapture(in: englishReadme, pattern: #"version-v([0-9]+\.[0-9]+\.[0-9]+)"#))

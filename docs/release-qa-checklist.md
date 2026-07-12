@@ -19,6 +19,8 @@ Use this checklist before a stable public release such as `v1.2.0`.
 - Local release gate: `make release-check VERSION=<version> DMG_PATH=/tmp/VoiceInput-test.dmg`.
 - The release gate includes DMG packaging and `./scripts/verify-dmg.sh`.
 - Automated DMG layout gate: `make release-check` mounts the DMG and verifies Finder layout values: icon size, bounds, app position, and Applications position.
+- Finder AppleScript operations use a bounded timeout; unsupported non-interactive sessions fail with GUI/Finder Automation guidance instead of hanging indefinitely.
+- A timeout is a failed release gate, not a pass. Stable releases still require a complete `make release-check` run in a logged-in GUI session with Finder Automation access.
 - DMG artifact check: mounted DMG contains `VoiceInput.app`, `Applications -> /Applications`, `.DS_Store`, and a non-empty app icon without launching the app.
 - Version bump gate: `make version-bump VERSION=vX.Y.Z` validates release notes, runs the local release gate before commit/tag, and stages `README.md`, `Info.plist`, and `CHANGELOG.md` for the bump commit.
 - Version bump source gate: only `CHANGELOG.md` may be dirty before `make version-bump`; source/test/script/workflow changes must be committed before `make version-bump`.

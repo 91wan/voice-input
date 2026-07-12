@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MIN_ICON_SIZE=160
 MIN_WINDOW_WIDTH=880
 MIN_WINDOW_HEIGHT=500
@@ -89,7 +90,7 @@ validate_layout_values() {
 read_mounted_layout() {
     local mount_dir="$1"
 
-    osascript <<APPLESCRIPT
+    "$SCRIPT_DIR/run-finder-applescript.sh" <<APPLESCRIPT
 tell application "Finder"
     set dmgFolder to POSIX file "$mount_dir" as alias
     open dmgFolder
