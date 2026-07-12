@@ -294,7 +294,7 @@ final class LLMRefinerTests: XCTestCase {
 
         let expectation = expectation(description: "cancel delivered")
         refiner.refine("filtered text", force: true) { result in
-            guard case .failure(let error as LLMRefiner.RefinerError) = result else {
+            guard case .failure(let error) = result else {
                 return XCTFail("Expected cancellation error, got \(result)")
             }
             XCTAssertEqual(error, .cancelled)
@@ -372,7 +372,7 @@ final class LLMRefinerTests: XCTestCase {
 
         let expectation = expectation(description: "invalid response delivered")
         refiner.refine("filtered text", force: true) { result in
-            guard case .failure(let error as LLMRefiner.RefinerError) = result else {
+            guard case .failure(let error) = result else {
                 return XCTFail("Expected invalid response, got \(result)")
             }
             XCTAssertEqual(error, .invalidResponse)
@@ -583,6 +583,7 @@ final class LLMRefinerTests: XCTestCase {
             case .success(let text):
                 XCTFail("Expected validation failure, got \(text)")
             case .failure(let error):
+                XCTAssertEqual(error, .configuration(.emptyAPIKey))
                 XCTAssertEqual(error.localizedDescription, "API key is empty")
             }
             expectation.fulfill()

@@ -35,6 +35,21 @@ enum TextInjectionFailure: LocalizedError, Equatable {
     var shouldPromptForAccessibility: Bool {
         self == .accessibilityPermissionMissing
     }
+
+    var logSummary: String {
+        switch self {
+        case .emptyText:
+            return "empty_text"
+        case .accessibilityPermissionMissing:
+            return "accessibility_permission_missing"
+        case .pasteboardWriteFailed:
+            return "pasteboard_write_failed"
+        case .pasteCommandFailed:
+            return "paste_command_failed"
+        case .dictationBusy:
+            return "dictation_busy"
+        }
+    }
 }
 
 enum TextInjectionResult: Equatable {

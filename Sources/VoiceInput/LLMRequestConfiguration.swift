@@ -5,6 +5,7 @@ struct LLMRequestConfiguration: CustomStringConvertible, CustomDebugStringConver
     static let defaultModel = "gpt-4o-mini"
 
     let apiBaseURL: String
+    let chatCompletionsURL: URL
     let model: String
     private let apiKey: String
 
@@ -18,8 +19,9 @@ struct LLMRequestConfiguration: CustomStringConvertible, CustomDebugStringConver
         "LLMRequestConfiguration(apiBaseURL: \(apiBaseURL), model: \(model), apiKey: [redacted])"
     }
 
-    private init(apiBaseURL: String, apiKey: String, model: String) {
+    private init(apiBaseURL: String, chatCompletionsURL: URL, apiKey: String, model: String) {
         self.apiBaseURL = apiBaseURL
+        self.chatCompletionsURL = chatCompletionsURL
         self.apiKey = apiKey
         self.model = model
     }
@@ -29,28 +31,33 @@ struct LLMRequestConfiguration: CustomStringConvertible, CustomDebugStringConver
         apiKey: String,
         model: String
     ) throws -> LLMRequestConfiguration {
+        try validationResult(apiBaseURL: apiBaseURL, apiKey: apiKey, model: model).get()
+    }
+
+    static func validationResult(
+        apiBaseURL: String,
+        apiKey: String,
+        model: String
+    ) -> Result<LLMRequestConfiguration, ValidationError> {
         let normalizedAPIBaseURL = apiBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
         let normalizedAPIKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         let normalizedModel = model.trimmingCharacters(in: .whitespacesAndNewlines)
 
         guard !normalizedAPIKey.isEmpty else {
-            throw ValidationError.emptyAPIKey
+            return .failure(.emptyAPIKey)
         }
 
-        let requestAPIBaseURL: String
-        if normalizedAPIBaseURL.isEmpty {
-            requestAPIBaseURL = defaultAPIBaseURL
-        } else if chatCompletionsURL(from: normalizedAPIBaseURL) != nil {
-            requestAPIBaseURL = normalizedAPIBaseURL
-        } else {
-            throw ValidationError.invalidAPIBaseURL
+        let requestAPIBaseURL = normalizedAPIBaseURL.isEmpty ? defaultAPIBaseURL : normalizedAPIBaseURL
+        guard let endpoint = chatCompletionsURL(from: requestAPIBaseURL) else {
+            return .failure(.invalidAPIBaseURL)
         }
 
-        return LLMRequestConfiguration(
+        return .success(LLMRequestConfiguration(
             apiBaseURL: requestAPIBaseURL,
+            chatCompletionsURL: endpoint,
             apiKey: normalizedAPIKey,
             model: normalizedModel.isEmpty ? defaultModel : normalizedModel
-        )
+        ))
     }
 
     func applyAuthorization(to request: inout URLRequest) {

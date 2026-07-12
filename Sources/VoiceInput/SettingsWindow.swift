@@ -184,7 +184,7 @@ final class SettingsWindow: NSPanel, NSTextFieldDelegate {
                 self.testState = .succeeded(text)
                 self.refreshConfigurationStatus(configuration: configuration)
             case .failure(let error):
-                if case LLMRefiner.RefinerError.cancelled = error {
+                if error == .cancelled {
                     self.testState = .notRun
                     self.showStatus("Test cancelled.", success: nil)
                     return

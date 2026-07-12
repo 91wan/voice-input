@@ -1,7 +1,7 @@
 import Foundation
 
 enum LLMRefinementError: LocalizedError, Equatable {
-    case invalidURL
+    case configuration(LLMRequestConfiguration.ValidationError)
     case transport(String)
     case httpStatus(Int, String?)
     case invalidResponse
@@ -9,8 +9,8 @@ enum LLMRefinementError: LocalizedError, Equatable {
 
     var errorDescription: String? {
         switch self {
-        case .invalidURL:
-            return "Invalid API base URL"
+        case .configuration(let error):
+            return error.localizedDescription
         case .transport(let message):
             return "Network error: \(message)"
         case .httpStatus(let statusCode, let message):
@@ -24,8 +24,10 @@ enum LLMRefinementError: LocalizedError, Equatable {
 
     var logSummary: String {
         switch self {
-        case .invalidURL:
-            return "invalid_url"
+        case .configuration(.emptyAPIKey):
+            return "configuration_empty_api_key"
+        case .configuration(.invalidAPIBaseURL):
+            return "configuration_invalid_api_base_url"
         case .transport:
             return "transport"
         case .httpStatus(let statusCode, _):
@@ -35,18 +37,6 @@ enum LLMRefinementError: LocalizedError, Equatable {
         case .cancelled:
             return "cancelled"
         }
-    }
-
-    static func safeLogSummary(for error: Error) -> String {
-        if let refinementError = error as? LLMRefinementError {
-            return refinementError.logSummary
-        }
-
-        if error is LLMRequestConfiguration.ValidationError {
-            return "configuration_validation"
-        }
-
-        return "unknown_error"
     }
 
     private static func httpStatusDescription(statusCode: Int, message: String?) -> String {
