@@ -13,8 +13,11 @@ struct LLMAPIResponseParser {
             return .failure(.transport(redactSensitiveTokens(in: error.localizedDescription)))
         }
 
-        if let httpResponse = response as? HTTPURLResponse,
-           !(200...299).contains(httpResponse.statusCode) {
+        guard let httpResponse = response as? HTTPURLResponse else {
+            return .failure(.invalidResponse)
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
             return .failure(.httpStatus(httpResponse.statusCode, data.flatMap(apiErrorMessage(from:))))
         }
 

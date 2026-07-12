@@ -12,7 +12,6 @@ final class LLMRequestConfigurationTests: XCTestCase {
         XCTAssertEqual(configuration.apiBaseURL, "https://transient.example/v1")
         XCTAssertEqual(configuration.chatCompletionsURL.absoluteString, "https://transient.example/v1/chat/completions")
         XCTAssertEqual(configuration.model, "transient-model")
-        XCTAssertTrue(configuration.hasAPIKey)
     }
 
     func testValidatedUsesDefaultsForBlankBaseURLAndModel() throws {
@@ -28,7 +27,6 @@ final class LLMRequestConfigurationTests: XCTestCase {
             "https://api.openai.com/v1/chat/completions"
         )
         XCTAssertEqual(configuration.model, LLMRequestConfiguration.defaultModel)
-        XCTAssertTrue(configuration.hasAPIKey)
     }
 
     func testValidatedRejectsEmptyAPIKey() {
@@ -111,7 +109,6 @@ final class LLMRequestConfigurationTests: XCTestCase {
         configuration.applyAuthorization(to: &request)
 
         XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer transient-key")
-        XCTAssertTrue(configuration.hasAPIKey)
     }
 
     func testDescriptionsRedactAPIKey() throws {

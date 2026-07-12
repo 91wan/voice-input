@@ -9,8 +9,6 @@ struct LLMRequestConfiguration: CustomStringConvertible, CustomDebugStringConver
     let model: String
     private let apiKey: String
 
-    var hasAPIKey: Bool { !apiKey.isEmpty }
-
     var description: String { redactedDescription }
 
     var debugDescription: String { redactedDescription }

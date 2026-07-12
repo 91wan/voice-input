@@ -224,8 +224,14 @@ final class SettingsWindow: NSPanel, NSTextFieldDelegate {
 
     private func refreshConfigurationStatus(prefix: String = "", configuration: LLMRequestConfiguration? = nil) {
         let refiner = LLMRefiner.shared
+        let isConfigured: Bool
+        if configuration != nil {
+            isConfigured = true
+        } else {
+            isConfigured = refiner.isConfigured
+        }
         let status = LLMSettingsStatus.make(
-            isConfigured: configuration?.hasAPIKey ?? refiner.isConfigured,
+            isConfigured: isConfigured,
             apiBaseURL: configuration?.apiBaseURL ?? refiner.apiBaseURL,
             model: configuration?.model ?? refiner.model,
             mode: refiner.mode,
@@ -239,7 +245,8 @@ final class SettingsWindow: NSPanel, NSTextFieldDelegate {
         let normalizedBaseURL = apiBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
         let normalizedModel = model.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        if !normalizedBaseURL.isEmpty, LLMRefiner.chatCompletionsURL(from: normalizedBaseURL) == nil {
+        if !normalizedBaseURL.isEmpty,
+           LLMRequestConfiguration.chatCompletionsURL(from: normalizedBaseURL) == nil {
             throw SettingsValidationError.invalidAPIBaseURL
         }
 

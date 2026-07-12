@@ -83,8 +83,6 @@ final class LLMRefiner {
     typealias RequestPerformer = (URLRequest, @escaping (Data?, URLResponse?, Error?) -> Void) -> LLMNetworkTask
 
     static let shared = LLMRefiner()
-    static let defaultAPIBaseURL = LLMRequestConfiguration.defaultAPIBaseURL
-    static let defaultModel = LLMRequestConfiguration.defaultModel
 
     private let userDefaults: UserDefaults
     private let apiKeyStore: KeychainStore
@@ -114,7 +112,12 @@ final class LLMRefiner {
     }
 
     var model: String {
-        get { normalizedSetting(userDefaults.string(forKey: llmModelDefaultsKey), fallback: Self.defaultModel) }
+        get {
+            normalizedSetting(
+                userDefaults.string(forKey: llmModelDefaultsKey),
+                fallback: LLMRequestConfiguration.defaultModel
+            )
+        }
         set { persistSetting(newValue, key: llmModelDefaultsKey) }
     }
 
@@ -322,12 +325,12 @@ final class LLMRefiner {
     private func normalizedAPIBaseURLSetting(_ value: String?) -> String {
         guard let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines), !trimmed.isEmpty else {
             userDefaults.removeObject(forKey: llmAPIBaseURLDefaultsKey)
-            return Self.defaultAPIBaseURL
+            return LLMRequestConfiguration.defaultAPIBaseURL
         }
 
-        guard Self.chatCompletionsURL(from: trimmed) != nil else {
+        guard LLMRequestConfiguration.chatCompletionsURL(from: trimmed) != nil else {
             userDefaults.removeObject(forKey: llmAPIBaseURLDefaultsKey)
-            return Self.defaultAPIBaseURL
+            return LLMRequestConfiguration.defaultAPIBaseURL
         }
 
         return trimmed
@@ -335,16 +338,12 @@ final class LLMRefiner {
 
     private func persistAPIBaseURLSetting(_ value: String) {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, Self.chatCompletionsURL(from: trimmed) != nil else {
+        guard !trimmed.isEmpty, LLMRequestConfiguration.chatCompletionsURL(from: trimmed) != nil else {
             userDefaults.removeObject(forKey: llmAPIBaseURLDefaultsKey)
             return
         }
 
         userDefaults.set(trimmed, forKey: llmAPIBaseURLDefaultsKey)
-    }
-
-    static func chatCompletionsURL(from baseURLString: String) -> URL? {
-        LLMRequestConfiguration.chatCompletionsURL(from: baseURLString)
     }
 
     private func addActiveRequest(_ request: LLMRefinementRequest) {

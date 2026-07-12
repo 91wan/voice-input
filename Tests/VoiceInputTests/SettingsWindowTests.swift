@@ -32,7 +32,6 @@ final class SettingsWindowTests: XCTestCase {
 
         XCTAssertEqual(configuration.apiBaseURL, "https://transient.example/v1")
         XCTAssertEqual(configuration.model, "transient-model")
-        XCTAssertTrue(configuration.hasAPIKey)
     }
 
     func testValidatedTestConfigurationUsesDefaultsForBlankBaseURLAndModel() throws {
@@ -42,9 +41,8 @@ final class SettingsWindowTests: XCTestCase {
             model: "   "
         )
 
-        XCTAssertEqual(configuration.apiBaseURL, LLMRefiner.defaultAPIBaseURL)
-        XCTAssertEqual(configuration.model, LLMRefiner.defaultModel)
-        XCTAssertTrue(configuration.hasAPIKey)
+        XCTAssertEqual(configuration.apiBaseURL, LLMRequestConfiguration.defaultAPIBaseURL)
+        XCTAssertEqual(configuration.model, LLMRequestConfiguration.defaultModel)
     }
 
     func testValidatedTestConfigurationRejectsEmptyAPIKeyWithoutBuildingRequest() {
@@ -100,8 +98,8 @@ final class SettingsWindowTests: XCTestCase {
     func testLLMSettingsStatusShowsNotConfiguredWithoutAPIKey() {
         let status = LLMSettingsStatus.make(
             isConfigured: false,
-            apiBaseURL: LLMRefiner.defaultAPIBaseURL,
-            model: LLMRefiner.defaultModel,
+            apiBaseURL: LLMRequestConfiguration.defaultAPIBaseURL,
+            model: LLMRequestConfiguration.defaultModel,
             mode: .precise,
             testState: .notRun
         )

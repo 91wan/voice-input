@@ -3,6 +3,51 @@ import XCTest
 @testable import VoiceInput
 
 final class LLMAPIResponseParserTests: XCTestCase {
+    func testValidSuccessJSONWithoutResponseIsRejected() {
+        let result = LLMAPIResponseParser.parse(
+            data: Self.successData("refined text"),
+            response: nil,
+            error: nil
+        )
+
+        XCTAssertEqual(result.failure, .invalidResponse)
+    }
+
+    func testValidSuccessJSONWithNonHTTPResponseIsRejected() {
+        let result = LLMAPIResponseParser.parse(
+            data: Self.successData("refined text"),
+            response: URLResponse(
+                url: Self.endpointURL,
+                mimeType: "application/json",
+                expectedContentLength: 128,
+                textEncodingName: "utf-8"
+            ),
+            error: nil
+        )
+
+        XCTAssertEqual(result.failure, .invalidResponse)
+    }
+
+    func testValidSuccessJSONWithHTTP200StillSucceeds() throws {
+        let result = LLMAPIResponseParser.parse(
+            data: Self.successData("  refined text\n"),
+            response: Self.httpResponse(statusCode: 200),
+            error: nil
+        )
+
+        XCTAssertEqual(try result.get(), "refined text")
+    }
+
+    func testNon2xxHTTPResponseStillReturnsHTTPStatusError() {
+        let result = LLMAPIResponseParser.parse(
+            data: Self.errorData(message: "request rejected"),
+            response: Self.httpResponse(statusCode: 422),
+            error: nil
+        )
+
+        XCTAssertEqual(result.failure, .httpStatus(422, "request rejected"))
+    }
+
     func testSuccessResponseReturnsTrimmedContent() throws {
         let result = LLMAPIResponseParser.parse(
             data: Self.successData("  refined text\n"),
@@ -185,12 +230,14 @@ final class LLMAPIResponseParserTests: XCTestCase {
 
     private static func httpResponse(statusCode: Int) -> HTTPURLResponse {
         HTTPURLResponse(
-            url: URL(string: "https://api.example.test/v1/chat/completions")!,
+            url: endpointURL,
             statusCode: statusCode,
             httpVersion: nil,
             headerFields: nil
         )!
     }
+
+    private static let endpointURL = URL(string: "https://api.example.test/v1/chat/completions")!
 }
 
 private extension Result where Failure == LLMRefinementError {
